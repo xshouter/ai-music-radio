@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  rules:
+    name: 铁律机械检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 铁律 5：渲染进程不许碰数据库 / 存储 / node 内建。
+      # 脚本零依赖，因此代码落地前也能跑；扫不到目录就直接过。
+      - name: 依赖边界检查
+        run: node tools/check-boundaries.mjs
+
+      # 代码落地后在这里补 lint / test / 契约回归（见 docs/roadmap.md）
