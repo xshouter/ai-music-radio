@@ -66,8 +66,6 @@ export function App() {
         playing={radio.playing}
         positionMs={radio.positionMs}
         durationMs={radio.durationMs}
-        lyric={radio.lyric}
-        lyricIndex={radio.lyricIndex}
         volume={radio.volume}
         feedHidden={feedHidden}
         onToggle={radio.toggle}

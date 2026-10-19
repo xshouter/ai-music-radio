@@ -108,13 +108,11 @@ test('GET /api/plan/today 与 POST /api/plan/regenerate 返回 DayPlan（3 段�
   assert.equal(typeof regen.body.active, 'boolean');
 });
 
-test('GET /api/lyric/:songId 返回 Lyric | null', async () => {
-  const known = await api('/api/lyric/n1001');
-  assert.equal(known.status, 200);
-  assert.equal(typeof known.body.lrc, 'string');
-  const unknown = await api('/api/lyric/does-not-exist');
-  assert.equal(unknown.status, 200);
-  assert.equal(unknown.body, null);
+// ADR-0009 的删除已落地：这条不是「不测了」，而是把「消失」本身钉住。
+test('歌词端点已经不存在（ADR-0009 的债已还）', async () => {
+  const gone = await api('/api/lyric/n1001');
+  assert.equal(gone.status, 404, '歌词端点必须真的消失，而不是留一个没人调的出口');
+  assert.equal(gone.body.error.code, 'INTERNAL', '封闭枚举里没有 NOT_FOUND，未知路径沿用 INTERNAL');
 });
 
 test('音频：200 全量 / 206 分段，且是内存生成的 WAV', async () => {

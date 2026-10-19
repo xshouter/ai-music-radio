@@ -263,11 +263,6 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 
 .live.off { color: var(--text-dim); }
 
-.lyric { list-style: none; margin: 12px 0 0; padding: 0; }
-
-.lyric-line { color: var(--text-dim); padding: 3px 0; }
-.lyric-line.on { color: var(--text); }
-
 .wave { display: flex; align-items: flex-end; gap: 3px; height: 34px; margin: 14px 0 4px; }
 
 .wave i { width: 3px; border-radius: 2px; background: var(--accent); opacity: 0.5; animation: pulse 1.1s ease-in-out infinite; }
@@ -384,10 +379,6 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .progress { margin: 0; padding: 0 18px 18px; background: var(--disc); }
   .progress .time { color: var(--disc-dim); }
   .track { background: color-mix(in srgb, var(--disc-dim) 30%, transparent); }
-
-  .lyric { margin: 0; padding: 0 18px 18px; background: var(--disc); }
-  .lyric-line { color: var(--disc-dim); }
-  .lyric-line.on { color: var(--disc-text); }
 
   .feed-panel .feed-list { max-height: 260px; }
   .statusbar { padding-bottom: 12px; }

@@ -241,7 +241,6 @@ export interface SettingsInput {
 | GET | `/api/taste` | — | `TasteDoc`（4 份语料原文 + 最近 taste 更新） |
 | GET | `/api/plan/today` | — | `DayPlan \| null` |
 | POST | `/api/plan/regenerate` | `{ reason?: string }` | `DayPlan` |
-| GET | `/api/lyric/:songId` | — | `Lyric \| null` · **待移除**：v1 不做歌词（[ADR-0009](adr/0009-drop-lyric.md)），清理由 UI 重做 PR 一并完成 |
 | GET | `/api/audio/:songId` | `?level=` | 音频流（`206`/`200`，透传 Range） |
 | GET | `/tts/<hash>.mp3` | — | 静态缓存文件 |
 | GET | `/api/settings` | — | `SettingsView`（**key 与 cookie 都只回显是否已配置，绝不回显明文**，ADR-0005 / [ADR-0011](adr/0011-music-credential-in-settings.md)） |
@@ -249,6 +248,9 @@ export interface SettingsInput {
 | POST | `/api/playback` | `{ songId, event: 'started' \| 'ended' \| 'skipped', at }` | `{ ok: true }` · `started` 同时是「切到这首了」（ADR-0010） |
 | POST | `/api/feedback` | `{ songId, action: 'like' \| 'unlike' }` | `{ ok: true }` · 喜欢 / 取消（ADR-0010） |
 | WS | `/stream` | — | 见下 |
+
+> **歌词端点已删除**：`GET /api/lyric/:songId` 与 `Lyric` / `LyricResponse` 已经不在契约里（[ADR-0009](adr/0009-drop-lyric.md)）。
+> mock、契约测试、renderer 里对应的面一并删了，所以它不会以「没人调的残留」的形式回来 —— 要重新加，先走一次需求（第 9 节）。
 
 **两条路径的职责划清（v1 PC 单端）**
 

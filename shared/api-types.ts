@@ -1,7 +1,7 @@
 // 第 5 节 API 契约：前后端**唯一真相**（ADR-0006：不版本化，靠契约测试保证一致）。
 // 这里只有类型；mock/ 与将来的 core/server.ts 必须返回同样的路径与同样的字段名。
 // 改这份文件 = 开 ADR 的级别（铁律 3）。
-import type { DayPlan, DjState, Lyric, Show, TasteUpdate, Track, TrackRef } from './domain.ts';
+import type { DayPlan, DjState, Show, TasteUpdate, Track, TrackRef } from './domain.ts';
 
 /** GET /api/now。degraded 让 UI 能在 ON AIR 旁显示 DEGRADED 徽标（抽象层第 6 节）。 */
 export interface NowPlaying {
@@ -98,5 +98,4 @@ export type StreamEvent =
 export type ChatResponse = Show;
 export type NextResponse = TrackRef[];
 export type FavoritesResponse = TrackRef[];
-export type LyricResponse = Lyric | null;
 export type PlanTodayResponse = DayPlan | null;
