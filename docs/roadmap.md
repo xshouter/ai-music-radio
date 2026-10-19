@@ -40,8 +40,8 @@
 | 3.5 | `feat/drop-lyric` | 还 ADR-0009 的债：歌词链路从契约 / mock / 测试 / renderer 里一并删除 | ✅ 已合并（PR #15） |
 | 3.6 | `feat/ui-player-v2` | Player 布局重做：基准 **616×876** 等比缩放的单态布局 + DJ 详情弹层 | ✅ 已合并（PR #16） |
 | 3.7 | `feat/ui-queue-sources` | QUEUE 双来源切换（`AI 推荐` / `FAV`）+ 喜欢列表的行内 `✕` 删除与 `UNDO` | ✅ 已合并（PR #17） |
-| 3.8 | `feat/ui-now-playing` | 口播界面全屏态：真波形 + 逐词高亮 + 56 格进度 | 🔄 本 PR |
-| 3.9 | `feat/ui-credentials-modal` | `LOGIN` → 凭证弹窗（LLM / TTS 的 key + 网易云 cookie） | |
+| 3.8 | `feat/ui-now-playing` | 口播界面全屏态：真波形 + 逐词高亮 + 56 格进度 | ✅ 已合并（PR #18） |
+| 3.9 | `feat/ui-credentials-modal` | `LOGIN` → 凭证弹窗（LLM / TTS 的 key + 网易云 cookie） | 🔄 本 PR |
 | 3.10 | `feat/ui-profile` | Profile：taste 语料、收听统计、口播历史、`plan` 的去处 | |
 
 > 3.1 为什么被推翻：它是一个「能跑起来的电台界面」，不是「和参考分不出来的电台界面」。

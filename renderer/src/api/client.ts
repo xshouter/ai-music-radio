@@ -11,6 +11,7 @@ import type {
   OkResponse,
   PlanTodayResponse,
   PlaybackReport,
+  SettingsInput,
   SettingsView,
   StreamEvent,
   TasteDoc,
@@ -65,6 +66,10 @@ export const getNext = () => request<NextResponse>('/api/next');
 export const getTaste = () => request<TasteDoc>('/api/taste');
 export const getPlanToday = () => request<PlanTodayResponse>('/api/plan/today');
 export const getSettings = () => request<SettingsView>('/api/settings');
+
+/** PUT /api/settings。省略的字段不改；apiKey / cookie 留空等于「不改」（ADR-0005 / ADR-0011）。 */
+export const putSettings = (input: SettingsInput) =>
+  request<SettingsView>('/api/settings', { method: 'PUT', body: JSON.stringify(input) });
 
 export const chat = (text: string) =>
   request<ChatResponse>('/api/chat', { method: 'POST', body: JSON.stringify({ text }) });

@@ -355,3 +355,23 @@ test('WS /stream：连上先给快照（并开口），chat 的口播逐句推�
   assert.ok(Math.abs(wav.readUInt32LE(40) / 16000 - last.words.at(-1).endMs / 1000) < 0.05, '音频长度要等于口播时长');
   assert.ok(events.some((e) => e.type === 'state'), '结束时要回到 idle');
 });
+
+test('PUT /api/settings 只覆盖你给的字段：非法 protocol 被忽略，明文永不回显', async () => {
+  await reset();
+  const before = (await api('/api/settings')).body;
+  const secret = 'sk-do-not-echo-3f9c1a';
+  const put = await api('/api/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ llm: { apiKey: secret, protocol: 'gemini' }, music: { cookie: 'MUSIC_U=abc123; __csrf=def456' } }),
+  });
+  assert.equal(put.status, 200);
+  const echoed = JSON.stringify(put.body);
+  assert.ok(!echoed.includes(secret), '明文 key 不许回显');
+  assert.ok(!echoed.includes('MUSIC_U'), 'cookie 明文不许回显');
+  assert.equal(put.body.llm.apiKeySet, true, 'key 只记「配没配」');
+  assert.equal(put.body.music.cookieSet, true, 'cookie 只记「配没配」');
+  assert.equal(put.body.llm.protocol, before.llm.protocol, '非法 protocol 被忽略');
+  assert.equal(put.body.llm.baseUrl, before.llm.baseUrl, '没给的字段不动');
+  assert.equal(put.body.llm.model, before.llm.model, '没给的字段不动');
+  assert.deepEqual(put.body.tts, before.tts, '没给的块整块不动');
+});

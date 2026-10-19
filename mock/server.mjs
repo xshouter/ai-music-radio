@@ -346,9 +346,11 @@ async function handle(req, res) {
   if (method === 'PUT' && path === '/api/settings') {
     const body = await readJson(req);
     const next = { llm: { ...settings.llm }, tts: { ...settings.tts }, music: { ...settings.music } };
-    for (const key of ['baseUrl', 'model', 'protocol']) {
+    for (const key of ['baseUrl', 'model']) {
       if (body.llm?.[key] !== undefined) next.llm[key] = body.llm[key];
     }
+    // protocol 是封闭枚举：非法值直接忽略，不写进去（契约：写入时显式校验）。
+    if (['openai', 'anthropic'].includes(body.llm?.protocol)) next.llm.protocol = body.llm.protocol;
     for (const key of ['provider', 'voice']) {
       if (body.tts?.[key] !== undefined) next.tts[key] = body.tts[key];
     }
