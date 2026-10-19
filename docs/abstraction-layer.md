@@ -193,6 +193,27 @@ export interface Lyric { lrc: string }
 export interface TasteUpdate { ts: string; text: string; evidence: Record<string, unknown> }
 export interface Weather { tempC: number; text: string }
 export interface CalendarEvent { title: string; start: string; end: string }
+
+// —— v1.1 补齐：第 5 节的 API 用到、但 v1.0 漏定义了的 DTO ——
+export interface NowPlaying {
+  track: Track | null;
+  startedAt: string | null;                       // ISO 8601
+  djState: 'idle' | 'thinking' | 'speaking';
+  onAir: boolean;
+  degraded: boolean;                              // 音乐源链路是否降级（第 6 节，UI 显示 DEGRADED 徽标）
+}
+export interface TasteDoc {
+  corpus: { name: string; text: string }[];       // 人写的语料原文，只读（ADR-0004）
+  recent: TasteUpdate[];                          // 系统学到的，结构化
+}
+export interface SettingsView {                   // 出参与入参分离：key 只回显「是否已配置」
+  llm: { baseUrl: string; model: string; protocol: 'openai' | 'anthropic'; apiKeySet: boolean };
+  tts: { provider: string; voice: string; apiKeySet: boolean };
+}
+export interface SettingsInput {
+  llm?: { baseUrl?: string; model?: string; protocol?: 'openai' | 'anthropic'; apiKey?: string };
+  tts?: { provider?: string; voice?: string; apiKey?: string };
+}
 ```
 
 **约定**：所有时间戳是 ISO 8601 字符串（不是 `Date`），因为要跨 HTTP 边界且要落库。所有 id 是 string。
@@ -206,7 +227,7 @@ export interface CalendarEvent { title: string; start: string; end: string }
 | 方法 | 路径 | 入参 | 出参 |
 |---|---|---|---|
 | POST | `/api/chat` | `{ text: string }` | `Show` |
-| GET | `/api/now` | — | `{ track: Track \| null; startedAt: string \| null; djState: 'idle'\|'thinking'\|'speaking'; onAir: boolean }` |
+| GET | `/api/now` | — | `NowPlaying` |
 | GET | `/api/next` | — | `TrackRef[]` |
 | GET | `/api/taste` | — | `TasteDoc`（4 份语料原文 + 最近 taste 更新） |
 | GET | `/api/plan/today` | — | `DayPlan \| null` |
@@ -305,7 +326,7 @@ type StreamEvent =
 ## 10. 开放问题（已全部定案）
 
 这 6 个问题在 v0.1 里被刻意留白——因为**带着未决问题写代码**（铁律 2）比停下来定案更贵。
-v1.0 起逐条定案，全部落成 ADR：
+现已逐条定案（v1.1 补上 ADR-0007 的范围修正），全部落成 ADR：
 
 | # | 问题 | 结论（一句话） | ADR |
 |---|---|---|---|
