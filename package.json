@@ -1,0 +1,16 @@
+{
+  "name": "edgerunner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EdgeRunner —— 本地常驻的个人 AI 音乐电台（求职作品集）",
+  "type": "module",
+  "scripts": {
+    "mock": "node mock/server.mjs",
+    "test": "node --test",
+    "typecheck": "tsc -p tsconfig.json",
+    "boundaries": "node tools/check-boundaries.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

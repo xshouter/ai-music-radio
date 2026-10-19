@@ -28,7 +28,7 @@
 | 抽象层设计 + 五条铁律 | ✅ 已合并 |
 | 仓库地基（PR 模板 / ADR 模板 / 边界检查 + CI / 日志） | ✅ 已合并（PR #3） |
 | 冻结抽象层（ADR-0001…0007，含「只做 PC 单端」的范围修正） | ✅ 已合并（PR #4、#5） |
-| 契约 + mock | — |
+| 契约 + mock | ✅ 已合并（PR #8） |
 | UI 复刻（宽窗大钟态 / 窄窗卡片态） | — |
 | 真后端（Store / Brain / 音乐降级链 / TTS / 调度器） | — |
 | Electron 打包 + Release | — |
@@ -76,10 +76,24 @@ flowchart LR
 | `docs/engineering-rules.md` | 五条铁律的落地细则 |
 | `AGENTS.md` | 五条铁律正文 |
 | `tools/check-boundaries.mjs` | 铁律 5 的机械检查 |
+| `shared/` | 前后端唯一真相：只有类型，零运行时依赖 |
+| `mock/` | 零依赖假后端（阶段 2）：UI 对着它开发 |
+| `tests/contract/` | 契约测试：同一组断言将来也打真 server |
 
 ## 怎么跑
 
-还没到那一步。第一个可运行版本随 UI 复刻那个 PR 落地，届时这里会写清**怎么填自己的 API key**。
+先跑假后端（不需要任何 key）：
+
+```bash
+npm install
+npm run mock          # http://127.0.0.1:8765
+npm test              # 契约测试
+```
+
+`mock/` 是零依赖的假后端：它按 `shared/api-types.ts` 的第 5 节契约返回固定 fixture，
+并能整体切到降级态、逐项触发每个错误码（`/__mock/control`），UI 不必改一行代码就能显示对应状态。
+
+界面（`renderer/`）还没开始——那是阶段 3。exe 与「怎么填自己的 API key」在阶段 5 落地。
 
 ## 诚实声明
 
