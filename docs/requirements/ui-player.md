@@ -302,7 +302,9 @@ P4 / P5 分别落在 [ADR-0010](../adr/0010-playback-authority-and-favorites.md)
 
 ### 基准尺寸定案
 
-**616 × 876**，由用户答复给出（他手里有参考源口播卡片的真值）。整块画布按
+**616 × 876**。这个数不是估出来的：参考源的口播卡片 CSS 里逐字写着
+`.card { width: 616px; height: min(876px, calc(100vh - 48px)); border-radius: 28px }`
+（本地留档 `.scratch/ref.html`，抓的是 `mmguo.dev/claudio-fm/`；用户给的答复与它一致）。整块画布按
 `min(窗口宽/616, 窗口高/876)` 等比缩放，**布局一行不折**：CSS 里再也搜不到 `media query`。
 
 缩放比例只能在 JS 里算一次（`scale()` 只吃无单位数，`calc(100vw/616)` 是长度），
