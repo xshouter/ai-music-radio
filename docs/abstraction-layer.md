@@ -237,6 +237,7 @@ export interface SettingsInput {
 | POST | `/api/chat` | `{ text: string }` | `Show` |
 | GET | `/api/now` | — | `NowPlaying` |
 | GET | `/api/next` | — | `TrackRef[]` |
+| GET | `/api/favorites` | — | `TrackRef[]` · 喜欢列表（[ADR-0010](adr/0010-playback-authority-and-favorites.md)） |
 | GET | `/api/taste` | — | `TasteDoc`（4 份语料原文 + 最近 taste 更新） |
 | GET | `/api/plan/today` | — | `DayPlan \| null` |
 | POST | `/api/plan/regenerate` | `{ reason?: string }` | `DayPlan` |
@@ -245,7 +246,8 @@ export interface SettingsInput {
 | GET | `/tts/<hash>.mp3` | — | 静态缓存文件 |
 | GET | `/api/settings` | — | `SettingsView`（**key 只回显是否已配置，绝不回显明文**） |
 | PUT | `/api/settings` | `Partial<SettingsInput>` | `SettingsView` |
-| POST | `/api/playback` | `{ songId, event: 'started' \| 'ended' \| 'skipped', at }` | `{ ok: true }` |
+| POST | `/api/playback` | `{ songId, event: 'started' \| 'ended' \| 'skipped', at }` | `{ ok: true }` · `started` 同时是「切到这首了」（ADR-0010） |
+| POST | `/api/feedback` | `{ songId, action: 'like' \| 'unlike' }` | `{ ok: true }` · 喜欢 / 取消（ADR-0010） |
 | WS | `/stream` | — | 见下 |
 
 **两条路径的职责划清（v1 PC 单端）**
@@ -254,6 +256,8 @@ export interface SettingsInput {
   同时把带签名的临时 URL 留在服务端。
 - `/api/playback` —— 声音是在渲染进程里真正响的，所以「开始了 / 放完了 / 被跳过」由**渲染进程回报**，
   而不是 server 猜。`PlayEvent`（taste 闭环与统计的来源）因此是事实，不是预测（ADR-0007）。
+- `/api/feedback` 与 `/api/favorites` —— 喜欢是**口味意图**，与播放事实分开走。
+  `POST /api/playback { event: 'started' }` 已经承担了「我切到这首了」的宣告，所以**没有**单独的跳播端点（ADR-0010）。
 
 **WS 事件（`StreamEvent`，单向 server→client）**
 

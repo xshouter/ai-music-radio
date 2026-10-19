@@ -14,6 +14,8 @@ export interface NowPlaying {
 
 /** GET /api/taste：人写的语料（只读）+ 系统学到的结构化更新（ADR-0004）。 */
 export interface TasteDoc {
+  /** DJ 详情弹层里那排曲风胶囊。是**数据**不是装饰：它随语料变（ADR-0010）。 */
+  genres: string[];
   corpus: { name: string; text: string }[];
   recent: TasteUpdate[];
 }
@@ -51,10 +53,25 @@ export interface ChatRequest {
 export interface PlanRegenerateRequest {
   reason?: string;
 }
+/**
+ * POST /api/playback。
+ * `event: 'started'` **同时**是「我切到这首了」的宣告 —— 播放权威在客户端，server 只记账（ADR-0010）。
+ * 点队列行、点曲目卡、点下一首走的都是这一条，所以没有单独的「跳播」端点。
+ */
 export interface PlaybackReport {
   songId: string;
   event: 'started' | 'ended' | 'skipped';
   at: string;
+}
+
+/** 喜欢的动作是**封闭枚举**：加一个值就是改契约（ADR-0010）。 */
+export type FavoriteAction = 'like' | 'unlike';
+
+/** POST /api/feedback：喜欢 / 取消喜欢。幂等。与 /api/playback 同构，但语义不同 ——
+ *  那个是「播放事实」，这个是「口味意图」。 */
+export interface FeedbackRequest {
+  songId: string;
+  action: FavoriteAction;
 }
 export interface OkResponse {
   ok: true;
@@ -72,5 +89,6 @@ export type StreamEvent =
 /** 供将来 UI 的 client.ts 与真 server 直接引用的响应别名。 */
 export type ChatResponse = Show;
 export type NextResponse = TrackRef[];
+export type FavoritesResponse = TrackRef[];
 export type LyricResponse = Lyric | null;
 export type PlanTodayResponse = DayPlan | null;
