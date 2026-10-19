@@ -52,6 +52,15 @@ export function App() {
 
   const busy = radio.now?.djState === 'thinking' || radio.now?.djState === 'speaking';
 
+  // ♡ 喜欢当前这首；FAV 把 QUEUE 面板就地换成喜欢列表（需求 3.7 决策 6、7）。
+  const onLike = () => {
+    if (radio.current) radio.favorite(radio.current, !radio.liked);
+  };
+  const onFav = () => {
+    setQueueShown(true);
+    radio.setSource(radio.source === 'fav' ? 'ai' : 'fav');
+  };
+
   return (
     <div className="viewport">
       <div className="stage">
@@ -68,16 +77,27 @@ export function App() {
             durationMs={radio.durationMs}
             volume={radio.volume}
             queueShown={queueShown}
+            liked={radio.liked}
+            source={radio.source}
             onToggle={radio.toggle}
             onStop={radio.stop}
             onSkip={radio.skip}
             onBack={radio.back}
             onVolume={radio.setVolume}
             onToggleQueue={() => setQueueShown((prev) => !prev)}
+            onLike={onLike}
+            onFav={onFav}
           />
 
           {queueShown && (
-            <Queue queue={radio.queue} currentId={radio.current?.id ?? null} onPlay={radio.play} />
+            <Queue
+              queue={radio.queue}
+              favorites={radio.favorites}
+              source={radio.source}
+              currentId={radio.current?.id ?? null}
+              onPlay={radio.play}
+              onFavorite={radio.favorite}
+            />
           )}
 
           <DjFeed

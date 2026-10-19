@@ -16,12 +16,16 @@ export interface TransportProps {
   durationMs: number;
   volume: number;
   queueShown: boolean;
+  liked: boolean;
+  source: 'ai' | 'fav';
   onToggle: () => void;
   onStop: () => void;
   onSkip: () => void;
   onBack: () => void;
   onVolume: (value: number) => void;
   onToggleQueue: () => void;
+  onLike: () => void;
+  onFav: () => void;
 }
 
 /** ③④ 运输条 + 进度。左侧频谱点进口播界面（3.8 接上）。 */
@@ -56,15 +60,23 @@ export function Transport(props: TransportProps) {
           <button className="ctl" type="button" onClick={props.onStop} aria-label="Stop">
             <Icon name="stop" />
           </button>
-          <button className="ctl" type="button" aria-disabled="true" aria-label="Like this track" title="Favorites arrive in 3.7">
+          <button
+            className={props.liked ? 'ctl is-on' : 'ctl'}
+            type="button"
+            onClick={props.onLike}
+            aria-pressed={props.liked}
+            disabled={!props.track}
+            aria-label={props.liked ? 'Remove this track from favorites' : 'Add this track to favorites'}
+          >
             <Icon name="heart" />
           </button>
         </div>
         <div className="tools">
-          <button className="pill" type="button" onClick={props.onToggleQueue} aria-pressed={props.queueShown}>
+          {/* HIDE / LIST 的状态由文案本身表达，所以不给它按下的实心样式 —— 参考里这枚就是描边。 */}
+          <button className="pill" type="button" onClick={props.onToggleQueue}>
             {props.queueShown ? 'HIDE' : 'LIST'}
           </button>
-          <button className="pill" type="button" aria-disabled="true" title="Favorites arrive in 3.7">
+          <button className="pill" type="button" onClick={props.onFav} aria-pressed={props.source === 'fav'}>
             FAV
           </button>
         </div>

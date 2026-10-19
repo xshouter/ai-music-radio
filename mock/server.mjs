@@ -106,7 +106,7 @@ const settings = {
 const refs = (tracks) => tracks.map(ref);
 
 // 喜欢列表（ADR-0010）。存 TrackRef 而不是 songId：v1 没有 songs 表。
-let favorites = refs([byId('n1003')]);
+let favorites = refs([byId('n1003'), byId('n1006'), byId('n1008')]);
 const FAVORITE_ACTIONS = ['like', 'unlike'];
 
 function nowPlaying() {
