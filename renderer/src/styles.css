@@ -88,7 +88,7 @@ button[aria-disabled='true'] { cursor: default; }
 .topbar .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
 .pill {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -106,7 +106,7 @@ button[aria-disabled='true'] { cursor: default; }
 .seg { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 999px; }
 
 .seg button {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 10px;
   letter-spacing: 0.1em;
   padding: 4px 10px;
@@ -152,7 +152,7 @@ button[aria-disabled='true'] { cursor: default; }
 .clock-day { font-size: 14px; color: var(--text); }
 
 .clock-date {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 11px;
   letter-spacing: 0.16em;
   color: var(--text-dim);
@@ -162,7 +162,7 @@ button[aria-disabled='true'] { cursor: default; }
   display: flex;
   align-items: center;
   gap: 7px;
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 10px;
   letter-spacing: 0.2em;
   color: var(--accent);
@@ -181,7 +181,7 @@ button[aria-disabled='true'] { cursor: default; }
 .dot.off { background: var(--text-dim); box-shadow: none; }
 
 .badge {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
   padding: 2px 7px;
@@ -221,7 +221,7 @@ button[aria-disabled='true'] { cursor: default; }
 }
 
 .np .k {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
   color: var(--accent);
@@ -252,7 +252,7 @@ button[aria-disabled='true'] { cursor: default; }
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.16em;
   color: var(--text-dim);
@@ -263,7 +263,7 @@ button[aria-disabled='true'] { cursor: default; }
 .progress { display: flex; align-items: center; gap: 10px; }
 
 .progress .time {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.08em;
   color: var(--text-dim);
@@ -296,7 +296,7 @@ button[aria-disabled='true'] { cursor: default; }
   justify-content: space-between;
   padding: 10px 14px;
   border-bottom: 1px solid var(--line);
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
   color: var(--text-dim);
@@ -322,7 +322,7 @@ button[aria-disabled='true'] { cursor: default; }
   flex: 0 0 auto;
   width: 36px;
   text-align: right;
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 10px;
   color: var(--text-dim);
 }
@@ -376,7 +376,7 @@ button[aria-disabled='true'] { cursor: default; }
 
 /* 删除后的回头路：3 秒内顶掉表头右侧的 N TRACKS，复用同一个槽位，零新增布局。 */
 .q-head .undo {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
   color: var(--accent);
@@ -407,7 +407,7 @@ button[aria-disabled='true'] { cursor: default; }
 }
 
 .feed-head .name { font-family: var(--dot); font-size: 15px; color: var(--text); }
-.feed-head .status { font-family: var(--dot); font-size: 9px; letter-spacing: 0.18em; color: var(--text-dim); }
+.feed-head .status { font-family: var(--label); font-size: 9px; letter-spacing: 0.18em; color: var(--text-dim); }
 
 .feed-list {
   flex: 1 1 auto;
@@ -421,11 +421,11 @@ button[aria-disabled='true'] { cursor: default; }
 .feed-list::-webkit-scrollbar, .q-list::-webkit-scrollbar { width: 6px; }
 .feed-list::-webkit-scrollbar-thumb, .q-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
 
-.sys { text-align: center; font-family: var(--dot); font-size: 9px; letter-spacing: 0.08em; color: var(--text-dim); }
+.sys { text-align: center; font-family: var(--label); font-size: 9px; letter-spacing: 0.08em; color: var(--text-dim); }
 
 .msg { display: flex; flex-direction: column; gap: 6px; }
 
-.msg .who { font-family: var(--dot); font-size: 9px; letter-spacing: 0.16em; color: var(--text-dim); }
+.msg .who { font-family: var(--label); font-size: 9px; letter-spacing: 0.16em; color: var(--text-dim); }
 .msg.me .who { text-align: right; }
 
 .msg .line { display: flex; align-items: flex-start; gap: 8px; }
@@ -444,7 +444,7 @@ button[aria-disabled='true'] { cursor: default; }
 
 .msg.me .bubble { background: var(--bubble-me); }
 
-.msg .meta { display: flex; gap: 10px; font-family: var(--dot); font-size: 9px; color: var(--text-dim); }
+.msg .meta { display: flex; gap: 10px; font-family: var(--label); font-size: 9px; color: var(--text-dim); }
 .msg.me .meta { justify-content: flex-end; }
 .msg .meta .reply { color: var(--accent); }
 
@@ -523,7 +523,7 @@ button[aria-disabled='true'] { cursor: default; }
   align-items: center;
   justify-content: space-between;
   padding: 0 4px;
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.2em;
   color: var(--text-dim);
@@ -547,9 +547,9 @@ button[aria-disabled='true'] { cursor: default; }
   font-size: 12px;
 }
 
-.banner .code { font-family: var(--dot); font-size: 10px; letter-spacing: 0.16em; color: var(--danger); white-space: nowrap; }
+.banner .code { font-family: var(--label); font-size: 10px; letter-spacing: 0.16em; color: var(--danger); white-space: nowrap; }
 .banner .text { flex: 1 1 auto; }
-.banner .dismiss { font-family: var(--dot); font-size: 9px; letter-spacing: 0.16em; color: var(--text-dim); }
+.banner .dismiss { font-family: var(--label); font-size: 9px; letter-spacing: 0.16em; color: var(--text-dim); }
 .banner .dismiss:hover { color: var(--text); }
 
 .empty { color: var(--text-dim); font-size: 13px; padding: 12px 13px; }
@@ -622,7 +622,7 @@ button[aria-disabled='true'] { cursor: default; }
   border-top: 1px solid var(--line);
 }
 
-.dj-stat .l { font-family: var(--dot); font-size: 9px; letter-spacing: 0.2em; color: var(--text-dim); }
+.dj-stat .l { font-family: var(--label); font-size: 9px; letter-spacing: 0.2em; color: var(--text-dim); }
 .dj-stat .v { margin-top: 4px; font-size: 22px; font-weight: 700; color: var(--text); }
 
 .dj-genres { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 20px; }
@@ -632,7 +632,7 @@ button[aria-disabled='true'] { cursor: default; }
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--panel);
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -643,7 +643,7 @@ button[aria-disabled='true'] { cursor: default; }
   margin-top: 22px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.2em;
   color: var(--text-dim);

@@ -18,7 +18,7 @@
 
 - `local` —— Electron 窗口内播放。
 - `lan` —— 手机/其他浏览器打开 `http://<host>:<port>`，自己从 `/api/audio/:songId` 取流自己播。**这是第二个真实实现，不是假想。**
-- `upnp` —— 只注册一个抛 `not implemented` 的实现，UI 里以禁用态出现（样式待参考截图，铁律 4）。
+- `upnp` —— 只注册一个抛 `not implemented` 的实现，UI 里以禁用态出现（样式自己拍板，铁律 4）。
 
 `GET /api/devices` 的 DTO 只含 `{ id, kind, label, available }`；`play` / `stop` 不出现在响应里。
 

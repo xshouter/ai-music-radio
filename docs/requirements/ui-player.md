@@ -418,4 +418,12 @@ QUEUE 双来源与喜欢列表增删（3.7）。
 - 曲目短条与 `ac58fc36…png` 一致（绿边 + 绿 `★` + 两行）
 - 口播态上方 = **歌曲**进度、最下方 = **口播**进度；`PLAY`/`REPLAY` 是入口，`✕` 是出口
 
+### 补一条：小标签字体（用户答复第 3 条）
+
+用户说的「文字渐隐、按钮上的字看不清楚」根因是**字体用错**：所有小标签（`LOGIN`/`HIDE`/`FAV`/`PLAY`/
+`QUEUE`/`3 TRACKS`…）原来都用 **Doto** —— 点阵字体在 9–10px 下会被抗锯齿糊成虚线。
+参考源只在 wordmark 与大钟上用 Doto，小字用的是 **Space Grotesk**（大写 + `letter-spacing` 0.3em）。已照抄：
+新增 `--label` 变量与内置的 `space-grotesk-latin.woff2`（OFL，22KB），21 个选择器从 `var(--dot)` 改到 `var(--label)`；
+Doto 只留 `.wordmark / .clock / .dj-name / .oa-name / .oa-face / .dj-face / .avatar / .oa-clock / .feed-head .name`。
+
 仍未做：`LOGIN` 凭证弹窗（3.9）、Profile（3.10）。
