@@ -29,8 +29,8 @@
 
 | 顺序 | 分支 | 内容 |
 |---|---|---|
-| 3.1 | `feat/ui-player` | Player 两端：桌面大钟态 / 窄屏卡片态；歌词逐行高亮；口播逐句浮现 |
-| 3.2 | `feat/ui-profile-settings` | Profile（taste 语料、收听统计、口播历史）与 Settings（key 输入、设备选择） |
+| 3.1 | `feat/ui-player` | Player 两态：宽窗大钟态 / 窄窗卡片态；歌词逐行高亮；口播逐句浮现 |
+| 3.2 | `feat/ui-profile-settings` | Profile（taste 语料、收听统计、口播历史）与 Settings（key 输入、模型与 TTS 音色） |
 
 **门槛**：UI 必须对着 mock 跑通**全部**状态，含抽象层第 6 节列出的所有降级 / 错误态（铁律 3）。
 所有拿不准的视觉细节先要参考截图（铁律 4）。

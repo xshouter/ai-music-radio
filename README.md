@@ -17,7 +17,7 @@
 - DJ 每天排一次节目表，按时段换 mood（清晨 / 白天 / 深夜）。
 - 换歌之间，DJ 会用英文说一两句——为什么放这首、接下来往哪走。
 - 可以随时插话（`POST /api/chat`："来点能专注的"），DJ 会当场调头。
-- 歌词逐行跟着走；右下角能选声音从哪出。
+- 歌词逐行跟着走。
 
 只服务作者一个人：单用户、单机、无账号体系。
 
@@ -29,7 +29,7 @@
 | 仓库地基（PR 模板 / ADR 模板 / 边界检查 + CI / 日志） | ✅ 本次 |
 | 冻结抽象层（ADR-0001…0006 定掉 6 个开放问题） | ✅ 本次 |
 | 契约 + mock | — |
-| UI 复刻（桌面大钟态 / 窄屏卡片态） | — |
+| UI 复刻（宽窗大钟态 / 窄窗卡片态） | — |
 | 真后端（Store / Brain / 音乐降级链 / TTS / 调度器） | — |
 | Electron 打包 + Release | — |
 
@@ -41,7 +41,7 @@
 flowchart LR
   R["renderer/ 界面"] -- "HTTP + WS（唯一通道）" --> M["main/ Electron 外壳<br/>唯一组装点"]
   M --> C["core/ 编排<br/>router · brain · scheduler · tts"]
-  C -- "端口（interface）" --> P["core/providers/ 具体实现<br/>LLM · TTS · 音乐源 · 输出"]
+  C -- "端口（interface）" --> P["core/providers/ 具体实现<br/>LLM · TTS · 音乐源"]
   C --> S[("SQLite")]
   SH["shared/ 只有类型"] -.-> R
   SH -.-> C

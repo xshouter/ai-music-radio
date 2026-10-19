@@ -1,6 +1,6 @@
 # 抽象层设计（Abstraction Layer Design）
 
-> 状态：**已冻结** v1.0 ｜ 2026-10-20 ｜ 6 个开放问题已由 ADR-0001…0006 定案（见第 10 节）
+> 状态：**已冻结** v1.1 ｜ 2026-10-20 ｜ ADR-0001…0007 ｜ 其中 ADR-0007 是一次**范围修正**（v1 只做 PC 单端）
 > 这份文档定义系统的「缝」（seam）。它必须先于实现冻结——因为前端要对着它写（铁律 3），测试要对着它写（第 8 节），provider 要按它替换（第 3 节）。
 
 ---
@@ -48,7 +48,6 @@ shared/            domain.ts  api-types.ts  ports.ts        # 只有类型
 core/
   router.ts  context.ts  brain/  scheduler.ts  tts.ts  taste.ts
   music/   index.ts (链)  netease.ts  local.ts
-  output/  index.ts (注册表)  upnp.ts
   state/   sqlite-store.ts  migrations/
   server.ts                                                # HTTP + WS，实现第 5 节契约
   providers/ llm-openai.ts  llm-anthropic.ts  tts-dashscope.ts  tts-openai.ts
@@ -117,20 +116,14 @@ export interface ResolvedAudio { url: string; level: QualityLevel; expiresAt?: n
 
 `core/music/index.ts` 实现 `MusicSourceChain implements MusicSource`，按顺序试；任一源返回 `null` 就下一个；全失败返回 `null`。**降级是链的职责，不是调用方的职责。**
 
-### 3.4 OutputTarget —— 声音往哪儿出
+### 3.4 ~~OutputTarget~~（已在 v1.1 删除）
 
-```ts
-export interface OutputTarget {
-  readonly id: string;
-  readonly kind: 'local' | 'lan' | 'upnp';
-  readonly label: string;
-  play(audioUrl: string): Promise<void>;
-  stop(): Promise<void>;
-  setVolume(volume: number): Promise<void>;
-}
-```
+v0.1 曾定义 `OutputTarget` 端口（`local` / `lan` / `upnp`），理由是"声音可以往不同地方出"。
+核对真实需求后：**v1 只做 PC 单端**，既没有第二个客户端，也没有第二个真实播放目标——
+一个实现撑不起一个端口，这恰好踩在第 9 节反例清单的第一条上。
 
-v1 只实现 `local`（Electron 窗口内 `<audio>`）与 `lan`（其他浏览器/手机自己播）；`upnp` 只留一个 `throw new Error('not implemented')` 的占位，UI 里以禁用态出现（铁律 4：样式待截图）。
+**端口已删除。** PC 端由渲染进程直接播放 `<audio src="/api/audio/:songId">`。
+理由、代价与重新打开的条件见 [ADR-0007](adr/0007-pc-only-single-output.md)。
 
 ### 3.5 Store —— 前端永远拿不到它
 
@@ -208,7 +201,7 @@ export interface CalendarEvent { title: string; start: string; end: string }
 
 ## 5. API 契约（前后端唯一通道）
 
-绑 `127.0.0.1`（或开了 `lanAccess` 时 `0.0.0.0`），鉴权头 `x-radio-token`。
+绑 `127.0.0.1`（单端，只服务本机），鉴权头 `x-radio-token`（挡住浏览器里其它页面误打这个端口的可能）。
 
 | 方法 | 路径 | 入参 | 出参 |
 |---|---|---|---|
@@ -223,8 +216,15 @@ export interface CalendarEvent { title: string; start: string; end: string }
 | GET | `/tts/<hash>.mp3` | — | 静态缓存文件 |
 | GET | `/api/settings` | — | `SettingsView`（**key 只回显是否已配置，绝不回显明文**） |
 | PUT | `/api/settings` | `Partial<SettingsInput>` | `SettingsView` |
-| GET | `/api/devices` | — | `OutputTarget[]`（`play`/`stop` 不出现在 DTO 里） |
+| POST | `/api/playback` | `{ songId, event: 'started' \| 'ended' \| 'skipped', at }` | `{ ok: true }` |
 | WS | `/stream` | — | 见下 |
+
+**两条路径的职责划清（v1 PC 单端）**
+
+- `/api/audio/:songId` —— 渲染进程不直连外部音源：由 server 加上必需的请求头并透传 Range，
+  同时把带签名的临时 URL 留在服务端。
+- `/api/playback` —— 声音是在渲染进程里真正响的，所以「开始了 / 放完了 / 被跳过」由**渲染进程回报**，
+  而不是 server 猜。`PlayEvent`（taste 闭环与统计的来源）因此是事实，不是预测（ADR-0007）。
 
 **WS 事件（`StreamEvent`，单向 server→client）**
 
@@ -264,7 +264,7 @@ type StreamEvent =
 
 1. **第 0 步：冻结第 5 节**。契约进 `shared/api-types.ts`，任何改动都是 ADR 级别的改动。
 2. **第 1 步：写 `mock/`**。一个 ~100 行的 Express，按第 5 节返回固定 fixture（含一个假的 `Show`、一个 3 段日表、10 首歌）。UI 全程对着它开发。
-3. **第 2 步：UI 复刻**。Player 两端（桌面大钟态 / 手机卡片态）、Profile、Settings、歌词同步。对着 mock 跑通所有态——包括上面的**全部降级态**（mock 可以直接切到 degraded、切到 error）。
+3. **第 2 步：UI 复刻**。Player 两态（宽窗大钟态 / 窄窗卡片态）、Profile、Settings、歌词同步。对着 mock 跑通所有态——包括上面的**全部降级态**（mock 可以直接切到 degraded、切到 error）。
 4. **第 3 步：换真后端**。`core/server.ts` 实现同一个契约，UI 一行不改（只把 base URL 指过去）。
 5. **第 4 步：契约回归**。一组契约测试同时打 mock 和真 server，断言两边响应结构一致。
 
@@ -284,7 +284,6 @@ type StreamEvent =
 | `Store` | `MemoryStore` | taste 闭环、plan 持久、统计 |
 | `Clock` | `FakeClock` | 调度器时段选择（含跨午夜） |
 | `EnvProvider` | `FakeEnv` | 环境注入了什么 |
-| `OutputTarget` | `FakeOutput` | 播放/停止调用顺序 |
 
 外加：**契约测试**（第 7 节第 4 步）、**边界测试**（依赖规则，CI 跑一次静态检查）。
 
@@ -299,6 +298,7 @@ type StreamEvent =
 - ❌ UI 里硬编码音乐源地址或 provider 逻辑 —— 那属于 Settings，不属于 UI。
 - ❌ 让单点失败把音乐停掉。
 - ❌ 为了"以后可能有用"提前加端口 —— 端口必须有第二个真实实现或明确的迁移计划。
+- ❌ 只有一个客户端时做多端设计（选主、心跳、设备注册表、`lanAccess`）—— v1 只做 PC 单端（ADR-0007）。
 
 ---
 
@@ -310,8 +310,8 @@ v1.0 起逐条定案，全部落成 ADR：
 | # | 问题 | 结论（一句话） | ADR |
 |---|---|---|---|
 | 1 | `Show.play` 一次给一批还是逐首推进 | 一次给一批（3–6 首），调度器逐首消费；`chat` 触发的 Show 可清空并替换剩余队列 | [0001](adr/0001-show-play-batch.md) |
-| 2 | `OutputTarget` 在 v1 是否空转 | 不空转：`lan` 是真实的第二个实现（手机浏览器自播），`upnp` 注册但禁用 | [0002](adr/0002-output-target-v1.md) |
-| 3 | `lanAccess` 下多端同时播放要不要 leader | 不做 leader，各播各的，用「静音本设备」解决双份出声 | [0003](adr/0003-no-leader-election.md) |
+| 2 | `OutputTarget` 在 v1 是否空转 | **端口已删除**：v1 只做 PC 单端，没有第二个真实实现 | [0002](adr/0002-output-target-v1.md) → [0007](adr/0007-pc-only-single-output.md) |
+| 3 | `lanAccess` 下多端同时播放要不要 leader | **问题本身撤回**：不做多端 | [0003](adr/0003-no-leader-election.md) → [0007](adr/0007-pc-only-single-output.md) |
 | 4 | taste 写回 markdown 会不会格式漂移 | 不再回写：人写的 md 只读，系统学到的结构化存 SQLite | [0004](adr/0004-taste-stays-structured.md) |
 | 5 | `Store.getPref<T>` 的泛型失真 | 去掉泛型，改成封闭 `PrefKey` + `PrefMap`，写入时显式校验 | [0005](adr/0005-typed-prefs.md) |
 | 6 | 契约要不要 URL 版本化 | 不版本化：同进程同版本发布，靠契约测试保证一致 | [0006](adr/0006-no-api-versioning.md) |
