@@ -1,7 +1,7 @@
 // 第 5 节 API 契约：前后端**唯一真相**（ADR-0006：不版本化，靠契约测试保证一致）。
 // 这里只有类型；mock/ 与将来的 core/server.ts 必须返回同样的路径与同样的字段名。
 // 改这份文件 = 开 ADR 的级别（铁律 3）。
-import type { DayPlan, DjState, Show, SpokenLine, TasteUpdate, Track, TrackRef } from './domain.ts';
+import type { DayPlan, DjMessage, DjState, PlayStats, Show, SpokenLine, TasteUpdate, Track, TrackRef } from './domain.ts';
 
 /** GET /api/now。degraded 让 UI 能在 ON AIR 旁显示 DEGRADED 徽标（抽象层第 6 节）。 */
 export interface NowPlaying {
@@ -99,3 +99,13 @@ export type ChatResponse = Show;
 export type NextResponse = TrackRef[];
 export type FavoritesResponse = TrackRef[];
 export type PlanTodayResponse = DayPlan | null;
+/**
+ * GET /api/stats?since=<ISO>。省略 since = 当天 00:00（服务器本地时区）。
+ * 形状直接等于 Store.playStats()：ADR-0013 不新增 DTO。
+ */
+export type StatsResponse = PlayStats;
+/**
+ * GET /api/history?limit=<1..200>。省略 = 50，越界**夹住**而不是报错。
+ * 倒序（最新在前），UI 直接渲染；形状等于 Store.recentMessages()。
+ */
+export type HistoryResponse = DjMessage[];
