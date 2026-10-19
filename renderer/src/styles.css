@@ -100,6 +100,9 @@ button[aria-disabled='true'] { cursor: default; }
 
 .pill:hover { color: var(--text); border-color: var(--text-dim); }
 
+/* 按下的胶囊要看得见：FAV 亮着才知道面板里现在是谁的歌（需求 3.7）。 */
+.pill[aria-pressed='true'] { background: var(--pill-active-bg); color: var(--pill-active-fg); border-color: transparent; }
+
 .seg { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 999px; }
 
 .seg button {
@@ -247,6 +250,10 @@ button[aria-disabled='true'] { cursor: default; }
 
 .ctl:hover { color: var(--accent); border-color: var(--accent); }
 
+.ctl.is-on { color: var(--accent); border-color: var(--accent); }
+
+.ctl:disabled { color: var(--btn-text); border-color: var(--btn-line); }
+
 .tools { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
 
 .vol {
@@ -347,6 +354,43 @@ button[aria-disabled='true'] { cursor: default; }
 .q-row.is-current .i { color: var(--accent); }
 .q-row.is-current .i::before { content: '\25B8 '; }
 .q-row.is-current .a { color: var(--accent); }
+
+/* FAV 源：行尾的歌手位置在悬停 / 键盘聚焦时被 ✕ 替换（需求 3.7）。
+   不复刻成常驻图标 —— 参考的每行右边只有歌手，多一个符号就破了那个干净。 */
+.q-row .tail { position: relative; flex: 0 0 auto; max-width: 42%; min-width: 30px; display: flex; align-items: center; }
+
+.q-row .tail .a { max-width: 100%; }
+
+.q-row .x {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  /* 用 opacity 藏而不是 display:none：display:none 的元素**不可聚焦**，
+     键盘用户就永远够不到这个 ✕，:focus-within 也永远不会成立。 */
+  opacity: 0;
+  pointer-events: none;
+}
+
+.q-row:hover .x,
+.q-row:focus-within .x { opacity: 1; pointer-events: auto; }
+
+.q-row:hover .tail .a,
+.q-row:focus-within .tail .a { visibility: hidden; }
+
+.q-row .x:hover { color: var(--danger); }
+
+/* 删除后的回头路：3 秒内顶掉表头右侧的 N TRACKS，复用同一个槽位，零新增布局。 */
+.q-head .undo {
+  font-family: var(--dot);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+}
+
+.q-head .undo:hover { text-decoration: underline; }
 
 /* ---------- ⑥ DJ 面板 ---------- */
 
