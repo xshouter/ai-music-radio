@@ -36,9 +36,9 @@
 | 3.1 | `feat/ui-player` | Player 两态：宽窗大钟态 / 窄窗卡片态；歌词逐行高亮；口播逐句浮现 | ✅ 已合并（PR #10）。**已被 3.2 取代**：两态与歌词都不对，理由见下 |
 | 3.2 | `docs/ui-player-v2-requirement` | 需求重写：单态等比缩放、去掉歌词、补齐歌单 / 喜欢 / DJ 详情 / 口播界面 | ✅ 已合并（PR #12） |
 | 3.3 | `feat/contracts-favorites` | 冻结契约增量 P1–P4（喜欢 / 队列跳播语义 / `TasteDoc.genres`）+ ADR-0010 | ✅ 已合并（PR #13） |
-| 3.4 | `feat/contracts-credentials` | 需求按 4 条答复打补丁 + 冻结契约增量 P5（网易云凭证）+ ADR-0011 + mock + 断言 | 🔄 本 PR |
-| 3.5 | `feat/drop-lyric` | 还 ADR-0009 的债：歌词链路从契约 / mock / 测试 / renderer 里一并删除 | 🔄 本 PR |
-| 3.6 | `feat/ui-player-v2` | Player 布局重做：基准 **616×876** 等比缩放的单态布局 + DJ 详情弹层 | |
+| 3.4 | `feat/contracts-credentials` | 需求按 4 条答复打补丁 + 冻结契约增量 P5（网易云凭证）+ ADR-0011 + mock + 断言 | ✅ 已合并（PR #14） |
+| 3.5 | `feat/drop-lyric` | 还 ADR-0009 的债：歌词链路从契约 / mock / 测试 / renderer 里一并删除 | ✅ 已合并（PR #15） |
+| 3.6 | `feat/ui-player-v2` | Player 布局重做：基准 **616×876** 等比缩放的单态布局 + DJ 详情弹层 | 🔄 本 PR |
 | 3.7 | `feat/ui-queue-sources` | QUEUE 双来源切换（`AI 推荐` / `FAV`）+ 喜欢列表的行内 `✕` 删除与 `UNDO` | |
 | 3.8 | `feat/ui-now-playing` | 口播界面全屏态：真波形 + 逐词高亮 + 56 格进度 | |
 | 3.9 | `feat/ui-credentials-modal` | `LOGIN` → 凭证弹窗（LLM / TTS 的 key + 网易云 cookie） | |
