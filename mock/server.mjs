@@ -126,6 +126,68 @@ const refs = (tracks) => tracks.map(ref);
 let favorites = refs([byId('n1003'), byId('n1006'), byId('n1008')]);
 const FAVORITE_ACTIONS = ['like', 'unlike'];
 
+// —— ADR-0013：Profile 要的两本账。此前 POST /api/playback 是空实现（没有任何出口读它），
+// 现在统计要读，所以 mock 必须真的记账 —— 否则 Profile 上的数字永远是 0，那一版界面等于没验。
+let messageSeq = 0;
+const nextId = () => `m${++messageSeq}`;
+const messages = [
+  { id: nextId(), ts: STARTED_AT, role: 'system', text: 'Station up. Playing from taste.md.' },
+  { id: nextId(), ts: STARTED_AT, role: 'dj', text: 'Evening. Warm synth, nothing fast.' },
+  { id: nextId(), ts: STARTED_AT, role: 'me', text: 'something quiet' },
+  { id: nextId(), ts: STARTED_AT, role: 'dj', text: 'Staying low. No vocals that fight the room tone.' },
+];
+
+// 一条播放记录 = 一次 started；同一首再 started 算一次重播；ended / skipped 收尾同一条。
+const plays = [];
+const minutesAgo = (n) => new Date(Date.now() - n * 60000).toISOString();
+function seedPlay(id, n, patch = {}) {
+  const t = byId(id);
+  plays.push({ ts: minutesAgo(n), songId: t.id, title: t.title, artist: t.artist, source: t.source, level: 'exhigh', startedAt: minutesAgo(n), endedAt: null, skipped: false, reason: null, replay: false, ...patch });
+}
+// 开局就有账可看：一次跳过、一次重播（都由同一套统计读出来，不是写死的数字）。
+seedPlay('n1003', 52, { endedAt: minutesAgo(48) });
+seedPlay('n1004', 44, { endedAt: minutesAgo(43), skipped: true });
+seedPlay('n1001', 30, { endedAt: minutesAgo(26) });
+seedPlay('n1006', 22, { endedAt: minutesAgo(19) });
+seedPlay('n1001', 12, { replay: true });
+
+function recordPlay(body) {
+  const track = byId(body.songId);
+  if (!track) return;
+  const at = typeof body.at === 'string' ? body.at : new Date().toISOString();
+  if (body.event === 'started') {
+    plays.push({ ts: at, songId: track.id, title: track.title, artist: track.artist, source: track.source, level: 'exhigh', startedAt: at, endedAt: null, skipped: false, reason: null, replay: plays.some((p) => p.songId === track.id) });
+    return;
+  }
+  const open = [...plays].reverse().find((p) => p.songId === track.id && p.endedAt === null);
+  if (!open) return;
+  open.endedAt = at;
+  if (body.event === 'skipped') open.skipped = true;
+}
+
+const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+
+function stats(sinceRaw) {
+  const parsed = sinceRaw ? Date.parse(sinceRaw) : NaN;
+  const from = Number.isNaN(parsed) ? startOfToday() : new Date(parsed);
+  const inWindow = plays.filter((p) => new Date(p.ts) >= from);
+  const byArtist = new Map();
+  for (const p of inWindow) byArtist.set(p.artist, (byArtist.get(p.artist) ?? 0) + 1);
+  return {
+    played: inWindow.length,
+    skipped: inWindow.filter((p) => p.skipped).length,
+    replays: inWindow.filter((p) => p.replay).length,
+    topArtists: [...byArtist].map(([artist, count]) => ({ artist, count })).sort((a, b) => b.count - a.count || a.artist.localeCompare(b.artist)).slice(0, 5),
+  };
+}
+
+// 越界夹住、非法回默认：错误码是封闭枚举，里面没有「参数不合法」这种码（ADR-0013）。
+function historyPage(limitRaw) {
+  const n = limitRaw === null || limitRaw === '' ? NaN : Number(limitRaw);
+  const limit = Number.isFinite(n) ? Math.max(1, Math.min(200, Math.trunc(n))) : 50;
+  return messages.slice().reverse().slice(0, limit);
+}
+
 function nowPlaying() {
   return {
     track: state.degraded ? byId('l9001') : byId('n1001'),
@@ -306,7 +368,8 @@ async function control(req, res) {
 
 // —— 路由：路径与字段名严格照第 5 节的表 ——
 async function handle(req, res) {
-  const path = new URL(req.url, 'http://127.0.0.1').pathname;
+  const url = new URL(req.url, 'http://127.0.0.1');
+  const path = url.pathname;
   const method = req.method;
 
   if (path === '/__mock/control') return control(req, res);
@@ -319,13 +382,16 @@ async function handle(req, res) {
   if (method === 'GET' && path === '/api/now') return sendJson(res, 200, nowPlaying());
   if (method === 'GET' && path === '/api/next') return sendJson(res, 200, currentQueue());
   if (method === 'GET' && path === '/api/taste') return sendJson(res, 200, TASTE);
+  // ADR-0013 的两个只读端点：省略 since = 今天 00:00；limit 越界夹住。
+  if (method === 'GET' && path === '/api/stats') return sendJson(res, 200, stats(url.searchParams.get('since')));
+  if (method === 'GET' && path === '/api/history') return sendJson(res, 200, historyPage(url.searchParams.get('limit')));
   if (method === 'GET' && path === '/api/plan/today') return sendJson(res, 200, PLAN);
   if (method === 'POST' && path === '/api/plan/regenerate') {
     await readJson(req);
     return sendJson(res, 200, PLAN);
   }
   if (method === 'POST' && path === '/api/playback') {
-    await readJson(req);
+    recordPlay(await readJson(req));
     return sendJson(res, 200, { ok: true });
   }
   if (method === 'GET' && path === '/api/favorites') return sendJson(res, 200, favorites);
@@ -366,8 +432,13 @@ async function handle(req, res) {
     return sendJson(res, 200, settings);
   }
   if (method === 'POST' && path === '/api/chat') {
-    await readJson(req);
+    const body = await readJson(req);
+    if (typeof body.text === 'string' && body.text.trim()) {
+      messages.push({ id: nextId(), ts: new Date().toISOString(), role: 'me', text: body.text.trim() });
+    }
     const result = show();
+    // 口播进历史：Profile 的 HISTORY 要能回看 DJ 说过什么（ADR-0013）。
+    for (const line of result.say) messages.push({ id: nextId(), ts: new Date().toISOString(), role: 'dj', text: line });
     speak(result.say);
     return sendJson(res, 200, result);
   }

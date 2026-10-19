@@ -375,3 +375,41 @@ test('PUT /api/settings 只覆盖你给的字段：非法 protocol 被忽略，�
   assert.equal(put.body.llm.model, before.llm.model, '没给的字段不动');
   assert.deepEqual(put.body.tts, before.tts, '没给的块整块不动');
 });
+
+test('GET /api/stats 返回 PlayStats，且真的随 POST /api/playback 变（ADR-0013）', async () => {
+  await reset();
+  const before = (await api('/api/stats')).body;
+  for (const key of ['played', 'skipped', 'replays']) assert.equal(typeof before[key], 'number', key);
+  assert.ok(Array.isArray(before.topArtists));
+  before.topArtists.forEach((row, i) => {
+    assert.equal(typeof row.artist, 'string', 'topArtists[' + i + '].artist');
+    assert.equal(typeof row.count, 'number', 'topArtists[' + i + '].count');
+  });
+
+  const song = (await api('/api/now')).body.track;
+  await api('/api/playback', { method: 'POST', body: JSON.stringify({ songId: song.id, event: 'started', at: new Date().toISOString() }) });
+  const after = (await api('/api/stats')).body;
+  assert.equal(after.played, before.played + 1, '记一笔播放，统计就要 +1（否则 Profile 上的数字是假的）');
+  assert.ok(after.replays >= 1, '同一首再 started 要算重播');
+});
+
+test('GET /api/history 返回 DjMessage[]，倒序，limit 越界夹住而不报错', async () => {
+  await reset();
+  const { status, body } = await api('/api/history?limit=1000');
+  assert.equal(status, 200, '越界要夹住，不许报错（错误码里没有「参数不合法」）');
+  assert.ok(Array.isArray(body) && body.length > 0 && body.length <= 200);
+  body.forEach((m, i) => {
+    assert.equal(typeof m.id, 'string', 'history[' + i + '].id');
+    assert.equal(typeof m.ts, 'string', 'history[' + i + '].ts');
+    assert.ok(['dj', 'me', 'system'].includes(m.role), 'history[' + i + '].role=' + m.role);
+    assert.equal(typeof m.text, 'string', 'history[' + i + '].text');
+  });
+  const ts = body.map((m) => Date.parse(m.ts));
+  for (let i = 1; i < ts.length; i++) assert.ok(ts[i] <= ts[i - 1], 'history 必须倒序');
+
+  const before = body.length;
+  await api('/api/chat', { method: 'POST', body: JSON.stringify({ text: 'keep it slow' }) });
+  const after = (await api('/api/history')).body;
+  assert.ok(after.length > before, 'chat 之后历史要真的变长');
+  assert.equal(after[0].role, 'dj', '最新一条是 DJ 刚说的话');
+});
