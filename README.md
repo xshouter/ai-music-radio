@@ -1,11 +1,11 @@
-# AI 音乐电台 · AI Music Radio
+# EdgeRunner · AI Music Radio
 
-一个**本地常驻的个人 AI 电台**：它自己排当天的节目、自己挑歌、用英文开口讲一两句，
+**EdgeRunner** 是一个**本地常驻的个人 AI 电台**：它自己排当天的节目、自己挑歌、用英文开口讲一两句，
 然后把歌和话串成一条不断的流。
 
 交互形状复刻自 [Claudio x mmguo FM](https://mmguo.dev/claudio-fm/)，**代码从零写**（见 `docs/references.md`）。
 
-[![CI](https://github.com/xshouter/ai-music-radio/actions/workflows/ci.yml/badge.svg)](https://github.com/xshouter/ai-music-radio/actions/workflows/ci.yml)
+[![CI](https://github.com/xshouter/edgerunner/actions/workflows/ci.yml/badge.svg)](https://github.com/xshouter/edgerunner/actions/workflows/ci.yml)
 
 > **这是一个求职作品集项目。** 它不只要"能跑"——它被当作一次完整的产品交付来推进：
 > 每个架构决策都有 ADR，每次改动都有 PR 与四段式说明（背景 / 困难 / 决策 / 证据），**困难不许空着**。
