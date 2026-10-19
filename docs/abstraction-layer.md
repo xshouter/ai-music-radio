@@ -189,6 +189,9 @@ export interface Show {                    // 一次推理的输出，对应原�
   reason: string;         // 给"我"看的理由（Profile 页可展示）
   segue: string | null;   // 衔接语，可为空
 }
+// ADR-0012：一句口播自带这一句的音频与词级时间戳（逐词高亮 + 口播进度的唯一真相）
+export interface SpokenWord { text: string; startMs: number; endMs: number }   // 相对这一句音频起点
+export interface SpokenLine { index: number; line: string; audioUrl: string; words: SpokenWord[] }
 export interface DjMessage { id: string; ts: string; role: 'dj' | 'me' | 'system'; text: string; meta?: Record<string, unknown> }
 export interface PlanBlock { start: string; end: string; mood: string; genres: string[]; tracks: TrackRef[] }
 export interface DayPlan { date: string; createdAt: string; blocks: PlanBlock[]; active: boolean }
@@ -266,7 +269,7 @@ export interface SettingsInput {
 ```ts
 type StreamEvent =
   | { type: 'now';   payload: NowPlaying }
-  | { type: 'say';   payload: { index: number; line: string } }   // 口播逐句推，UI 逐句浮现
+  | { type: 'say';   payload: SpokenLine }                         // 口播逐句推（带这一句的音频与词时间戳，ADR-0012）
   | { type: 'queue'; payload: TrackRef[] }
   | { type: 'plan';  payload: DayPlan }
   | { type: 'state'; payload: { onAir: boolean; djState: 'idle'|'thinking'|'speaking' } }
