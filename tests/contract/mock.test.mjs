@@ -304,7 +304,7 @@ function frameReader(onEvent) {
   };
 }
 
-test('WS /stream：连上先给快照，chat 的口播逐句推而不是一次发完', async (t) => {
+test('WS /stream：连上先给快照（并开口），chat 的口播逐句推而不是一次发完', async (t) => {
   await reset();
   const events = [];
   const { socket, head } = await openWs('/stream');
@@ -321,6 +321,8 @@ test('WS /stream：连上先给快照，chat 的口播逐句推而不是一次�
     assert.ok(snapshotTypes.includes(type), `缺少 ${type} 快照事件`);
   }
 
+  // 连上时 DJ 就会开口（「一开机我就打碟」）：等开场那几句推完，再清零数这一轮的。
+  await sleep(400);
   events.length = 0;
   await api('/api/chat', { method: 'POST', body: JSON.stringify({ text: 'go on then' }) });
   await sleep(900);
@@ -330,6 +332,26 @@ test('WS /stream：连上先给快照，chat 的口播逐句推而不是一次�
   says.forEach((event, index) => {
     assert.equal(event.payload.index, index);
     assert.equal(typeof event.payload.line, 'string');
+    // ADR-0012：一句口播自带音频与词级时间戳，否则 UI 没法逐词高亮 / 算口播进度。
+    assert.equal(typeof event.payload.audioUrl, 'string');
+    assert.ok(event.payload.audioUrl.startsWith('/tts/'), 'audioUrl 走 /tts/');
+    assert.ok(Array.isArray(event.payload.words) && event.payload.words.length > 0);
+    let at = 0;
+    for (const word of event.payload.words) {
+      assert.equal(typeof word.text, 'string');
+      assert.ok(word.startMs >= at, '词时间戳要单调、不重叠');
+      assert.ok(word.endMs > word.startMs, '每个词要有正的长度');
+      at = word.endMs;
+    }
+    assert.equal(event.payload.words.map((w) => w.text).join(' '), event.payload.line, '时间戳要能拼回原句');
   });
+
+  // 这一句的音频真的取得到，而且长度就等于词时间戳的长度（高亮与音频必须同源）。
+  const last = says[says.length - 1].payload;
+  const tts = await fetch(base + last.audioUrl);
+  assert.equal(tts.status, 200);
+  assert.ok((tts.headers.get('content-type') ?? '').startsWith('audio/'));
+  const wav = Buffer.from(await tts.arrayBuffer());
+  assert.ok(Math.abs(wav.readUInt32LE(40) / 16000 - last.words.at(-1).endMs / 1000) < 0.05, '音频长度要等于口播时长');
   assert.ok(events.some((e) => e.type === 'state'), '结束时要回到 idle');
 });

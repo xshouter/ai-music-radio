@@ -39,17 +39,34 @@ const TRACKS = [
 const ref = ({ id, title, artist }) => ({ id, title, artist });
 const byId = (id) => TRACKS.find((t) => t.id === id);
 
-const SHOW = {
-  say: [
-    'It is late evening where you are, so we will keep this one slow.',
-    'Starting with Midnight Drive: warm synth, nothing above a walking pace.',
-    'Then Neon Hours, same mood but a shade brighter.',
-    'If you want something else, just say so and I will turn the wheel.',
-  ],
+// 口播 = 对当前这首歌的简短分析（需求：口播内容是一段简短的歌曲分析）。
+// 词级时间戳与音频长度同源：mock 的静音 WAV 就按词时间戳的长度生成（ADR-0012）。
+const TTS_SECONDS = new Map();
+function speech(index, line) {
+  let at = 0;
+  const words = line.split(' ').map((text) => {
+    const startMs = at;
+    const bare = text.replace(/[^A-Za-z0-9']/g, '').length || 3;
+    at += Math.round(300 * Math.max(0.6, Math.min(2.4, bare / 5)));
+    return { text, startMs, endMs: at };
+  });
+  const hash = createHash('sha1').update(line).digest('hex').slice(0, 12);
+  TTS_SECONDS.set(hash, at / 1000);
+  return { index, line, audioUrl: `/tts/${hash}.mp3`, words };
+}
+
+const analysis = (track) => [
+  `${track.title} — ${track.artist}. Slow synth, and nothing above a walking pace.`,
+  'Warm pads, a drum machine that never rushes, and four minutes of room to think in.',
+  'Neon Hours next: same family, a shade brighter.',
+];
+
+const show = () => ({
+  say: analysis(nowPlaying().track),
   play: ['n1001', 'n1002', 'n1003'].map((id) => ref(byId(id))),
   reason: 'Evening slot and low energy: warm synth, nothing above 120 BPM, no vocals that fight the room tone.',
   segue: 'Stay with me. We are drifting into the night from here.',
-};
+});
 
 const STARTED_AT = new Date().toISOString();
 
@@ -120,7 +137,7 @@ function nowPlaying() {
 }
 
 // 降级时队列只保留能解析的（本地兜底两首）——抽象层第 6 节。
-const currentQueue = () => (state.degraded ? refs(TRACKS.filter((t) => t.source === 'local')) : SHOW.play);
+const currentQueue = () => (state.degraded ? refs(TRACKS.filter((t) => t.source === 'local')) : show().play);
 
 // —— HTTP 小工具 ——
 const sendJson = (res, status, body) => {
@@ -151,11 +168,9 @@ function readJson(req) {
 }
 
 // 内存里生成的静音 WAV：仓库里不放任何真实音频（需求·假设 3）。
-let wav = null;
-function silentWav() {
-  if (wav) return wav;
+function silentWav(seconds) {
   const sampleRate = 8000;
-  const dataSize = sampleRate * 10 * 2; // 10 秒、单声道、16 bit
+  const dataSize = Math.round(sampleRate * seconds) * 2; // 单声道、16 bit
   const buf = Buffer.alloc(44 + dataSize);
   buf.write('RIFF', 0, 'ascii');
   buf.writeUInt32LE(36 + dataSize, 4);
@@ -170,13 +185,13 @@ function silentWav() {
   buf.writeUInt16LE(16, 34);
   buf.write('data', 36, 'ascii');
   buf.writeUInt32LE(dataSize, 40);
-  wav = buf; // 全是 0 = 静音
-  return buf;
+  return buf; // 全是 0 = 静音
 }
 
 // 真 server 这里发缓存好的 mp3；mock 发内存静音 WAV，形状、Range、状态码一致就够了。
-function sendAudio(req, res) {
-  const buf = silentWav();
+function sendAudio(req, res, path) {
+  const hash = /^\/tts\/([0-9a-f]+)\.mp3$/.exec(path)?.[1];
+  const buf = silentWav(hash ? (TTS_SECONDS.get(hash) ?? 10) : 10);
   const range = req.headers.range;
   if (!range) {
     res.writeHead(200, { 'content-type': 'audio/wav', 'content-length': buf.length, 'accept-ranges': 'bytes' });
@@ -230,15 +245,15 @@ const push = (socket, event) => socket.write(encodeFrame(JSON.stringify(event)))
 const broadcast = (event) => { for (const socket of sockets) push(socket, event); };
 
 // 口播逐句推：UI 的「逐句浮现」只有在 mock 上能跑出来，才不会等真后端才发现（需求·假设 2）。
-function speak(lines) {
+function speak(lines, only) {
   // 只发给「这一轮开始时已在线的」客户端：否则上一轮的 setTimeout 会漏进之后才连上来的客户端，
   // 让它收到一段自己从没点过的口播。这个 bug 是契约测试抓出来的（见 PR 正文）。
-  const targets = [...sockets];
+  const targets = only ? [only] : [...sockets];
   const send = (event) => { for (const socket of targets) push(socket, event); };
   send({ type: 'state', payload: { onAir: true, djState: 'thinking' } });
   lines.forEach((line, index) => {
     setTimeout(() => {
-      send({ type: 'say', payload: { index, line } });
+      send({ type: 'say', payload: speech(index, line) });
       if (index === lines.length - 1) {
         send({ type: 'state', payload: { onAir: true, djState: 'idle' } });
         send({ type: 'now', payload: nowPlaying() });
@@ -267,6 +282,8 @@ function attachSocket(req, socket) {
   push(socket, { type: 'queue', payload: currentQueue() });
   push(socket, { type: 'plan', payload: PLAN });
   push(socket, { type: 'state', payload: { onAir: true, djState: 'idle' } });
+  // 一开机我就打碟：电台一上线，DJ 先对当前这首歌说三句。
+  speak(show().say, socket);
 }
 
 // —— 控制通道：不在契约里，UI 不需要知道它存在 ——
@@ -295,7 +312,7 @@ async function handle(req, res) {
   if (path === '/__mock/control') return control(req, res);
 
   // 媒体路径：豁免注入的错误，也豁免鉴权（契约第 5 节）。
-  if (method === 'GET' && (path.startsWith('/api/audio/') || path.startsWith('/tts/'))) return sendAudio(req, res);
+  if (method === 'GET' && (path.startsWith('/api/audio/') || path.startsWith('/tts/'))) return sendAudio(req, res, path);
 
   if (rejectInjected(res)) return;
 
@@ -348,8 +365,9 @@ async function handle(req, res) {
   }
   if (method === 'POST' && path === '/api/chat') {
     await readJson(req);
-    speak(SHOW.say);
-    return sendJson(res, 200, SHOW);
+    const result = show();
+    speak(result.say);
+    return sendJson(res, 200, result);
   }
 
   // 未知路径也走统一信封：错误码是封闭枚举，所以用 INTERNAL。

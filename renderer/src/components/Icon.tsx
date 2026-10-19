@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type IconName = 'prev' | 'next' | 'play' | 'pause' | 'stop' | 'heart' | 'up' | 'mic' | 'headphone';
+export type IconName = 'prev' | 'next' | 'play' | 'pause' | 'stop' | 'heart' | 'up' | 'mic' | 'headphone' | 'close';
 
 /* 界面里没有实心图标库，也没有 emoji：字形一律走这套 12×12 的线性/实心形状。
    （unicode 的 ⏮ ⏸ ⏭ 在 Windows 上会掉进 emoji 字体，渲染成彩色的 —— 那是另一套语言。） */
@@ -48,6 +48,9 @@ const SHAPES: Record<IconName, ReactNode> = {
       <rect x="4.4" y="1.6" width="3.2" height="6" rx="1.6" fill="currentColor" />
       <path d="M2.9 6.1a3.1 3.1 0 0 0 6.2 0M6 9.2v1.3" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </>
+  ),
+  close: (
+    <path d="M3.1 3.1 8.9 8.9M8.9 3.1 3.1 8.9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
   ),
   headphone: (
     <>

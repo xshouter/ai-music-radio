@@ -1,7 +1,7 @@
 // 电台的全部状态：取数、订阅 WS、播音频、上报播放事实。
 // 组件只读这个 hook —— 数据从哪来、怎么降级，都在这一处（铁律 5）。
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DjMessage, TrackRef } from '../../../shared/domain.ts';
+import type { DjMessage, SpokenLine, TrackRef } from '../../../shared/domain.ts';
 import type { NowPlaying, PlanTodayResponse, StreamEvent, TasteDoc } from '../../../shared/api-types.ts';
 import { ApiFailure, audioUrl, chat, getFavorites, getNext, getNow, getPlanToday, getTaste, openStream, reportFeedback, reportPlayback } from '../api/client.ts';
 
@@ -63,6 +63,20 @@ const withCards = (prev: DjMessage[], pending: { after: string; tracks: TrackRef
   const next = [...prev];
   next[at] = { ...target, meta: { ...target.meta, tracks: pending.tracks } };
   return next;
+};
+
+/* 一句口播到达：文本叠到同一条 DJ 消息上，同时把「这一句的时间戳 + 音频」挂进 meta.turns。
+   口播界面靠它逐词高亮、算进度。meta 是自由字段，所以这不需要动契约（ADR-0012 只加了 payload）。 */
+const withSay = (prev: DjMessage[], line: SpokenLine): DjMessage[] => {
+  const last = prev[prev.length - 1];
+  if (last && last.role === 'dj') {
+    const turns = Array.isArray(last.meta?.turns) ? (last.meta.turns as SpokenLine[]) : [];
+    return [
+      ...prev.slice(0, -1),
+      { ...last, text: last.text ? `${last.text} ${line.line}` : line.line, meta: { ...last.meta, turns: [...turns, line] } },
+    ];
+  }
+  return [...prev, { ...message('dj', line.line), meta: { turns: [line] } }];
 };
 
 const asError = (cause: unknown): RadioError =>
@@ -144,11 +158,7 @@ export function useRadio(): Radio {
           break;
         case 'say':
           setFeed((prev) => {
-            const last = prev[prev.length - 1];
-            const base =
-              last && last.role === 'dj'
-                ? [...prev.slice(0, -1), { ...last, text: `${last.text} ${event.payload.line}` }]
-                : [...prev, message('dj', event.payload.line)];
+            const base = withSay(prev, event.payload);
             return pending.current ? withCards(base, pending.current) : base;
           });
           break;

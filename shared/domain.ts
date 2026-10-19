@@ -42,6 +42,24 @@ export interface Show {
   segue: string | null;
 }
 
+/** 口播里一个词的时间戳（相对这一句音频的起点，毫秒）。真 TTS 直接给到词级（ADR-0008）。 */
+export interface SpokenWord {
+  text: string;
+  startMs: number;
+  endMs: number;
+}
+
+/**
+ * 一句口播。逐句推是为了「一句一句浮现 + 一句一句合成」（ADR-0001）；
+ * audioUrl 与 words 让 UI 能放这一句、并按词高亮、并算出口播进度（ADR-0012）。
+ */
+export interface SpokenLine {
+  index: number;
+  line: string;
+  audioUrl: string;
+  words: SpokenWord[];
+}
+
 export interface DjMessage {
   id: string;
   ts: string;

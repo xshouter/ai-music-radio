@@ -35,8 +35,8 @@ button[aria-disabled='true'] { cursor: default; }
   z-index: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px;
+  gap: 12px;
+  padding: 16px;
   border-radius: 26px;
   border: 1px solid var(--frame);
   overflow: hidden;
@@ -88,11 +88,11 @@ button[aria-disabled='true'] { cursor: default; }
 .topbar .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
 .pill {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 6px 12px;
+  padding: 7px 13px;
   border-radius: 999px;
   border: 1px solid var(--pill-line);
   color: var(--text-dim);
@@ -106,7 +106,7 @@ button[aria-disabled='true'] { cursor: default; }
 .seg { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 999px; }
 
 .seg button {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 10px;
   letter-spacing: 0.1em;
   padding: 4px 10px;
@@ -129,30 +129,22 @@ button[aria-disabled='true'] { cursor: default; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
   background-color: var(--panel-clock);
   background-image: radial-gradient(circle, var(--dot-grid) 1px, transparent 1px);
   background-size: 16px 16px;
 }
 
 /* 点阵在底部渐隐，别切一条硬边。 */
-.clock-panel::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 70px;
-  pointer-events: none;
-  background: linear-gradient(180deg, transparent, var(--panel-clock));
-}
 
 .clock {
   font-family: var(--dot);
-  font-weight: 900;
-  font-size: 116px;
-  line-height: 0.9;
-  letter-spacing: 0.01em;
+  /* 权重 600：参考站只加载 Doto 的 400 / 600 两档，900 是我们自己加的 —— 字形会糊成十字块。
+     尺寸对齐参考的墨迹（270×80）。 */
+  font-weight: 600;
+  font-size: 88px;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
@@ -160,7 +152,7 @@ button[aria-disabled='true'] { cursor: default; }
 .clock-day { font-size: 14px; color: var(--text); }
 
 .clock-date {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 11px;
   letter-spacing: 0.16em;
   color: var(--text-dim);
@@ -170,7 +162,7 @@ button[aria-disabled='true'] { cursor: default; }
   display: flex;
   align-items: center;
   gap: 7px;
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 10px;
   letter-spacing: 0.2em;
   color: var(--accent);
@@ -189,7 +181,7 @@ button[aria-disabled='true'] { cursor: default; }
 .dot.off { background: var(--text-dim); box-shadow: none; }
 
 .badge {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
   padding: 2px 7px;
@@ -204,14 +196,14 @@ button[aria-disabled='true'] { cursor: default; }
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  padding: 10px 12px;
+  gap: 11px;
+  padding: 12px 14px;
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--panel);
 }
 
-.bar { display: flex; align-items: center; gap: 10px; }
+.bar { display: flex; align-items: center; gap: 12px; }
 
 /* 频谱。点它进「口播界面」（3.8 接上；现在只作视觉）。 */
 .spec { flex: 0 0 auto; display: flex; align-items: flex-end; gap: 2px; height: 17px; }
@@ -229,17 +221,17 @@ button[aria-disabled='true'] { cursor: default; }
 }
 
 .np .k {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
   color: var(--accent);
 }
 
-.ctls { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.ctls { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; }
 
 .ctl {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 1px solid var(--btn-line);
   background: var(--btn);
@@ -254,13 +246,13 @@ button[aria-disabled='true'] { cursor: default; }
 
 .ctl:disabled { color: var(--btn-text); border-color: var(--btn-line); }
 
-.tools { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.tools { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
 
 .vol {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.16em;
   color: var(--text-dim);
@@ -271,7 +263,7 @@ button[aria-disabled='true'] { cursor: default; }
 .progress { display: flex; align-items: center; gap: 10px; }
 
 .progress .time {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.08em;
   color: var(--text-dim);
@@ -287,8 +279,8 @@ button[aria-disabled='true'] { cursor: default; }
 /* ---------- ⑤ QUEUE ---------- */
 
 .queue {
-  flex: 0 1 auto;
-  max-height: 253px;
+  flex: 0 0 auto;
+  max-height: 262px;
   display: flex;
   flex-direction: column;
   border-radius: var(--radius);
@@ -302,23 +294,23 @@ button[aria-disabled='true'] { cursor: default; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 13px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--line);
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
   color: var(--text-dim);
 }
 
-.q-list { overflow-y: auto; }
+.q-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 .q-row {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 44px;
-  padding-right: 13px;
+  gap: 12px;
+  height: 46px;
+  padding-right: 14px;
   font-size: 12.5px;
   color: var(--text);
   cursor: pointer;
@@ -330,7 +322,7 @@ button[aria-disabled='true'] { cursor: default; }
   flex: 0 0 auto;
   width: 36px;
   text-align: right;
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 10px;
   color: var(--text-dim);
 }
@@ -384,7 +376,7 @@ button[aria-disabled='true'] { cursor: default; }
 
 /* 删除后的回头路：3 秒内顶掉表头右侧的 N TRACKS，复用同一个槽位，零新增布局。 */
 .q-head .undo {
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
   color: var(--accent);
@@ -415,72 +407,78 @@ button[aria-disabled='true'] { cursor: default; }
 }
 
 .feed-head .name { font-family: var(--dot); font-size: 15px; color: var(--text); }
-.feed-head .status { font-family: var(--dot); font-size: 9px; letter-spacing: 0.18em; color: var(--text-dim); }
+.feed-head .status { font-family: var(--label); font-size: 9px; letter-spacing: 0.18em; color: var(--text-dim); }
 
 .feed-list {
   flex: 1 1 auto;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 14px 13px 16px;
+  gap: 16px;
+  padding: 16px 14px 18px;
 }
 
 .feed-list::-webkit-scrollbar, .q-list::-webkit-scrollbar { width: 6px; }
 .feed-list::-webkit-scrollbar-thumb, .q-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
 
-.sys { text-align: center; font-family: var(--dot); font-size: 9px; letter-spacing: 0.08em; color: var(--text-dim); }
+.sys { text-align: center; font-family: var(--label); font-size: 9px; letter-spacing: 0.08em; color: var(--text-dim); }
 
-.msg { display: flex; flex-direction: column; gap: 5px; }
+.msg { display: flex; flex-direction: column; gap: 6px; }
 
-.msg .who { font-family: var(--dot); font-size: 9px; letter-spacing: 0.16em; color: var(--text-dim); }
+.msg .who { font-family: var(--label); font-size: 9px; letter-spacing: 0.16em; color: var(--text-dim); }
 .msg.me .who { text-align: right; }
 
 .msg .line { display: flex; align-items: flex-start; gap: 8px; }
 .msg.me .line { flex-direction: row-reverse; }
 
 .bubble {
-  max-width: 76%;
-  padding: 10px 12px;
+  max-width: 78%;
+  padding: 11px 14px;
   border-radius: 14px;
   border: 1px solid var(--line);
   background: var(--bubble);
   font-size: 13.5px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--text);
 }
 
 .msg.me .bubble { background: var(--bubble-me); }
 
-.msg .meta { display: flex; gap: 8px; font-family: var(--dot); font-size: 9px; color: var(--text-dim); }
+.msg .meta { display: flex; gap: 10px; font-family: var(--label); font-size: 9px; color: var(--text-dim); }
 .msg.me .meta { justify-content: flex-end; }
 .msg .meta .reply { color: var(--accent); }
 
-/* DJ 消息里的曲目卡：点一下就播（交互决策 3）。 */
-.cards { display: flex; flex-direction: column; gap: 6px; margin-left: 36px; }
+/* DJ 消息里的曲目卡：点一下就播（交互决策 3）。
+   **短条**，不是整条：宽度跟着内容走（参考图 2），左侧一个标记，右边两行字。 */
+.cards { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-left: 32px; }
 
 .card-track {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 7px 10px;
-  border-radius: 10px;
+  align-items: center;
+  width: fit-content;
+  max-width: 240px;
+  padding: 7px 12px;
+  border-radius: 9px;
   border: 1px solid var(--line);
   background: var(--panel);
-  font-size: 12px;
-  color: var(--text-dim);
   text-align: left;
 }
 
-.card-track .ct { display: flex; align-items: baseline; gap: 6px; }
-.card-track .ct .t { color: var(--text); }
-.card-track .a { font-size: 10.5px; }
+.card-track .ct { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; }
+.card-track .ct .t {
+  max-width: 100%;
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-track .ct .a { font-size: 10.5px; color: var(--text-dim); }
 .card-track:hover { border-color: var(--text-dim); }
-.card-track.is-current { border-color: var(--accent); }
+.card-track.is-current { border-color: var(--accent); background: var(--row-current); }
 .card-track.is-current .ct .t { color: var(--accent); }
-.card-track.is-current .ct .t::before { content: '\2605 '; }
 .card-track .ct .t::before { content: '\25B8 '; color: var(--text-dim); }
-.card-track.is-current .ct .t::before { color: var(--accent); }
+.card-track.is-current .ct .t::before { content: '\2605 '; color: var(--accent); }
 
 /* ---------- ⑦ 输入条 ---------- */
 
@@ -525,7 +523,7 @@ button[aria-disabled='true'] { cursor: default; }
   align-items: center;
   justify-content: space-between;
   padding: 0 4px;
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.2em;
   color: var(--text-dim);
@@ -549,9 +547,9 @@ button[aria-disabled='true'] { cursor: default; }
   font-size: 12px;
 }
 
-.banner .code { font-family: var(--dot); font-size: 10px; letter-spacing: 0.16em; color: var(--danger); white-space: nowrap; }
+.banner .code { font-family: var(--label); font-size: 10px; letter-spacing: 0.16em; color: var(--danger); white-space: nowrap; }
 .banner .text { flex: 1 1 auto; }
-.banner .dismiss { font-family: var(--dot); font-size: 9px; letter-spacing: 0.16em; color: var(--text-dim); }
+.banner .dismiss { font-family: var(--label); font-size: 9px; letter-spacing: 0.16em; color: var(--text-dim); }
 .banner .dismiss:hover { color: var(--text); }
 
 .empty { color: var(--text-dim); font-size: 13px; padding: 12px 13px; }
@@ -624,7 +622,7 @@ button[aria-disabled='true'] { cursor: default; }
   border-top: 1px solid var(--line);
 }
 
-.dj-stat .l { font-family: var(--dot); font-size: 9px; letter-spacing: 0.2em; color: var(--text-dim); }
+.dj-stat .l { font-family: var(--label); font-size: 9px; letter-spacing: 0.2em; color: var(--text-dim); }
 .dj-stat .v { margin-top: 4px; font-size: 22px; font-weight: 700; color: var(--text); }
 
 .dj-genres { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 20px; }
@@ -634,7 +632,7 @@ button[aria-disabled='true'] { cursor: default; }
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--panel);
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -645,10 +643,164 @@ button[aria-disabled='true'] { cursor: default; }
   margin-top: 22px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
-  font-family: var(--dot);
+  font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.2em;
   color: var(--text-dim);
 }/* 补：底栏的绿点是行内元素，得自己对齐；消息里的头像比顶栏的小一号。 */
 .statusbar .dot { vertical-align: middle; margin-right: 2px; }
 .msg .avatar { width: 24px; height: 24px; font-size: 11px; }
+/* —— ① 口播全屏态。数值全部照抄参考源那张 616×876 的卡片（我们的 stage 就是 616×876）。 —— */
+.onair {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  border-radius: 28px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.oa-head {
+  position: relative;
+  flex: 0 0 auto;
+  height: 232px;
+  padding: 22px 24px 0;
+  border-radius: 28px 28px 0 0;
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(180deg, #0c0c0e 0%, #16161a 100%);
+}
+.oa-head::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 130px;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+  background-size: 16px 16px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
+}
+.oa-top { position: relative; z-index: 2; display: flex; align-items: flex-start; justify-content: space-between; }
+.oa-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--dot);
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.oa-face {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #29ffb8;
+  color: #08130f;
+  font-family: var(--dot);
+  font-size: 13px;
+}
+.oa-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding-left: 38px;
+  font-size: 13px;
+  color: #29ffb8;
+}
+.oa-status .dot { width: 6px; height: 6px; border-radius: 999px; background: #29ffb8; box-shadow: 0 0 6px rgba(41, 255, 184, 0.6); }
+.oa-status .dot.off { background: #6a6a70; box-shadow: none; }
+.oa-clock { font-family: var(--dot); font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.95); }
+.oa-wave-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 170px;
+  z-index: 1;
+  pointer-events: none;
+  mask-image: linear-gradient(180deg, transparent 0%, #000 30%, #000 100%);
+}
+.oa-wave-wrap canvas { display: block; width: 100%; height: 100%; }
+
+.oa-body {
+  position: relative;
+  z-index: 3;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: -18px;
+  border-radius: 28px 28px 0 0;
+  overflow: hidden;
+  background: #fff;
+}
+.oa-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  z-index: 4;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  cursor: pointer;
+}
+.oa-close:hover { background: #333; }
+
+.oa-meta { display: flex; flex-direction: column; gap: 6px; padding: 24px 28px 18px; }
+.oa-title { font-size: 30px; font-weight: 600; line-height: 1.08; letter-spacing: -0.02em; color: #111; padding-right: 40px; }
+.oa-sub { font-size: 12px; color: #8a8a90; }
+.oa-mini { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.oa-mp, .oa-play { flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 0; border-radius: 999px; background: #111; color: #fff; cursor: pointer; }
+.oa-mp { width: 22px; height: 22px; }
+.oa-play { width: 36px; height: 36px; }
+.oa-mp:hover, .oa-play:hover { background: #333; }
+.oa-line { position: relative; flex: 1 1 auto; height: 2px; border-radius: 999px; background: #e5e5e4; overflow: hidden; }
+.oa-fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 999px; background: #111; }
+.oa-mptime { flex: 0 0 auto; font-size: 10.5px; color: #8a8a90; font-variant-numeric: tabular-nums; }
+
+/* 正文一律正常对比度：只把「正在说的那个词」点亮，不做渐隐（用户定）。 */
+.oa-transcript {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 16px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.08) 0.5px, transparent 0.5px) 0 0 / 12px 12px, #f3f3f1;
+}
+.oa-scroll { height: 100%; padding: 20px 20px 40px; overflow-y: auto; }
+.oa-scroll::-webkit-scrollbar { width: 0; }
+.oa-turn { margin-bottom: 18px; }
+.oa-turn-head { margin-bottom: 4px; font-size: 11.5px; color: #8a8a90; }
+.oa-turn-head .who { color: #6a6a70; }
+.oa-turn-body { font-size: 16px; line-height: 1.42; color: #111; letter-spacing: -0.005em; }
+.oa-word { transition: background 0.15s ease, box-shadow 0.2s ease; }
+.oa-word.is-current {
+  padding: 0 2px;
+  margin: 0 -2px;
+  border-radius: 4px;
+  color: #0f3a2a;
+  background: rgba(41, 255, 184, 0.28);
+  box-shadow: 0 0 0 1px rgba(41, 255, 184, 0.35), 0 0 10px rgba(41, 255, 184, 0.25);
+}
+
+.oa-player { display: flex; align-items: center; gap: 14px; padding: 14px 18px 18px; background: #fff; }
+.oa-ptime { flex: 0 0 auto; min-width: 34px; font-size: 13px; font-weight: 500; color: #111; font-variant-numeric: tabular-nums; }
+.oa-bars { flex: 1 1 auto; height: 28px; display: flex; align-items: center; gap: 2px; padding: 0; border: 0; background: none; cursor: pointer; }
+.oa-bar { flex: 1 1 auto; border-radius: 999px; background: #cfcfd1; transition: background 0.12s ease; }
+.oa-bar.is-played { background: #111; }
