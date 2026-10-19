@@ -52,10 +52,10 @@
 
 ## 验收标准
 
-- [ ] `node mock/server.mjs` 能起来，`GET /api/now` 直接请求有响应
-- [ ] 第 5 节的每个端点都能被 mock 响应；错误路径返回统一信封 `{ error: { code, message, retryable } }`
-- [ ] 一个开关即可切到 `degraded`，且每个错误码都能单独触发——UI 不需要改一行代码就能显示对应状态
-- [ ] `npm test` 全绿（契约测试）
-- [ ] `npm run typecheck` 全绿
-- [ ] `node tools/check-boundaries.mjs` 全绿（`shared/` 仍是纯类型）
-- [ ] `renderer/` 里一行代码都没有
+- [x] `node mock/server.mjs` 能起来，`GET /api/now` 直接请求有响应
+- [x] 第 5 节的每个端点都能被 mock 响应；错误路径返回统一信封 `{ error: { code, message, retryable } }`
+- [x] 一个开关即可切到 `degraded`，且每个错误码都能单独触发——UI 不需要改一行代码就能显示对应状态
+- [x] `npm test` 全绿（契约测试）
+- [x] `npm run typecheck` 全绿
+- [x] `node tools/check-boundaries.mjs` 全绿（`shared/` 仍是纯类型）
+- [x] `renderer/` 里一行代码都没有
