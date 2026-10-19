@@ -145,6 +145,45 @@ test('POST /api/playback 返回 { ok: true }', async () => {
   assert.equal(body.ok, true);
 });
 
+test('GET /api/favorites 返回 TrackRef[]（ADR-0010）', async () => {
+  await reset();
+  const { status, body } = await api('/api/favorites');
+  assert.equal(status, 200);
+  assert.ok(Array.isArray(body) && body.length > 0);
+  body.forEach((r, i) => isRef(r, `favorites[${i}]`));
+});
+
+test('POST /api/feedback 能加能删，GET 立刻反映，且两个动作都幂等（ADR-0010）', async () => {
+  await reset();
+  const fb = (action) => api('/api/feedback', { method: 'POST', body: JSON.stringify({ songId: 'n1001', action }) });
+  const ids = async () => (await api('/api/favorites')).body.map((r) => r.id);
+
+  assert.equal((await fb('like')).body.ok, true, 'like 要回 { ok: true }');
+  assert.ok((await ids()).includes('n1001'), 'like 之后列表里要有它');
+  assert.equal((await fb('like')).body.ok, true, '重复 like 必须幂等');
+  assert.equal((await ids()).filter((id) => id === 'n1001').length, 1, '幂等：不许出现两条');
+
+  assert.equal((await fb('unlike')).body.ok, true);
+  assert.ok(!(await ids()).includes('n1001'), 'unlike 之后列表里不许有它');
+  assert.equal((await fb('unlike')).body.ok, true, '重复 unlike 必须幂等');
+});
+
+test('POST /api/feedback 只认封闭枚举里的 action，未知曲目不许静默成功', async () => {
+  await reset();
+  const badAction = await api('/api/feedback', { method: 'POST', body: JSON.stringify({ songId: 'n1001', action: 'love' }) });
+  assert.equal(badAction.status, 400, 'action 不在枚举里要 400，不能悄悄当成 like');
+  assert.equal(badAction.body.error.code, 'INTERNAL', '封闭枚举里没有更贴切的码');
+  const ghost = await api('/api/feedback', { method: 'POST', body: JSON.stringify({ songId: 'does-not-exist', action: 'like' }) });
+  assert.equal(ghost.status, 400, '不认识的曲目要报错，不许静默 ok');
+});
+
+test('GET /api/taste 的 genres 是数据不是装饰（ADR-0010）', async () => {
+  const { status, body } = await api('/api/taste');
+  assert.equal(status, 200);
+  assert.ok(Array.isArray(body.genres) && body.genres.length >= 3, 'DJ 详情的曲风胶囊要有数据来源');
+  body.genres.forEach((g) => assert.equal(typeof g, 'string'));
+});
+
 test('/api/settings 只回显「是否已配置」，明文 key 永不回显', async () => {
   const before_ = await api('/api/settings');
   assert.equal(before_.status, 200);

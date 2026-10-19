@@ -34,13 +34,14 @@
 | 顺序 | 分支 | 内容 | 状态 |
 |---|---|---|---|
 | 3.1 | `feat/ui-player` | Player 两态：宽窗大钟态 / 窄窗卡片态；歌词逐行高亮；口播逐句浮现 | ✅ 已合并（PR #10）。**已被 3.2 取代**：两态与歌词都不对，理由见下 |
-| 3.2 | `docs/ui-player-v2-requirement` | 需求重写：单态等比缩放、去掉歌词、补齐歌单 / 喜欢 / DJ 详情 / 口播界面 | 🔄 本 PR |
-| 3.3 | `feat/ui-player-v2` | Player 重做：先冻结契约增量（P1–P4）→ mock → UI；同时把歌词链路删干净 | |
-| 3.4 | `feat/ui-profile-settings` | Profile（taste 语料、收听统计、口播历史、`plan` 的去处）与 Settings（key 输入、模型与 TTS 音色） | |
+| 3.2 | `docs/ui-player-v2-requirement` | 需求重写：单态等比缩放、去掉歌词、补齐歌单 / 喜欢 / DJ 详情 / 口播界面 | ✅ 已合并（PR #12） |
+| 3.3 | `feat/contracts-favorites` | 冻结契约增量 P1–P4（喜欢 / 队列跳播语义 / `TasteDoc.genres`）+ ADR-0010 + mock + 契约测试 | 🔄 本 PR |
+| 3.4 | `feat/ui-player-v2` | Player 重做：按新需求写 UI；同时把歌词链路删干净 | |
+| 3.5 | `feat/ui-profile-settings` | Profile（taste 语料、收听统计、口播历史、`plan` 的去处）与 Settings（key 输入、模型与 TTS 音色） | |
 
 > 3.1 为什么被推翻：它是一个「能跑起来的电台界面」，不是「和参考分不出来的电台界面」。
 > 两态响应式意味着永远有一个态不是参考的样子；歌词则是 ADR-0009 已经砍掉的成本。
-> 3.2 只改需求和契约，不动 UI 代码——3.1 的实现留在 `main` 上继续可用，直到 3.3 落地。
+> 3.2 / 3.3 只改需求、契约与 mock，不动 UI 代码——3.1 的实现留在 `main` 上继续可用，直到 3.4 落地。
 
 **门槛**：UI 必须对着 mock 跑通**全部**状态，含抽象层第 6 节列出的所有降级 / 错误态（铁律 3）。
 所有拿不准的视觉细节先要参考截图（铁律 4）。
