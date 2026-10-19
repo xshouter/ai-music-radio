@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Clock } from './components/Clock.tsx';
 import { Composer } from './components/Composer.tsx';
+import { Credentials } from './components/Credentials.tsx';
 import { DjCard } from './components/DjCard.tsx';
 import { DjFeed } from './components/DjFeed.tsx';
 import { OnAir } from './components/OnAir.tsx';
@@ -34,6 +35,7 @@ export function App() {
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [queueShown, setQueueShown] = useState(true);
   const [djOpen, setDjOpen] = useState(false);
+  const [credOpen, setCredOpen] = useState(false);
   // 口播全屏态。seq 每开一次 +1：靠 key 重开一份干净的播放状态（口播从头播）。
   const [oral, setOral] = useState<{ turns: SpokenLine[]; seq: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -71,7 +73,7 @@ export function App() {
     <div className="viewport">
       <div className="stage">
         <div className="shell">
-          <TopBar theme={theme} onTheme={setTheme} onDj={() => setDjOpen(true)} />
+          <TopBar theme={theme} onTheme={setTheme} onDj={() => setDjOpen(true)} onLogin={() => setCredOpen(true)} />
 
           <Clock onAir={radio.now?.onAir ?? false} degraded={radio.now?.degraded ?? false} />
 
@@ -137,6 +139,8 @@ export function App() {
         )}
 
         {djOpen && <DjCard taste={radio.taste} onClose={() => setDjOpen(false)} />}
+
+        {credOpen && <Credentials onClose={() => setCredOpen(false)} />}
 
         {oral && (
           <OnAir
