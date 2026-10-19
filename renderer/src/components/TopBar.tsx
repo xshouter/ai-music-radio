@@ -2,15 +2,17 @@ import type { Theme } from '../App.tsx';
 
 const THEMES = ['dark', 'light'] as const;
 
-/** ① 顶栏。头像点开 DJ 详情；LOGIN 点开凭证弹窗（3.9 才接上）。 */
+/** ① 顶栏。头像点开 DJ 详情；LOGIN 点开凭证弹窗（3.9）。 */
 export function TopBar({
   theme,
   onTheme,
   onDj,
+  onLogin,
 }: {
   theme: Theme;
   onTheme: (theme: Theme) => void;
   onDj: () => void;
+  onLogin: () => void;
 }) {
   return (
     <header className="topbar">
@@ -19,7 +21,7 @@ export function TopBar({
       </button>
       <span className="wordmark">EdgeRunner</span>
       <div className="right">
-        <button className="pill" type="button" aria-disabled="true" title="Credentials arrive in 3.9">
+        <button className="pill" type="button" onClick={onLogin} title="API keys and the Netease cookie">
           LOGIN
         </button>
         <div className="seg">

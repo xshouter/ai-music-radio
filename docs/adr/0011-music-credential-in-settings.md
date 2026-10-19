@@ -80,4 +80,4 @@ SettingsInput.music?: { provider?: string; cookie?: string }
 - [x] `docs/abstraction-layer.md` 第 5 节：settings 两张表的行 + 危险字段禁令扩写
 - [x] `mock/server.mjs`：`settings.music` + PUT 处理（只记配没配）
 - [x] `tests/contract/mock.test.mjs`：cookie 明文与字段名双双不回显的断言
-- [ ] 未落地：`LOGIN` 弹窗本体（阶段 3.8）
+- [x] `LOGIN` 弹窗本体（阶段 3.9，PR #19）：`renderer/src/components/Credentials.tsx`

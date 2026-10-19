@@ -804,3 +804,105 @@ button[aria-disabled='true'] { cursor: default; }
 .oa-bars { flex: 1 1 auto; height: 28px; display: flex; align-items: center; gap: 2px; padding: 0; border: 0; background: none; cursor: pointer; }
 .oa-bar { flex: 1 1 auto; border-radius: 999px; background: #cfcfd1; transition: background 0.12s ease; }
 .oa-bar.is-played { background: #111; }
+
+/* ---------- ④ 凭证弹窗（3.9） ---------- */
+
+.cred-card {
+  position: relative;
+  width: 100%;
+  max-height: 100%;
+  overflow: auto;
+  padding: 22px 20px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: 0 40px 80px -24px rgba(0, 0, 0, 0.6);
+  background-color: var(--card-dj);
+  background-image: radial-gradient(circle, var(--dot-grid) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.cred-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--pill-line);
+  color: var(--text-dim);
+}
+
+.cred-close:hover { color: var(--text); border-color: var(--text-dim); }
+
+.cred-title { font-family: var(--dot); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+
+.cred-note { margin: 6px 40px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--text-dim); }
+
+.cred-block { margin-top: 16px; }
+
+.cred-block .h {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--label);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.cred-row { margin-top: 9px; display: grid; gap: 9px; }
+
+.cred-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+
+.cred-field { display: grid; gap: 4px; }
+
+.cred-field .l { font-family: var(--label); font-size: 9px; letter-spacing: 0.18em; color: var(--text-dim); }
+
+.cred-field input,
+.cred-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.cred-field input::placeholder,
+.cred-field textarea::placeholder { color: var(--text-dim); }
+.cred-field input:focus,
+.cred-field textarea:focus { border-color: var(--accent); }
+
+.cred-field textarea { height: 56px; resize: none; font-size: 11px; line-height: 1.45; }
+
+.cred-seg { width: 100%; }
+.cred-seg button { flex: 1 1 auto; }
+
+.cred-set { font-family: var(--label); font-size: 8.5px; letter-spacing: 0.18em; color: var(--accent); }
+
+.cred-foot { margin-top: 20px; display: flex; align-items: center; gap: 9px; }
+
+.cred-msg { flex: 1 1 auto; font-family: var(--label); font-size: 9.5px; letter-spacing: 0.16em; color: var(--text-dim); }
+.cred-msg.ok { color: var(--accent); }
+.cred-msg.err { color: var(--danger); }
+
+.cred-btn {
+  font-family: var(--label);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 8px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--pill-line);
+  color: var(--text-dim);
+}
+
+.cred-btn:hover { color: var(--text); border-color: var(--text-dim); }
+
+.cred-btn.primary { background: var(--accent); color: #06120d; border-color: transparent; }
