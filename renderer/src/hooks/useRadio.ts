@@ -2,8 +2,8 @@
 // 组件只读这个 hook —— 数据从哪来、怎么降级，都在这一处（铁律 5）。
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DjMessage, TrackRef } from '../../../shared/domain.ts';
-import type { NowPlaying, PlanTodayResponse, StreamEvent } from '../../../shared/api-types.ts';
-import { ApiFailure, audioUrl, chat, getNext, getNow, getPlanToday, openStream, reportPlayback } from '../api/client.ts';
+import type { NowPlaying, PlanTodayResponse, StreamEvent, TasteDoc } from '../../../shared/api-types.ts';
+import { ApiFailure, audioUrl, chat, getNext, getNow, getPlanToday, getTaste, openStream, reportPlayback } from '../api/client.ts';
 
 export interface RadioError {
   code: string;
@@ -16,6 +16,7 @@ export interface Radio {
   current: TrackRef | null;
   queue: TrackRef[];
   plan: PlanTodayResponse;
+  taste: TasteDoc | null;
   feed: DjMessage[];
   live: boolean;
   error: RadioError | null;
@@ -24,20 +25,37 @@ export interface Radio {
   positionMs: number;
   durationMs: number;
   toggle: () => void;
+  stop: () => void;
   setVolume: (value: number) => void;
   skip: () => void;
   back: () => void;
+  play: (songId: string) => void;
   say: (text: string) => void;
   dismissError: () => void;
 }
 
 let messageSeq = 0;
-const message = (role: DjMessage['role'], text: string): DjMessage => ({
+const message = (role: DjMessage['role'], text: string, meta?: Record<string, unknown>): DjMessage => ({
   id: `m${(messageSeq += 1)}`,
   ts: new Date().toISOString(),
   role,
   text,
+  ...(meta ? { meta } : {}),
 });
+
+/* 这一轮的曲目卡挂在哪：先找到「我发的那条」，再找它之后的第一条 DJ 口播。
+   WS 的 say 常常比 POST 先回来（mock 第一句只等 120ms），所以两条路径都要调它；
+   靠「已经有卡片就不动」保证幂等 —— 谁先到都对。 */
+const withCards = (prev: DjMessage[], pending: { after: string; tracks: TrackRef[] }): DjMessage[] => {
+  const from = prev.findIndex((entry) => entry.id === pending.after);
+  if (from < 0) return prev;
+  const at = prev.findIndex((entry, index) => index > from && entry.role === 'dj');
+  const target = at < 0 ? undefined : prev[at];
+  if (!target || target.meta?.tracks) return prev;
+  const next = [...prev];
+  next[at] = { ...target, meta: { ...target.meta, tracks: pending.tracks } };
+  return next;
+};
 
 const asError = (cause: unknown): RadioError =>
   cause instanceof ApiFailure
@@ -50,6 +68,7 @@ export function useRadio(): Radio {
   const [cursor, setCursor] = useState(0);
   const [localPick, setLocalPick] = useState<string | null>(null);
   const [plan, setPlan] = useState<PlanTodayResponse>(null);
+  const [taste, setTaste] = useState<TasteDoc | null>(null);
   const [feed, setFeed] = useState<DjMessage[]>([]);
   const [live, setLive] = useState(false);
   const [error, setError] = useState<RadioError | null>(null);
@@ -59,6 +78,7 @@ export function useRadio(): Radio {
   const [volume, setVolume] = useState(0.8);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const pending = useRef<{ after: string; tracks: TrackRef[] } | null>(null);
 
   // 优先级：本地刚跳过的 → 后端推来的 now → 队列里记住的位置。
   // 降级时后端会把 now 换成别的歌（可能根本不在队列里），这时必须以它为准，
@@ -85,7 +105,7 @@ export function useRadio(): Radio {
     };
   }, []);
 
-  // 首屏：三个 GET + 一条 WS。WS 连上会自带快照，所以这里的 GET 只为「连不上时也有东西看」。
+  // 首屏：四个 GET + 一条 WS。WS 连上会自带快照，所以这里的 GET 只为「连不上时也有东西看」。
   useEffect(() => {
     let alive = true;
     const onEvent = (event: StreamEvent) => {
@@ -107,10 +127,11 @@ export function useRadio(): Radio {
         case 'say':
           setFeed((prev) => {
             const last = prev[prev.length - 1];
-            if (last && last.role === 'dj') {
-              return [...prev.slice(0, -1), { ...last, text: `${last.text} ${event.payload.line}` }];
-            }
-            return [...prev, message('dj', event.payload.line)];
+            const base =
+              last && last.role === 'dj'
+                ? [...prev.slice(0, -1), { ...last, text: `${last.text} ${event.payload.line}` }]
+                : [...prev, message('dj', event.payload.line)];
+            return pending.current ? withCards(base, pending.current) : base;
           });
           break;
         case 'error':
@@ -119,12 +140,13 @@ export function useRadio(): Radio {
       }
     };
 
-    Promise.all([getNow(), getNext(), getPlanToday()])
-      .then(([firstNow, firstQueue, firstPlan]) => {
+    Promise.all([getNow(), getNext(), getPlanToday(), getTaste()])
+      .then(([firstNow, firstQueue, firstPlan, firstTaste]) => {
         if (!alive) return;
         setNow(firstNow);
         setQueue(firstQueue);
         setPlan(firstPlan);
+        setTaste(firstTaste);
       })
       .catch((cause: unknown) => {
         if (alive) setError(asError(cause));
@@ -137,7 +159,7 @@ export function useRadio(): Radio {
     };
   }, []);
 
-  // 换歌换音源。自动播放可能被浏览器拦住，那就让播放按钮说真话。
+  // 换歌换音源。自动播放可能被浏览器拦，那就让播放按钮说真话。
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -166,6 +188,19 @@ export function useRadio(): Radio {
     else audio.pause();
   }, []);
 
+  const stop = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+  }, []);
+
+  // 播放权威在客户端（ADR-0010）：切歌就是「我切到这首了」，server 只记账。
+  const play = useCallback((songId: string) => {
+    setLocalPick(songId);
+    void reportPlayback({ songId, event: 'started', at: new Date().toISOString() }).catch(() => undefined);
+  }, []);
+
   const move = useCallback(
     (step: number) => {
       const skipped = current;
@@ -185,12 +220,21 @@ export function useRadio(): Radio {
   const say = useCallback((text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    setFeed((prev) => [...prev, message('me', trimmed)]);
-    void chat(trimmed).catch((cause: unknown) => {
-      const failure = asError(cause);
-      setError(failure);
-      setFeed((prev) => [...prev, message('system', `${failure.code}: ${failure.message}`)]);
-    });
+    const mine = message('me', trimmed);
+    setFeed((prev) => [...prev, mine]);
+    void chat(trimmed)
+      .then((show) => {
+        if (show.play.length === 0) return;
+        const attach = { after: mine.id, tracks: show.play };
+        pending.current = attach;
+        setFeed((prev) => withCards(prev, attach));
+      })
+      .catch((cause: unknown) => {
+        const failure = asError(cause);
+        pending.current = null;
+        setError(failure);
+        setFeed((prev) => [...prev, message('system', `${failure.code}: ${failure.message}`)]);
+      });
   }, []);
 
   return {
@@ -198,6 +242,7 @@ export function useRadio(): Radio {
     current,
     queue,
     plan,
+    taste,
     feed,
     live,
     error,
@@ -205,10 +250,12 @@ export function useRadio(): Radio {
     positionMs,
     durationMs,
     toggle,
+    stop,
     setVolume,
     volume,
     skip: () => move(1),
     back: () => move(-1),
+    play,
     say,
     dismissError: () => setError(null),
   };
