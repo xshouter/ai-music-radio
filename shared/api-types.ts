@@ -20,16 +20,24 @@ export interface TasteDoc {
   recent: TasteUpdate[];
 }
 
-/** GET /api/settings：出参与入参分离 —— key 只回显「是否已配置」，绝不回显明文（ADR-0005）。 */
+/**
+ * GET /api/settings：出参与入参分离 —— key 只回显「是否已配置」，绝不回显明文（ADR-0005）。
+ * music 是第三块：网易云 cookie 与 apiKey 受同一套禁令保护（ADR-0011），所以也只给 cookieSet。
+ */
 export interface SettingsView {
   llm: { baseUrl: string; model: string; protocol: 'openai' | 'anthropic'; apiKeySet: boolean };
   tts: { provider: string; voice: string; apiKeySet: boolean };
+  music: { provider: string; cookieSet: boolean };
 }
 
-/** PUT /api/settings。封闭 key，写入时显式校验（ADR-0005）。 */
+/**
+ * PUT /api/settings。封闭 key，写入时显式校验（ADR-0005）。
+ * `music.cookie` 是整条网易云 cookie 头（ADR-0011）：写进去之后永不回显，写进去的值覆盖 env。
+ */
 export interface SettingsInput {
   llm?: { baseUrl?: string; model?: string; protocol?: 'openai' | 'anthropic'; apiKey?: string };
   tts?: { provider?: string; voice?: string; apiKey?: string };
+  music?: { provider?: string; cookie?: string };
 }
 
 /** 封闭的错误码枚举（抽象层第 5 节）。 */
