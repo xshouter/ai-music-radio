@@ -1,0 +1,19 @@
+{
+  // 契约是要被编译的，否则 .ts 只是带装饰的注释（需求·交付物）。
+  // 只 typecheck、不产出：shared/ 是纯类型，运行时永远不加载它。
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": [],
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": ["shared"]
+}

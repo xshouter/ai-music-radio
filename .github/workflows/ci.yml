@@ -17,10 +17,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
 
       # 铁律 5：渲染进程不许碰数据库 / 存储 / node 内建。
       # 脚本零依赖，因此代码落地前也能跑；扫不到目录就直接过。
       - name: 依赖边界检查
         run: node tools/check-boundaries.mjs
 
-      # 代码落地后在这里补 lint / test / 契约回归（见 docs/roadmap.md）
+      - name: 安装依赖
+        run: npm ci
+
+      # 契约是要被编译的，否则 .ts 只是带装饰的注释。
+      - name: 类型检查
+        run: npm run typecheck
+
+      # 同一组断言将来也打真 server（设 RADIO_BASE_URL 即可切换）。
+      - name: 契约测试
+        run: npm test
