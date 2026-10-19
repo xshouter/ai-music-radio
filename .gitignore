@@ -25,3 +25,10 @@ venv/
 
 # Logs
 *.log
+
+# CodeGraph local index (machine-specific, rebuildable)
+.codegraph/
+
+# Local runtime data — keys, DB, TTS cache. Never commit.
+data/
+cache/
