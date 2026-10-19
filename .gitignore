@@ -33,6 +33,9 @@ venv/
 data/
 cache/
 
-# Local reference material (screen frames extracted from the original demo video).
+# Local reference material (frames extracted from the original demo video).
 # Not committed: it is someone else's footage. See docs/references.md.
 docs/reference/
+
+# Agent scratch space. Durable records live in docs/requirements, docs/adr, docs/journal.
+.scratch/
