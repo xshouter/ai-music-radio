@@ -16,7 +16,7 @@
 | 顺序 | 分支 | 内容 | 状态 |
 |---|---|---|---|
 | 1.1 | `docs/decide-open-questions` | ADR-0001…0007 定掉抽象层第 10 节的 6 个开放问题 + 一次范围修正（ADR-0007） | ✅ 已合并（PR #4、#5） |
-| 1.2 | `feat/own-adapters` | 第 3 节的端口从文档落成 `shared/ports.ts`（纯类型）+ 两条契约级决策：ADR-0008 TTS 用 Fish Audio、ADR-0009 v1 不做歌词 | ⏳ 本 PR（**补做**） |
+| 1.2 | `feat/own-adapters` | 第 3 节的端口从文档落成 `shared/ports.ts`（纯类型）+ 两条契约级决策：ADR-0008 TTS 用 Fish Audio、ADR-0009 v1 不做歌词 | ✅ 已合并（PR #11） |
 
 **门槛**：这一阶段不完成，不许写第一行代码（铁律 2）。**已满足 → 阶段 2 可以开始。**
 
