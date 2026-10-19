@@ -86,10 +86,6 @@ export interface PlayStats {
   topArtists: { artist: string; count: number }[];
 }
 
-export interface Lyric {
-  lrc: string;
-}
-
 /** 系统学到的一条口味更新（ADR-0004：结构化，不回写人写的语料）。 */
 export interface TasteUpdate {
   ts: string;

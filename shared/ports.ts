@@ -128,9 +128,8 @@ export interface MusicSource {
   recommend(seed: MusicSeed, limit: number): Promise<Track[]>;
   search(keywords: string, limit: number): Promise<Track[]>;
   resolve(songId: string, level: QualityLevel): Promise<ResolvedAudio | null>;
-  // shortcut: v1 不做歌词（ADR-0009）。第 3.3 节原本有 lyric()，这里没有 ——
-  // 保持端口是最终形态，别先写一个已知要删的方法。mock/ 与 renderer/ 里歌词相关的面
-  // 还在（测试正依赖它们），等 UI 重做那个 PR 一起删，避免中间态 CI 变红。
+  // v1 不做歌词（ADR-0009），所以这里没有 lyric()。第 3.3 节原本有 —— 端口是最终形态，不留一个已知要删的方法。
+  // 债已还清：契约 / mock / 测试 / renderer 里的歌词面都已删除（PR #15），端口这边没有尾巴要跟。
 }
 
 // ── 3.5 Store —— 前端永远拿不到它 ────────────────────────────────────────

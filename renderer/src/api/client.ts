@@ -13,7 +13,6 @@ import type {
   StreamEvent,
   TasteDoc,
 } from '../../../shared/api-types.ts';
-import type { Lyric } from '../../../shared/domain.ts';
 
 // dev 里留空：走 vite 的 dev proxy（mock 不发 CORS 头，跨源会被浏览器挡掉）。
 // 真后端 / Electron 里由外部注入，例如 VITE_RADIO_BASE_URL=http://127.0.0.1:8799。
@@ -64,7 +63,6 @@ export const getNext = () => request<NextResponse>('/api/next');
 export const getTaste = () => request<TasteDoc>('/api/taste');
 export const getPlanToday = () => request<PlanTodayResponse>('/api/plan/today');
 export const getSettings = () => request<SettingsView>('/api/settings');
-export const getLyric = (songId: string) => request<Lyric | null>(`/api/lyric/${encodeURIComponent(songId)}`);
 
 export const chat = (text: string) =>
   request<ChatResponse>('/api/chat', { method: 'POST', body: JSON.stringify({ text }) });
