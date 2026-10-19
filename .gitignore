@@ -1,0 +1,38 @@
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Secrets / local config
+.env
+.env.*
+*.local
+
+# Node
+node_modules/
+dist/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs
+*.log
+
+# CodeGraph local index (machine-specific, rebuildable)
+.codegraph/
+
+# Local runtime data — keys, DB, TTS cache. Never commit.
+data/
+cache/
+
+# Local reference material (screen frames extracted from the original demo video).
+# Not committed: it is someone else's footage. See docs/references.md.
+docs/reference/
