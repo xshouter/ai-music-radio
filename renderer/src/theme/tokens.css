@@ -1,5 +1,5 @@
 /* 主题 token。唯一真相是这里；组件里不许出现字面色值。
-   配色来源：站点 branding 抓取（2026-10-20，见 docs/requirements/ui-player.md）。
+   配色来源：参考源截图逐像素采样（2026-10-20，见 PR 正文的「验证证据」）。
    抽帧只用来对布局，不对色 —— 视频两次有损压缩，目测值偏得很远（journal 记过这个教训）。 */
 
 @import url('../fonts/fonts.css');
@@ -7,52 +7,83 @@
 :root {
   color-scheme: dark;
 
-  --bg: #111111;
-  --panel: #101014;
-  --panel-head: #0c100c;
+  --outside: #050506;      /* 画布外的底：让 616×876 看起来是一块浮着的屏 */
+  --bg: #0b0b0d;
+  --panel: #101013;
+  --panel-clock: #0d0d10;
+  --frame: #1c1c20;
+  --pill-line: #3b3b43;
+  --line: #232327;
+
   --text: #dbdbdb;
-  --text-dim: #8a8a8a;
-  --line: #232323;
-  --accent: #29ffb8;
+  --text-dim: #8a8a90;
+
+  --accent: #29ffb8;       /* 深浅两态同值：light 模式采样得 #2ffdb4，是同一个绿 */
   --accent-deep: #0f3a2a;
-  --btn: #0a0a10;
-  --btn-text: #acacac;
   --danger: #ff7a6b;
-  --accent-on-dark: #29ffb8;
 
-  /* 窄窗卡片的唱片区：暖白底 + 深色字（frame-001；待干净截图确认）。 */
-  --disc: #f8f8f8;
-  --disc-text: #14140f;
-  --disc-dim: #6b6b66;
+  --btn: #0a0a10;
+  --btn-line: #35353d;
+  --btn-text: #acacac;
+  --send: #22222a;
+  --send-text: #dbdbdb;
 
-  --radius: 28px;
+  --bubble: #0e0e12;
+  --bubble-me: #15151b;
+
+  --grid: rgba(255, 255, 255, 0.045);
+  --dot-grid: rgba(255, 255, 255, 0.12);
+  --glow: rgba(41, 255, 184, 0.1);
+  --row-odd: rgba(255, 255, 255, 0.018);
+  --row-current: rgba(41, 255, 184, 0.07);
+  --pill-active-bg: #ededed;
+  --pill-active-fg: #111111;
+  --scrim: rgba(3, 3, 5, 0.74);
+  --card-dj: #0c0c10;
+
+  --radius: 22px;
   --radius-sm: 12px;
-  --gap: 12px;
 
   --dot: 'Doto', 'Inter', monospace;
   --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
-/* LIGHT 待参考截图确认（需求·阻塞项）。目前的值取自窄窗卡片抽帧（暖白 #f8f8f8 + 深色头部 #081010），
-   属于能看、但**未定稿**：拿到截图后只改这一块，布局一行不动 —— 这正是抽 token 的理由。 */
+/* LIGHT 从 light模式.png 采样：画布近白、点阵浅灰、字近黑。
+   深色元素只剩「发送键」；圆形运输键在浅底上换成描边灰（实测最深 #565656）。 */
 [data-theme='light'] {
   color-scheme: light;
 
-  --bg: #eceae4;
-  --panel: #f8f8f8;
-  --panel-head: #081010;
-  --text: #14140f;
-  --text-dim: #6b6b66;
-  --line: #dcd9d1;
-  --accent: #0f7a56;
-  --accent-deep: #d6f5e8;
-  --btn: #14140f;
-  --btn-text: #f6f6f2;
-  --danger: #b3261e;
-  --accent-on-dark: #3ddc9b;
+  --outside: #c9c9c7;
+  --bg: #fbfbfa;
+  --panel: #ffffff;
+  --panel-clock: #f4f4f3;
+  --frame: #dcdcda;
+  --pill-line: #c9c9c9;
+  --line: #e6e6e4;
 
-  /* LIGHT 的唱片区先用白底，等截图再定 —— 和上面几个值一样，属于未定稿。 */
-  --disc: #ffffff;
-  --disc-text: #14140f;
-  --disc-dim: #6b6b66;
+  --text: #111114;
+  --text-dim: #8a8a90;
+
+  --accent: #29ffb8;
+  --accent-deep: #d6f5e8;
+  --danger: #b3261e;
+
+  --btn: transparent;
+  --btn-line: #c9c9c9;
+  --btn-text: #565656;
+  --send: #111114;
+  --send-text: #f6f6f2;
+
+  --bubble: #f4f4f2;
+  --bubble-me: #ececeb;
+
+  --grid: rgba(0, 0, 0, 0.05);
+  --dot-grid: rgba(0, 0, 0, 0.13);
+  --glow: rgba(41, 255, 184, 0.18);
+  --row-odd: rgba(0, 0, 0, 0.02);
+  --row-current: rgba(41, 255, 184, 0.12);
+  --pill-active-bg: #111114;
+  --pill-active-fg: #ffffff;
+  --scrim: rgba(245, 245, 243, 0.78);
+  --card-dj: #ffffff;
 }

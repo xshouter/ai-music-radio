@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 
-const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
-/** 点阵大钟：整点跳的是数字，不是秒 —— 电台的钟只要「现在几点」。 */
+/** ② 大钟区。点阵大钟（Doto）+ 星期 + 日期 + ON AIR。 */
 export function Clock({ onAir, degraded }: { onAir: boolean; degraded: boolean }) {
   const [at, setAt] = useState(() => new Date());
 
@@ -15,18 +15,18 @@ export function Clock({ onAir, degraded }: { onAir: boolean; degraded: boolean }
   }, []);
 
   return (
-    <div className="clock-block">
+    <div className="clock-panel">
       <div className="clock">
         {pad(at.getHours())}:{pad(at.getMinutes())}
       </div>
-      <div className="clock-sub">
-        <span>
-          {WEEKDAYS[at.getDay()]} · {MONTHS[at.getMonth()]} {at.getDate()}
-        </span>
-        <span>
-          <i className={onAir ? 'dot' : 'dot off'} /> {onAir ? 'ON AIR' : 'OFF AIR'}
-        </span>
-        {degraded && <span className="badge warn">DEGRADED</span>}
+      <div className="clock-day">{WEEKDAYS[at.getDay()]}</div>
+      <div className="clock-date">
+        {at.getDate()} {MONTHS[at.getMonth()]} {at.getFullYear()}
+      </div>
+      <div className="clock-air">
+        <i className={onAir ? 'dot' : 'dot off'} />
+        {onAir ? 'ON AIR' : 'OFF AIR'}
+        {degraded && <span className="badge">DEGRADED</span>}
       </div>
     </div>
   );
