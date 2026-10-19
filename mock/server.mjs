@@ -100,6 +100,8 @@ const ERRORS = {
 const settings = {
   llm: { baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', protocol: 'openai', apiKeySet: false },
   tts: { provider: 'dashscope', voice: 'Cherry', apiKeySet: false },
+  // 第三块（ADR-0011）：cookie 的值一次都不存进内存，只存「配没配」。
+  music: { provider: 'netease', cookieSet: false },
 };
 
 const refs = (tracks) => tracks.map(ref);
@@ -327,18 +329,22 @@ async function handle(req, res) {
   if (method === 'GET' && path === '/api/settings') return sendJson(res, 200, settings);
   if (method === 'PUT' && path === '/api/settings') {
     const body = await readJson(req);
-    const next = { llm: { ...settings.llm }, tts: { ...settings.tts } };
+    const next = { llm: { ...settings.llm }, tts: { ...settings.tts }, music: { ...settings.music } };
     for (const key of ['baseUrl', 'model', 'protocol']) {
       if (body.llm?.[key] !== undefined) next.llm[key] = body.llm[key];
     }
     for (const key of ['provider', 'voice']) {
       if (body.tts?.[key] !== undefined) next.tts[key] = body.tts[key];
     }
+    if (body.music?.provider !== undefined) next.music.provider = body.music.provider;
     // key 只记「配没配」，值直接丢掉，绝不回显（危险字段禁令）。
     if (body.llm?.apiKey) next.llm.apiKeySet = true;
     if (body.tts?.apiKey) next.tts.apiKeySet = true;
+    // cookie 的值直接丢掉，一个字节都不留（危险字段禁令 / ADR-0011）。
+    if (body.music?.cookie) next.music.cookieSet = true;
     Object.assign(settings.llm, next.llm);
     Object.assign(settings.tts, next.tts);
+    Object.assign(settings.music, next.music);
     return sendJson(res, 200, settings);
   }
   if (method === 'POST' && path === '/api/chat') {

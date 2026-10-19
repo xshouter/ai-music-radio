@@ -244,8 +244,8 @@ export interface SettingsInput {
 | GET | `/api/lyric/:songId` | — | `Lyric \| null` · **待移除**：v1 不做歌词（[ADR-0009](adr/0009-drop-lyric.md)），清理由 UI 重做 PR 一并完成 |
 | GET | `/api/audio/:songId` | `?level=` | 音频流（`206`/`200`，透传 Range） |
 | GET | `/tts/<hash>.mp3` | — | 静态缓存文件 |
-| GET | `/api/settings` | — | `SettingsView`（**key 只回显是否已配置，绝不回显明文**） |
-| PUT | `/api/settings` | `Partial<SettingsInput>` | `SettingsView` |
+| GET | `/api/settings` | — | `SettingsView`（**key 与 cookie 都只回显是否已配置，绝不回显明文**，ADR-0005 / [ADR-0011](adr/0011-music-credential-in-settings.md)） |
+| PUT | `/api/settings` | `Partial<SettingsInput>` | `SettingsView` · `music.cookie` 走这条写入；**写入的值覆盖 env** |
 | POST | `/api/playback` | `{ songId, event: 'started' \| 'ended' \| 'skipped', at }` | `{ ok: true }` · `started` 同时是「切到这首了」（ADR-0010） |
 | POST | `/api/feedback` | `{ songId, action: 'like' \| 'unlike' }` | `{ ok: true }` · 喜欢 / 取消（ADR-0010） |
 | WS | `/stream` | — | 见下 |
@@ -273,7 +273,8 @@ type StreamEvent =
 
 **所有错误统一信封**： `{ error: { code, message, retryable } }`，HTTP 状态码照常用。`code` 是一个封闭枚举（`NO_LLM_KEY`、`MUSIC_SOURCE_UNREACHABLE`、`MUSIC_NOT_RESOLVABLE`、`TTS_FAILED`、`RATE_LIMITED`、`INTERNAL`）。
 
-**危险字段禁令**：`apiKey`、`MUSIC_U`、DB 路径永远不出现在任何响应里。`SettingsView` 只给 `{ llm: { baseUrl, model, protocol, apiKeySet: boolean }, ... }`。
+**危险字段禁令**：`apiKey`、`MUSIC_U` 与**整条网易云 cookie 头**、DB 路径永远不出现在任何响应、日志与错误消息里。
+`SettingsView` 只给 `{ llm: { baseUrl, model, protocol, apiKeySet }, tts: { provider, voice, apiKeySet }, music: { provider, cookieSet } }` —— 三块全是「配没配」，没有任何明文（ADR-0011）。
 
 ---
 

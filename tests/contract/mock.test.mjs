@@ -199,6 +199,21 @@ test('/api/settings 只回显「是否已配置」，明文 key 永不回显', a
   const raw = JSON.stringify(put.body);
   assert.ok(!raw.includes(secret), '响应里出现了明文 key');
   assert.ok(!raw.includes('"apiKey"'), '响应里出现了 apiKey 字段');
+
+  // ADR-0011：网易云 cookie 与 apiKey 受同一套禁令保护。
+  const cookie = 'MUSIC_U=should-never-come-back; __csrf=also-secret';
+  const putMusic = await api('/api/settings', { method: 'PUT', body: JSON.stringify({ music: { provider: 'netease', cookie } }) });
+  assert.equal(putMusic.status, 200);
+  assert.equal(putMusic.body.music.cookieSet, true);
+  assert.equal(putMusic.body.music.provider, 'netease');
+  const rawMusic = JSON.stringify(putMusic.body);
+  assert.ok(!rawMusic.includes('should-never-come-back'), '响应里出现了 cookie 明文');
+  assert.ok(!rawMusic.includes('also-secret'), '响应里出现了 __csrf 明文');
+  assert.ok(!rawMusic.includes('MUSIC_U'), '响应里出现了 MUSIC_U');
+  assert.ok(!rawMusic.includes('"cookie"'), '响应里出现了 cookie 字段');
+  const settingsAfter = await api('/api/settings');
+  assert.equal(settingsAfter.body.music.cookieSet, true, 'GET 也要说「配了」，但同样不给值');
+  assert.ok(!JSON.stringify(settingsAfter.body).includes('should-never-come-back'));
 });
 
 test('一个开关切到 degraded，队列随之只剩能解析的', async () => {
