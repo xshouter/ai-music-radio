@@ -27,7 +27,7 @@
 - **Track / TrackRef** —— 前者是完整歌曲信息；后者只带队列需要的字段（id / title / artist）。
 - **TasteDoc** —— 口味语料：人写的几份 md，加上系统学到的更新（`TasteUpdate`）。
 - **PlayEvent** —— 一首歌的播放事实（含实际音质档位、是否被跳过）。统计和 taste 闭环都靠它。
-- **Prefs** —— 设置项（key、模型、base URL、输出设备）。key 只回显"是否已配置"，**永不回显明文**。
+- **Prefs** —— 设置项（key、模型、base URL、TTS 音色）。key 只回显"是否已配置"，**永不回显明文**。
 
 ## 流程
 

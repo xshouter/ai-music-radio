@@ -3,6 +3,7 @@
 - **状态**：已接受
 - **日期**：2026-10-20
 - **关联**：`docs/abstraction-layer.md` 第 3.5 节；开放问题 5
+- **修订**：2026-10-20 删除 `net.lanAccess`（多端取消，见 ADR-0007）
 
 ## 背景
 
@@ -14,14 +15,13 @@ v0.1 的 `getPref<T>(key: string): Promise<T | null>` 里，`T` 由**调用方�
 去掉泛型，改成封闭映射：
 
 ```ts
-type PrefKey = 'llm.baseUrl' | 'llm.model' | 'llm.protocol' | 'llm.apiKey' | 'tts.voice' | 'net.lanAccess';
+type PrefKey = 'llm.baseUrl' | 'llm.model' | 'llm.protocol' | 'llm.apiKey' | 'tts.voice';
 type PrefMap = {
   'llm.baseUrl': string;
   'llm.model': string;
   'llm.protocol': 'openai' | 'anthropic';
   'llm.apiKey': string;
   'tts.voice': string;
-  'net.lanAccess': boolean;
 };
 getPref<K extends PrefKey>(key: K): Promise<PrefMap[K] | null>;
 setPref<K extends PrefKey>(key: K, value: PrefMap[K]): Promise<void>;
