@@ -1,0 +1,20 @@
+/* 内置字体的 @font-face，只包含 latin 子集。许可与来源见同目录 NOTICE.md。 */
+/* 这是 CSS，注释必须是块注释：曾经第一行用 // 写，生产构建时 lightningcss 直接报错。 */
+
+@font-face {
+  font-family: 'Doto';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('./doto-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}

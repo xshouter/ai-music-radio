@@ -4,10 +4,15 @@
   "private": true,
   "description": "EdgeRunner —— 本地常驻的个人 AI 音乐电台（求职作品集）",
   "type": "module",
+  "workspaces": [
+    "renderer"
+  ],
   "scripts": {
     "mock": "node mock/server.mjs",
-    "test": "node --test",
-    "typecheck": "tsc -p tsconfig.json",
+    "dev": "npm run dev --workspace @edgerunner/renderer",
+    "build": "npm run build --workspace @edgerunner/renderer",
+    "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspace @edgerunner/renderer",
+    "test": "node --experimental-strip-types --test",
     "boundaries": "node tools/check-boundaries.mjs"
   },
   "devDependencies": {
