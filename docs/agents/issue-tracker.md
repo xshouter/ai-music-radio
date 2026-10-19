@@ -2,6 +2,10 @@
 
 Issues and specs for this repo live as markdown files in `.scratch/`.
 
+> **注意**：`.scratch/` 已在 `.gitignore` 里——它是本地草稿区，不进仓库。
+> 需要被评审、被追溯的产物放 `docs/requirements/`（grill 产出）、`docs/adr/`（决策）、`docs/journal/`（过程），
+> 而 PR 本身是流程的主记录。
+
 ## Conventions
 
 - One feature per directory: `.scratch/<feature-slug>/`
