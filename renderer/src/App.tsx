@@ -3,10 +3,12 @@ import { Clock } from './components/Clock.tsx';
 import { Composer } from './components/Composer.tsx';
 import { DjCard } from './components/DjCard.tsx';
 import { DjFeed } from './components/DjFeed.tsx';
+import { OnAir } from './components/OnAir.tsx';
 import { Queue } from './components/Queue.tsx';
 import { TopBar } from './components/TopBar.tsx';
 import { Transport } from './components/Transport.tsx';
 import { useRadio } from './hooks/useRadio.ts';
+import type { SpokenLine } from '../../shared/domain.ts';
 
 export type Theme = 'dark' | 'light';
 
@@ -32,6 +34,8 @@ export function App() {
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [queueShown, setQueueShown] = useState(true);
   const [djOpen, setDjOpen] = useState(false);
+  // 口播全屏态。seq 每开一次 +1：靠 key 重开一份干净的播放状态（口播从头播）。
+  const [oral, setOral] = useState<{ turns: SpokenLine[]; seq: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -56,6 +60,8 @@ export function App() {
   const onLike = () => {
     if (radio.current) radio.favorite(radio.current, !radio.liked);
   };
+  const openOral = (turns: SpokenLine[]) => setOral((prev) => ({ turns, seq: (prev?.seq ?? 0) + 1 }));
+
   const onFav = () => {
     setQueueShown(true);
     radio.setSource(radio.source === 'fav' ? 'ai' : 'fav');
@@ -106,6 +112,7 @@ export function App() {
             speaking={radio.now?.djState === 'speaking'}
             currentId={radio.current?.id ?? null}
             onPlay={radio.play}
+            onOral={openOral}
             onReply={() => inputRef.current?.focus()}
           />
 
@@ -130,6 +137,20 @@ export function App() {
         )}
 
         {djOpen && <DjCard taste={radio.taste} onClose={() => setDjOpen(false)} />}
+
+        {oral && (
+          <OnAir
+            key={'oral-' + oral.seq}
+            turns={oral.turns}
+            track={radio.current}
+            playing={radio.playing}
+            positionMs={radio.positionMs}
+            durationMs={radio.durationMs}
+            onToggleSong={radio.toggle}
+            onClose={() => setOral(null)}
+          />
+        )}
+
       </div>
     </div>
   );

@@ -49,16 +49,16 @@ export function Transport(props: TransportProps) {
         </div>
         <div className="ctls">
           <button className="ctl" type="button" onClick={props.onBack} aria-label="Previous track">
-            <Icon name="prev" />
+            <Icon name="prev" size={13} />
           </button>
           <button className="ctl" type="button" onClick={props.onToggle} aria-label={props.playing ? 'Pause' : 'Play'}>
-            <Icon name={props.playing ? 'pause' : 'play'} />
+            <Icon name={props.playing ? 'pause' : 'play'} size={13} />
           </button>
           <button className="ctl" type="button" onClick={props.onSkip} aria-label="Next track">
-            <Icon name="next" />
+            <Icon name="next" size={13} />
           </button>
           <button className="ctl" type="button" onClick={props.onStop} aria-label="Stop">
-            <Icon name="stop" />
+            <Icon name="stop" size={13} />
           </button>
           <button
             className={props.liked ? 'ctl is-on' : 'ctl'}
@@ -68,7 +68,7 @@ export function Transport(props: TransportProps) {
             disabled={!props.track}
             aria-label={props.liked ? 'Remove this track from favorites' : 'Add this track to favorites'}
           >
-            <Icon name="heart" />
+            <Icon name="heart" size={13} />
           </button>
         </div>
         <div className="tools">

@@ -45,6 +45,9 @@
   --radius-sm: 12px;
 
   --dot: 'Doto', 'Inter', monospace;
+  /* 小标签专用：Doto 是点阵字体，9-10px 下会被抗锯齿糊成虚线（读不清）。
+     Doto 只留给 wordmark 与大钟（参考源也是这么分的）。 */
+  --label: 'Space Grotesk', 'Inter', sans-serif;
   --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
