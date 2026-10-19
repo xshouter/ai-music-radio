@@ -9,15 +9,15 @@
 | 顺序 | 分支 | 内容 | 状态 |
 |---|---|---|---|
 | 0.1 | `docs/abstraction-layer` | 抽象层设计 + 五条铁律细则 | ✅ 已合并（PR #2） |
-| 0.2 | `chore/repo-foundation` | PR 模板、ADR 模板、边界检查脚本 + CI、journal、references、roadmap、README | 本次 |
+| 0.2 | `chore/repo-foundation` | PR 模板、ADR 模板、边界检查脚本 + CI、journal、references、roadmap、README | ✅ 已合并（PR #3） |
 
 ## 阶段 1 · 冻结抽象层
 
-| 顺序 | 分支 | 内容 |
-|---|---|---|
-| 1.1 | `docs/decide-open-questions` | ADR-0001…0006 逐条定掉抽象层第 10 节的 6 个开放问题，抽象层升 v1.0 |
+| 顺序 | 分支 | 内容 | 状态 |
+|---|---|---|---|
+| 1.1 | `docs/decide-open-questions` | ADR-0001…0006 逐条定掉抽象层第 10 节的 6 个开放问题，抽象层升 v1.0 | ✅ 本次 |
 
-**门槛**：这一阶段不完成，不许写第一行代码（铁律 2）。
+**门槛**：这一阶段不完成，不许写第一行代码（铁律 2）。**已满足 → 阶段 2 可以开始。**
 
 ## 阶段 2 · 契约与 mock
 
