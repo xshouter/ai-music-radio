@@ -65,6 +65,8 @@ const PLAN = {
 };
 
 const TASTE = {
+  // DJ 详情弹层里的曲风胶囊（ADR-0010）。它是数据，UI 不许写死。
+  genres: ['JAZZ-HIPHOP', 'NEO-CLASSICAL', '90S 华语', 'HIP-HOP', 'BEDROOM-POP', 'J-ROCK', 'RAIN NOISE', 'POST-PUNK'],
   corpus: [
     { name: 'likes.md', text: 'Warm synth, quiet vocals, nothing that peaks. Long songs are welcome.' },
     { name: 'dislikes.md', text: 'No talk radio energy in the evening. No abrupt tempo jumps between tracks.' },
@@ -101,6 +103,10 @@ const settings = {
 };
 
 const refs = (tracks) => tracks.map(ref);
+
+// 喜欢列表（ADR-0010）。存 TrackRef 而不是 songId：v1 没有 songs 表。
+let favorites = refs([byId('n1003')]);
+const FAVORITE_ACTIONS = ['like', 'unlike'];
 
 function nowPlaying() {
   return {
@@ -302,6 +308,20 @@ async function handle(req, res) {
   }
   if (method === 'POST' && path === '/api/playback') {
     await readJson(req);
+    return sendJson(res, 200, { ok: true });
+  }
+  if (method === 'GET' && path === '/api/favorites') return sendJson(res, 200, favorites);
+  if (method === 'POST' && path === '/api/feedback') {
+    const body = await readJson(req);
+    if (!FAVORITE_ACTIONS.includes(body.action)) {
+      // 错误码是封闭枚举，这里没有「参数不合法」这种码 —— 与未知路由同一个先例，用 INTERNAL。
+      return sendError(res, 'INTERNAL', `action must be one of ${FAVORITE_ACTIONS.join('|')}, got ${JSON.stringify(body.action)}`, 400);
+    }
+    const track = byId(body.songId);
+    if (!track) return sendError(res, 'INTERNAL', `Unknown songId: ${JSON.stringify(body.songId)}`, 400);
+    // like / unlike 都幂等：先滤掉再决定加不加。
+    const rest = favorites.filter((f) => f.id !== track.id);
+    favorites = body.action === 'like' ? [...rest, ref(track)] : rest;
     return sendJson(res, 200, { ok: true });
   }
   if (method === 'GET' && path === '/api/settings') return sendJson(res, 200, settings);

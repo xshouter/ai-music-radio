@@ -15,6 +15,7 @@ import type {
   Show,
   TasteUpdate,
   Track,
+  TrackRef,
   Weather,
 } from './domain.ts';
 import type { TasteDoc } from './api-types.ts';
@@ -143,6 +144,12 @@ export interface Store {
   playStats(since: Date): Promise<PlayStats>;
   savePlan(p: DayPlan): Promise<void>;
   activePlan(date: string): Promise<DayPlan | null>;
+  /**
+   * 喜欢列表（ADR-0010）。存 TrackRef 而不是 songId：v1 没有 songs 表，
+   * 而喜欢列表这个 UI 需要曲名与歌手。
+   */
+  favorites(): Promise<TrackRef[]>;
+  setFavorite(track: TrackRef, liked: boolean): Promise<void>;
   getPref<T>(key: string): Promise<T | null>;
   setPref<T>(key: string, value: T): Promise<void>;
   appendTasteUpdate(u: TasteUpdate): Promise<void>;
