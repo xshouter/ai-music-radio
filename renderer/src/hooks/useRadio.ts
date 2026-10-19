@@ -1,10 +1,9 @@
 // 电台的全部状态：取数、订阅 WS、播音频、上报播放事实。
 // 组件只读这个 hook —— 数据从哪来、怎么降级，都在这一处（铁律 5）。
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DjMessage, TrackRef } from '../../../shared/domain.ts';
 import type { NowPlaying, PlanTodayResponse, StreamEvent } from '../../../shared/api-types.ts';
-import { ApiFailure, audioUrl, chat, getLyric, getNext, getNow, getPlanToday, openStream, reportPlayback } from '../api/client.ts';
-import { lineAt, parseLrc, type LyricLine } from '../api/lrc.ts';
+import { ApiFailure, audioUrl, chat, getNext, getNow, getPlanToday, openStream, reportPlayback } from '../api/client.ts';
 
 export interface RadioError {
   code: string;
@@ -20,8 +19,6 @@ export interface Radio {
   feed: DjMessage[];
   live: boolean;
   error: RadioError | null;
-  lyric: LyricLine[];
-  lyricIndex: number;
   playing: boolean;
   volume: number;
   positionMs: number;
@@ -56,7 +53,6 @@ export function useRadio(): Radio {
   const [feed, setFeed] = useState<DjMessage[]>([]);
   const [live, setLive] = useState(false);
   const [error, setError] = useState<RadioError | null>(null);
-  const [lyricRaw, setLyricRaw] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [positionMs, setPositionMs] = useState(0);
   const [mediaMs, setMediaMs] = useState(0);
@@ -141,25 +137,6 @@ export function useRadio(): Radio {
     };
   }, []);
 
-  // 换歌才去取歌词。
-  useEffect(() => {
-    if (!currentId) {
-      setLyricRaw(null);
-      return;
-    }
-    let alive = true;
-    getLyric(currentId)
-      .then((lyric) => {
-        if (alive) setLyricRaw(lyric?.lrc ?? null);
-      })
-      .catch(() => {
-        if (alive) setLyricRaw(null); // 没歌词不是错误，静默降级成纯播放
-      });
-    return () => {
-      alive = false;
-    };
-  }, [currentId]);
-
   // 换歌换音源。自动播放可能被浏览器拦住，那就让播放按钮说真话。
   useEffect(() => {
     const audio = audioRef.current;
@@ -178,7 +155,6 @@ export function useRadio(): Radio {
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
 
-  const lyric = useMemo(() => (lyricRaw ? parseLrc(lyricRaw) : []), [lyricRaw]);
   // 队列里的 TrackRef 不带时长（领域类型就是这么定的）；时长只可能来自 <audio> 或 now.track。
   const nowMatches = now?.track?.id === currentId ? (now.track.durationMs ?? 0) : 0;
   const durationMs = mediaMs || nowMatches;
@@ -225,8 +201,6 @@ export function useRadio(): Radio {
     feed,
     live,
     error,
-    lyric,
-    lyricIndex: lineAt(lyric, positionMs),
     playing,
     positionMs,
     durationMs,

@@ -37,16 +37,18 @@
 | 3.2 | `docs/ui-player-v2-requirement` | 需求重写：单态等比缩放、去掉歌词、补齐歌单 / 喜欢 / DJ 详情 / 口播界面 | ✅ 已合并（PR #12） |
 | 3.3 | `feat/contracts-favorites` | 冻结契约增量 P1–P4（喜欢 / 队列跳播语义 / `TasteDoc.genres`）+ ADR-0010 | ✅ 已合并（PR #13） |
 | 3.4 | `feat/contracts-credentials` | 需求按 4 条答复打补丁 + 冻结契约增量 P5（网易云凭证）+ ADR-0011 + mock + 断言 | 🔄 本 PR |
-| 3.5 | `feat/ui-player-v2` | Player 布局重做：单态等比缩放 + 删歌词链路 + DJ 详情弹层 | |
-| 3.6 | `feat/ui-queue-sources` | QUEUE 双来源切换（`AI 推荐` / `FAV`）+ 喜欢列表的行内 `✕` 删除与 `UNDO` | |
-| 3.7 | `feat/ui-now-playing` | 口播界面全屏态：真波形 + 逐词高亮 + 56 格进度 | |
-| 3.8 | `feat/ui-credentials-modal` | `LOGIN` → 凭证弹窗（LLM / TTS 的 key + 网易云 cookie） | |
-| 3.9 | `feat/ui-profile` | Profile：taste 语料、收听统计、口播历史、`plan` 的去处 | |
+| 3.5 | `feat/drop-lyric` | 还 ADR-0009 的债：歌词链路从契约 / mock / 测试 / renderer 里一并删除 | 🔄 本 PR |
+| 3.6 | `feat/ui-player-v2` | Player 布局重做：基准 **616×876** 等比缩放的单态布局 + DJ 详情弹层 | |
+| 3.7 | `feat/ui-queue-sources` | QUEUE 双来源切换（`AI 推荐` / `FAV`）+ 喜欢列表的行内 `✕` 删除与 `UNDO` | |
+| 3.8 | `feat/ui-now-playing` | 口播界面全屏态：真波形 + 逐词高亮 + 56 格进度 | |
+| 3.9 | `feat/ui-credentials-modal` | `LOGIN` → 凭证弹窗（LLM / TTS 的 key + 网易云 cookie） | |
+| 3.10 | `feat/ui-profile` | Profile：taste 语料、收听统计、口播历史、`plan` 的去处 | |
 
 > 3.1 为什么被推翻：它是一个「能跑起来的电台界面」，不是「和参考分不出来的电台界面」。
 > 两态响应式意味着永远有一个态不是参考的样子；歌词则是 ADR-0009 已经砍掉的成本。
-> 3.2–3.4 只改需求、契约与 mock，不动 UI 代码——3.1 的实现留在 `main` 上继续可用，直到 3.5 落地。
-> 3.5 是第一个动 `renderer/` 的 PR，它会把 3.1 的布局模型与歌词链路一起换掉。
+> 3.5 是第一个动 `renderer/` 的 PR，但它只做删除（歌词链路），布局一行没动——所以 3.1 的界面在 `main` 上继续可用。
+> 3.6 才换布局模型，那时界面会第一次和参考对齐。
+> 基准尺寸已定：**616×876**，取自参考源站点口播卡片的真值。
 
 **门槛**：UI 必须对着 mock 跑通**全部**状态，含抽象层第 6 节列出的所有降级 / 错误态（铁律 3）。
 所有拿不准的视觉细节先要参考截图（铁律 4）。

@@ -1,5 +1,4 @@
 import type { DjState, TrackRef } from '../../../shared/domain.ts';
-import type { LyricLine } from '../api/lrc.ts';
 
 const WAVE_BARS = [0.4, 0.75, 0.55, 0.95, 0.35, 0.7, 0.5, 0.85, 0.45, 0.65, 0.9, 0.3, 0.6, 0.8, 0.5];
 
@@ -15,8 +14,6 @@ export interface TransportProps {
   playing: boolean;
   positionMs: number;
   durationMs: number;
-  lyric: LyricLine[];
-  lyricIndex: number;
   volume: number;
   feedHidden: boolean;
   onToggle: () => void;
@@ -29,9 +26,6 @@ export interface TransportProps {
 /** 运输条（宽窗）/ 卡片（窄窗）：同一个 DOM，CSS 折两次。 */
 export function Transport(props: TransportProps) {
   const percent = props.durationMs > 0 ? Math.min(100, (props.positionMs / props.durationMs) * 100) : 0;
-  const active = props.lyricIndex >= 0;
-  const start = active ? props.lyricIndex : 0;
-  const upcoming = props.lyric.slice(start, start + 3);
 
   return (
     <section className="deck">
@@ -97,16 +91,6 @@ export function Transport(props: TransportProps) {
         </div>
         <span className="time right">{props.durationMs > 0 ? clock(props.durationMs) : '--:--'}</span>
       </div>
-
-      {upcoming.length > 0 && (
-        <ul className="lyric">
-          {upcoming.map((line, offset) => (
-            <li key={line.ms} className={active && offset === 0 ? 'lyric-line on' : 'lyric-line'}>
-              {line.text}
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   );
 }

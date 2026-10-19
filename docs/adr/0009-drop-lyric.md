@@ -1,6 +1,6 @@
 # ADR-0009 · v1 不做歌词：把歌词从契约里收敛掉
 
-- **状态**：已接受
+- **状态**：已接受，**债已还清**（删除在 [PR #15](https://github.com/xshouter/edgerunner/pull/15) 落地，2026-10-20）
 - **日期**：2026-10-20
 - **关联**：`docs/abstraction-layer.md` 第 3.3 / 5 节、`shared/ports.ts`（`MusicSource`）、`shared/api-types.ts`（`LyricResponse`）、`docs/requirements/ui-player.md`
 
@@ -39,6 +39,21 @@
     这是已知的、有时限的债，**还债时间点写在上面**（UI 重做 PR）。
 - **重新打开的条件**：出现「必须边听边看词」的真实场景（例如做卡拉OK式的跟唱、或要按歌词做时间对齐的视觉）。
   那时先做需求 grill，并按第 9 节重新引入端口。
+
+## 债务偿还记录（2026-10-20）
+
+「后果」里写的那个「有时限的债」已经还清，还债点与当时写的一致：单独一个只做删除的 PR（`feat/drop-lyric`）。
+
+删掉的面：
+
+- 契约：`Lyric`、`LyricResponse`、`GET /api/lyric/:songId`
+- mock：`LYRIC` fixture + 歌词路由
+- 契约测试：把「返回 Lyric | null」这条**换成**了「端点已经不存在（404）」——
+  删除也要有断言，否则它可能变成一个没人调、也没人拦的残留
+- renderer：`api/lrc.ts`、`hooks/useRadio.ts` 里的取歌词 effect 与派生、`Transport` 的 props 与 JSX、两处 CSS、`tests/renderer/lrc.test.mjs`
+
+当时担心的「一起删会让 CI 出现中间态变红」其实不成立：**先删契约与 mock、再删 renderer，一次跑通就没有中间态。**
+把这个 PR 单独拆出来的真正理由是它应该能被单独读懂、单独回滚（铁律 1），不是 CI。
 
 ## 被否决的选项
 

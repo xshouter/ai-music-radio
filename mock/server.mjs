@@ -79,7 +79,6 @@ const TASTE = {
   ],
 };
 
-const LYRIC = { lrc: '[00:00.00]Midnight Drive\n[00:12.00]the long way round\n[00:27.50]headlights on the water\n[00:44.00]we are in no hurry\n[01:02.00]let the hour keep us\n' };
 
 // —— 可控状态。降级与错误都不在契约里，所以放在 /__mock/ 下，UI 完全不需要知道它们 ——
 const state = {
@@ -351,10 +350,6 @@ async function handle(req, res) {
     await readJson(req);
     speak(SHOW.say);
     return sendJson(res, 200, SHOW);
-  }
-  if (method === 'GET' && path.startsWith('/api/lyric/')) {
-    const id = path.slice('/api/lyric/'.length);
-    return sendJson(res, 200, byId(id) ? LYRIC : null);
   }
 
   // 未知路径也走统一信封：错误码是封闭枚举，所以用 INTERNAL。
