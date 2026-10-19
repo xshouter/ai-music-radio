@@ -16,8 +16,12 @@
 | 顺序 | 分支 | 内容 | 状态 |
 |---|---|---|---|
 | 1.1 | `docs/decide-open-questions` | ADR-0001…0007 定掉抽象层第 10 节的 6 个开放问题 + 一次范围修正（ADR-0007） | ✅ 已合并（PR #4、#5） |
+| 1.2 | `feat/own-adapters` | 第 3 节的端口从文档落成 `shared/ports.ts`（纯类型）+ 两条契约级决策：ADR-0008 TTS 用 Fish Audio、ADR-0009 v1 不做歌词 | ✅ 已合并（PR #11） |
 
 **门槛**：这一阶段不完成，不许写第一行代码（铁律 2）。**已满足 → 阶段 2 可以开始。**
+
+> 1.2 是**补做**：1.1 时端口只活在文档里，落地时才发现有一处编译不过（见 `docs/abstraction-layer.md` 第 3 节）。
+> 它不影响阶段 2 / 3 的既有结论——契约（`shared/api-types.ts`）与端口（`shared/ports.ts`）是两份文件，前者早已冻结。
 
 ## 阶段 2 · 契约与 mock
 
@@ -44,6 +48,8 @@
 | 4.3 | `feat/music-chain` | `MusicSourceChain` + 网易云实现 + 本地兜底 |
 | 4.4 | `feat/tts-pipeline` | `core/tts.ts` 缓存 + 两个 `TtsProvider` 实现 |
 | 4.5 | `feat/scheduler-and-serving` | 调度器（`Clock` 注入）+ `core/server.ts` 实现第 5 节的全部契约 |
+
+> 4.3 / 4.4 走**自建适配层**：只借鉴公开实现的做法，用本项目自己的端口与抽象重写，**不内联任何第三方代码**。
 
 **门槛**：切到真后端时 UI **一行不改**，只换 base URL。改了 UI 就说明契约没冻结住。
 

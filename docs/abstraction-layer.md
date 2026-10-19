@@ -61,6 +61,12 @@ renderer/ views/player views/profile views/settings  api/client.ts
 
 所有端口定义在 `shared/ports.ts`，只有类型。实现住在 `core/providers/`。
 
+**已落地**：端口现在真的在 [`shared/ports.ts`](../shared/ports.ts) 里（此前只有文档）。
+落地时发现原文有一处编译不过：第 3.1 节写的是 `AbortSignal`，但 `shared/tsconfig.json` 是
+`lib: ES2022` + `types: []`——那里**没有** `AbortSignal`。文档没被编译过，所以一直没暴露。
+没有引 DOM lib 来补（`shared/` 同时被 `renderer/` 与 `core/` 消费，开 DOM 就等于让这一层能随手写 `document`），
+改成结构化类型 `CancelSignal`：原生 `AbortSignal` 满足它的形状，直接传即可。
+
 ### 3.1 LlmProvider —— 任何兼容 key 都能用
 
 ```ts
@@ -109,12 +115,14 @@ export interface MusicSource {
   recommend(seed: { songId?: string; genres?: string[]; mood?: string }, limit: number): Promise<Track[]>;
   search(keywords: string, limit: number): Promise<Track[]>;
   resolve(songId: string, level: QualityLevel): Promise<ResolvedAudio | null>;
-  lyric(songId: string): Promise<Lyric | null>;
 }
 export interface ResolvedAudio { url: string; level: QualityLevel; expiresAt?: number }
 ```
 
 `core/music/index.ts` 实现 `MusicSourceChain implements MusicSource`，按顺序试；任一源返回 `null` 就下一个；全失败返回 `null`。**降级是链的职责，不是调用方的职责。**
+
+> `lyric()` 已去掉：v1 不做歌词（[ADR-0009](adr/0009-drop-lyric.md)）。
+> mock / renderer 里歌词面的清理由「UI 重做」那个 PR 一并完成。
 
 ### 3.4 ~~OutputTarget~~（已在 v1.1 删除）
 
@@ -232,7 +240,7 @@ export interface SettingsInput {
 | GET | `/api/taste` | — | `TasteDoc`（4 份语料原文 + 最近 taste 更新） |
 | GET | `/api/plan/today` | — | `DayPlan \| null` |
 | POST | `/api/plan/regenerate` | `{ reason?: string }` | `DayPlan` |
-| GET | `/api/lyric/:songId` | — | `Lyric \| null` |
+| GET | `/api/lyric/:songId` | — | `Lyric \| null` · **待移除**：v1 不做歌词（[ADR-0009](adr/0009-drop-lyric.md)），清理由 UI 重做 PR 一并完成 |
 | GET | `/api/audio/:songId` | `?level=` | 音频流（`206`/`200`，透传 Range） |
 | GET | `/tts/<hash>.mp3` | — | 静态缓存文件 |
 | GET | `/api/settings` | — | `SettingsView`（**key 只回显是否已配置，绝不回显明文**） |
