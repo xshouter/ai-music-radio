@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DjMessage, TrackRef } from '../../../shared/domain.ts';
 import type { NowPlaying, PlanTodayResponse, StreamEvent, TasteDoc } from '../../../shared/api-types.ts';
-import { ApiFailure, audioUrl, chat, getNext, getNow, getPlanToday, getTaste, openStream, reportPlayback } from '../api/client.ts';
+import { ApiFailure, audioUrl, chat, getFavorites, getNext, getNow, getPlanToday, getTaste, openStream, reportFeedback, reportPlayback } from '../api/client.ts';
 
 export interface RadioError {
   code: string;
@@ -11,10 +11,16 @@ export interface RadioError {
   retryable: boolean;
 }
 
+/** QUEUE 面板当前展示哪一份列表（需求 3.7）。纯 UI 概念，不进 shared/。 */
+export type QueueSource = 'ai' | 'fav';
+
 export interface Radio {
   now: NowPlaying | null;
   current: TrackRef | null;
   queue: TrackRef[];
+  favorites: TrackRef[];
+  source: QueueSource;
+  liked: boolean;
   plan: PlanTodayResponse;
   taste: TasteDoc | null;
   feed: DjMessage[];
@@ -31,6 +37,8 @@ export interface Radio {
   back: () => void;
   play: (songId: string) => void;
   say: (text: string) => void;
+  setSource: (source: QueueSource) => void;
+  favorite: (track: TrackRef, on: boolean) => void;
   dismissError: () => void;
 }
 
@@ -76,15 +84,25 @@ export function useRadio(): Radio {
   const [positionMs, setPositionMs] = useState(0);
   const [mediaMs, setMediaMs] = useState(0);
   const [volume, setVolume] = useState(0.8);
+  const [source, setSource] = useState<QueueSource>('ai');
+  const [favorites, setFavorites] = useState<TrackRef[]>([]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pending = useRef<{ after: string; tracks: TrackRef[] } | null>(null);
 
-  // 优先级：本地刚跳过的 → 后端推来的 now → 队列里记住的位置。
+  // 面板里那份列表：AI 推荐 或 FAV（需求 3.7 决策 6）。切来源只换展示，不打断正在播的这首。
+  const list = source === 'fav' ? favorites : queue;
+
+  // 优先级：本地刚跳过的 → 后端推来的 now → 列表里记住的位置。
   // 降级时后端会把 now 换成别的歌（可能根本不在队列里），这时必须以它为准，
   // 否则界面显示的当前曲和后端说的不是同一首。
-  const current = (localPick ? queue.find((track) => track.id === localPick) ?? null : null) ?? now?.track ?? queue[cursor] ?? null;
+  // localPick 要在两份列表里都找：否则切来源时解析不到它，currentId 一变音频就被中途重载。
+  const picked = localPick
+    ? queue.find((track) => track.id === localPick) ?? favorites.find((track) => track.id === localPick) ?? null
+    : null;
+  const current = picked ?? now?.track ?? list[cursor] ?? null;
   const currentId = current?.id ?? null;
+  const liked = currentId !== null && favorites.some((track) => track.id === currentId);
 
   // 音频元素只建一次，事件监听只挂一次。
   useEffect(() => {
@@ -140,13 +158,14 @@ export function useRadio(): Radio {
       }
     };
 
-    Promise.all([getNow(), getNext(), getPlanToday(), getTaste()])
-      .then(([firstNow, firstQueue, firstPlan, firstTaste]) => {
+    Promise.all([getNow(), getNext(), getPlanToday(), getTaste(), getFavorites()])
+      .then(([firstNow, firstQueue, firstPlan, firstTaste, firstFavorites]) => {
         if (!alive) return;
         setNow(firstNow);
         setQueue(firstQueue);
         setPlan(firstPlan);
         setTaste(firstTaste);
+        setFavorites(firstFavorites);
       })
       .catch((cause: unknown) => {
         if (alive) setError(asError(cause));
@@ -201,6 +220,22 @@ export function useRadio(): Radio {
     void reportPlayback({ songId, event: 'started', at: new Date().toISOString() }).catch(() => undefined);
   }, []);
 
+  // 喜欢 / 取消喜欢。这里不做乐观更新：等服务端认了这一下再改本地列表 ——
+  // 这是用户数据，宁可慢一帧也不许界面和库里说的不一样；报告失败就挂到横幅上，不静默吞掉。
+  const favorite = useCallback((track: TrackRef, on: boolean) => {
+    void reportFeedback(track.id, on ? 'like' : 'unlike')
+      .then(() => {
+        setFavorites((prev) =>
+          on
+            ? prev.some((f) => f.id === track.id)
+              ? prev
+              : [...prev, track]
+            : prev.filter((f) => f.id !== track.id),
+        );
+      })
+      .catch((cause: unknown) => setError(asError(cause)));
+  }, []);
+
   const move = useCallback(
     (step: number) => {
       const skipped = current;
@@ -208,13 +243,13 @@ export function useRadio(): Radio {
         void reportPlayback({ songId: skipped.id, event: 'skipped', at: new Date().toISOString() }).catch(() => undefined);
       }
       setCursor((prev) => {
-        if (queue.length === 0) return prev;
-        const at = (prev + step + queue.length) % queue.length;
-        setLocalPick(queue[at]?.id ?? null);
+        if (list.length === 0) return prev;
+        const at = (prev + step + list.length) % list.length;
+        setLocalPick(list[at]?.id ?? null);
         return at;
       });
     },
-    [current, queue.length],
+    [current, list],
   );
 
   const say = useCallback((text: string) => {
@@ -241,6 +276,9 @@ export function useRadio(): Radio {
     now,
     current,
     queue,
+    favorites,
+    source,
+    liked,
     plan,
     taste,
     feed,
@@ -257,6 +295,8 @@ export function useRadio(): Radio {
     back: () => move(-1),
     play,
     say,
+    setSource,
+    favorite,
     dismissError: () => setError(null),
   };
 }

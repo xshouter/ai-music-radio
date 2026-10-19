@@ -4,6 +4,8 @@ import type {
   ApiError,
   ChatResponse,
   ErrorCode,
+  FavoriteAction,
+  FavoritesResponse,
   NextResponse,
   NowPlaying,
   OkResponse,
@@ -72,6 +74,12 @@ export const regeneratePlan = (reason?: string) =>
 
 export const reportPlayback = (report: PlaybackReport) =>
   request<OkResponse>('/api/playback', { method: 'POST', body: JSON.stringify(report) });
+
+export const getFavorites = () => request<FavoritesResponse>('/api/favorites');
+
+/** POST /api/feedback：口味意图（喜欢 / 取消喜欢）。幂等，和「播放事实」是两条线（ADR-0010）。 */
+export const reportFeedback = (songId: string, action: FavoriteAction) =>
+  request<OkResponse>('/api/feedback', { method: 'POST', body: JSON.stringify({ songId, action }) });
 
 /** 音频走 Range 透传，交给 <audio> 自己去取，不走 request()。 */
 export const audioUrl = (songId: string) => `${BASE}/api/audio/${encodeURIComponent(songId)}`;
