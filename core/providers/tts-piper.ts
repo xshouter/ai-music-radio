@@ -31,7 +31,7 @@ export function createPiperTts(options: PiperTtsOptions): TtsProvider {
   const dir = options.dir;
   const exe = join(dir, 'piper.exe');
   const espeakData = join(dir, 'espeak-ng-data');
-  const voiceDefault = options.voice ?? 'en_US-ryan-high';
+  const voiceDefault = options.voice ?? 'en_GB-alan-medium';
   let seq = 0;
 
   return {
