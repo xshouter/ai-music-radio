@@ -73,15 +73,39 @@
 - Profile 里的曲目**可以点**（复用 `onPlay`）：点了就切歌、Profile 留着不关 —— 和 QUEUE 的行为一致。
 - 日表**不可编辑**：`POST /api/plan/regenerate` 留给调度器与将来的 UI，这一版只读。
 
-## 验收标准
+## 验收标准（PR #21 已逐条勾）
 
-- [ ] DjCard 页脚能打开 Profile；`✕` / `CLOSE` / 点空白 / `Esc` 都能关
-- [ ] 三块数据都来自接口（taste / plan 复用旧端点，stats / history 用 ADR-0013 的新端点），**没有一个数字是写死的**
-- [ ] 三块各自的空态都能看到（mock 把历史清空 / 统计归零时可以验）
-- [ ] `PLAYSTATS` 的四个数字与 `GET /api/stats` 完全一致，不做前端二次加工
-- [ ] DARK / LIGHT 两个主题都正常
-- [ ] 中间滚动、头部页脚固定；窗口缩放到最小时布局不折
-- [ ] 边界检查通过（`renderer/` 里不许出现凭据 / SQL / `node:*`）
+- [x] DjCard 页脚能打开 Profile；`✕` / `CLOSE` / 点空白 / `Esc` 都能关
+- [x] 四块数据都来自接口（taste / plan 复用旧端点，stats / history 用 ADR-0013 的新端点），**没有一个数字是写死的**
+- [x] 四个可空的块各自有空态，且**真的验过**（`/__mock/control` 的 `{"wipe":true}` 一次清空两本账 + 语料 + 日表）
+- [x] `STATS` 的三个数字与 `GET /api/stats` 完全一致（实测 `5 / 1 / 1`，不做前端二次加工）；Top 艺人也来自同一个响应
+- [x] DARK / LIGHT 两个主题都正常
+- [x] 中间滚动、头部页脚固定；窗口缩放到最小时布局不折
+- [x] 边界检查通过（`renderer/` 里不许出现凭据 / SQL / `node:*`）
+
+## 落地记录（PR #21）
+
+### 加了一条 token：`--accent-ink`
+
+采样到的 `#2ffdb4` / `#29ffb8` 是**填充**色：它在白底上当文字用对比度约 1.3:1，等于看不见 ——
+而 `TASTE` / `TODAY` / `STATS` / `HISTORY` 四个小标题、`MORNING` / `DAYTIME` / `LATE-NIGHT` 三个 mood 全是这个绿。
+
+修法不是逐个调，而是把「填充」与「文字」分成两个 token：`--accent`（填充，亮绿，两态同值）与
+`--accent-ink`（文字 / 描边；深色态就等于 `--accent`，浅色态是 `#07724f`，对白底约 5.8:1）。
+styles.css 里 27 处 `color:` / `border-color:` 换成 `--accent-ink`，剩下的 `background` / `box-shadow` 继续用亮绿。
+**深色态一个像素没变**（两个 token 同值）。
+
+### 时间戳不用点阵字体
+
+第一版时间戳用了 `--dot`（Doto）。点阵字体在 12px 下每个点被抗锯齿糊成虚线，读数变成猜数 ——
+主界面小标签踩过同一个坑。改成 `--label`（Space Grotesk）+ `tabular-nums`；
+`STATS` 的三个数字改成与 DJ 详情同款的粗体（那里本来就不是 Doto），顺手把两处数字视觉统一了。
+
+### 空态是验过的，不是写上的
+
+给 `/__mock/control` 加了 `{"wipe":true}`：**它不在契约里**，UI 永远不会调它
+（与 `degraded` / `error` 同一个规矩）。一次清空两本账 + 语料 + 日表，截图确认五个空态各自出现、
+`STATS` 归零而不是显示 `—`（`—` 只属于「还没拉到」）。
 
 ## 已知不做
 

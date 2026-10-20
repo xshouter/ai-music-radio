@@ -43,7 +43,7 @@
 | 3.8 | `feat/ui-now-playing` | 口播界面全屏态：真波形 + 逐词高亮 + 56 格进度 | ✅ 已合并（PR #18） |
 | 3.9 | `feat/ui-credentials-modal` | `LOGIN` → 凭证弹窗（LLM / TTS 的 key + 网易云 cookie） | ✅ 已合并（PR #19） |
 | 3.10 | `feat/contracts-profile` | 契约增量 P6：`GET /api/stats` + `GET /api/history`（ADR-0013）+ mock 开始记账 + 断言 | 🔄 本 PR |
-| 3.11 | `feat/ui-profile` | Profile：taste 语料、收听统计、口播历史、`plan` 的去处 | |
+| 3.11 | `feat/ui-profile` | Profile：taste 语料、收听统计、口播历史、`plan` 的去处 | 🔄 本 PR |
 
 > 3.10 是**契约增量**（P6），跟 3.3 / 3.4 一个道理：先冻结再加界面；3.11 才是 Profile 本身。
 > 3.1 为什么被推翻：它是一个「能跑起来的电台界面」，不是「和参考分不出来的电台界面」。

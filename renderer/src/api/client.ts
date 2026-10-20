@@ -6,6 +6,7 @@ import type {
   ErrorCode,
   FavoriteAction,
   FavoritesResponse,
+  HistoryResponse,
   NextResponse,
   NowPlaying,
   OkResponse,
@@ -13,6 +14,7 @@ import type {
   PlaybackReport,
   SettingsInput,
   SettingsView,
+  StatsResponse,
   StreamEvent,
   TasteDoc,
 } from '../../../shared/api-types.ts';
@@ -65,6 +67,14 @@ export const getNow = () => request<NowPlaying>('/api/now');
 export const getNext = () => request<NextResponse>('/api/next');
 export const getTaste = () => request<TasteDoc>('/api/taste');
 export const getPlanToday = () => request<PlanTodayResponse>('/api/plan/today');
+
+/** GET /api/stats。省略 since = 今天 00:00（ADR-0013）。 */
+export const getStats = (since?: string) =>
+  request<StatsResponse>(since ? `/api/stats?since=${encodeURIComponent(since)}` : '/api/stats');
+
+/** GET /api/history。ADR-0013：后端保证倒序，limit 越界由后端夹住。 */
+export const getHistory = (limit?: number) =>
+  request<HistoryResponse>(limit === undefined ? '/api/history' : `/api/history?limit=${limit}`);
 export const getSettings = () => request<SettingsView>('/api/settings');
 
 /** PUT /api/settings。省略的字段不改；apiKey / cookie 留空等于「不改」（ADR-0005 / ADR-0011）。 */
