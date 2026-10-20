@@ -18,3 +18,8 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   perMachine: false
+# 发布到 GitHub Release。releaseType: draft —— tag 推上来先落成草稿，
+# 人看过再 `gh release edit <tag> --draft=false` 放出去（见 .github/workflows/release.yml）。
+publish:
+  provider: github
+  releaseType: draft

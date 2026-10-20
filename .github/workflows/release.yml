@@ -1,0 +1,46 @@
+name: Release
+
+# 打 tag 才出包：tag 是"这一刻的树是绿的、我要发一版"的显式声明。
+# 产物在 Release 里是 **draft** —— 先给人看一眼，再 `gh release edit <tag> --draft=false`。
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # 建 Release 要写权限；其余步骤不需要更多
+
+jobs:
+  windows-installer:
+    name: Windows 安装包
+    # 用 windows-latest 而不是 ubuntu：本地就是 Windows，发行不该换一条从没人走过的路
+    # （electron-builder 在 Linux 上打 NSIS 要多一层 wine，那是一类"只在 CI 上坏"的差异）。
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      # 出包前把门禁再跑一遍：Release 只从一棵绿的树上切下来。
+      - name: 依赖边界检查
+        run: node tools/check-boundaries.mjs
+      - name: 类型检查
+        run: npm run typecheck
+      - name: 测试
+        run: npm test
+      - name: 构建渲染进程
+        run: npm run build
+
+      # 打主进程 + preload（esbuild），不跑 electron:dev。
+      - name: 打包主进程
+        run: node tools/build-electron.mjs
+
+      # electron-builder 读 electron-builder.yml；--publish always 会在 tag 上建 Release。
+      - name: 出 Windows 安装包并发布
+        run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

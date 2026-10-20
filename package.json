@@ -4,6 +4,7 @@
   "private": true,
   "description": "EdgeRunner —— 本地常驻的个人 AI 音乐电台（求职作品集）",
   "author": "xshouter",
+  "repository": { "type": "git", "url": "https://github.com/xshouter/edgerunner.git" },
   "type": "module",
   "main": "electron/main.cjs",
   "workspaces": [
