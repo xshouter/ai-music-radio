@@ -8,6 +8,7 @@
 ![EdgeRunner](docs/journal/5.1-shell.png)
 
 [![CI](https://github.com/xshouter/edgerunner/actions/workflows/ci.yml/badge.svg)](https://github.com/xshouter/edgerunner/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/xshouter/edgerunner)](https://github.com/xshouter/edgerunner/releases)
 
 > **这是一个求职作品集项目。** 它不只要"能跑"——它被当作一次完整的产品交付来推进：
 > 每个架构决策都有 ADR，每次改动都有 PR 与四段式说明（背景 / 困难 / 决策 / 证据），**困难不许空着**。
@@ -70,7 +71,7 @@ $env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & "$env:LOCALAPPDATA
 | UI 复刻（双主题、口播全屏态、队列/FAV、DJ 详情、LOGIN） | ✅ 已合并（阶段 3） |
 | 真后端（Store / Brain / 音乐降级链 / TTS / 调度器 / 语料） | ✅ 已合并（阶段 4） |
 | Electron 外壳 + 安装包 | ✅ 已合并（阶段 5.1，PR #31） |
-| Release 流水线（打 tag 出安装包） | ✅ 本 PR |
+| Release 流水线（打 tag 出安装包；`v0.1.0` 已发布） | ✅ 已合并（PR #32、#34） |
 
 拆解与逐 PR 的推进记录见 `docs/roadmap.md` 与 `docs/journal/`。
 
