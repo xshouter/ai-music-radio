@@ -1,13 +1,13 @@
 name: Release
 
 # 打 tag 才出包：tag 是"这一刻的树是绿的、我要发一版"的显式声明。
-# 产物在 Release 里是 **draft** —— 先给人看一眼，再 `gh release edit <tag> --draft=false`。
+# 产物落成 **draft** Release —— 先给人看一眼，再 `gh release edit <tag> --draft=false` 放出去。
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write   # 建 Release 要写权限；其余步骤不需要更多
+  contents: write   # 建 Release / 上传资产要写权限；其余步骤不需要更多
 
 jobs:
   windows-installer:
@@ -39,8 +39,19 @@ jobs:
       - name: 打包主进程
         run: node tools/build-electron.mjs
 
-      # electron-builder 读 electron-builder.yml；--publish always 会在 tag 上建 Release。
-      - name: 出 Windows 安装包并发布
-        run: npx electron-builder --win --publish always
+      # --publish never：出包只管出包。发布下一步用 gh 明确地做。
+      - name: 出 Windows 安装包
+        run: npx electron-builder --win --publish never
+
+      # 一个 tag 一个 draft，资产只有安装包本身。
+      # 不传 latest.yml / blockmap：那是自动更新通道的元数据，而这个应用还没有更新器 ——
+      # 传上去等于对外宣称有一条并不存在的更新通道。
+      - name: 建 draft Release 并上传安装包
+        shell: bash
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" \
+                 --notes "EdgeRunner $GITHUB_REF_NAME。怎么装、怎么填自己的 key 见 README。"
+          gh release upload "$GITHUB_REF_NAME" release/EdgeRunner-*-setup.exe --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
