@@ -94,6 +94,7 @@ $env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & ".\EdgeRunner-x.y.
 | 开机进度：窗口先出生，排表在界面里跑，不再黑屏十几秒 | ✅ 已合并（PR #60） |
 | 错误码说真话（源不可达 / key 被拒 / 限流各报各的，开场失败也看得见） | ✅ 已合并（PR #53） |
 | 首次体验：没填 key 的开机也有歌、有口播、有引导（随包 demo 唱片） | ✅ 已合并（PR #61） |
+| 架构图：可核对的源（每个节点都钉着行号）+ 静态图，见 `docs/architecture/` | ✅ 已合并（PR #63） |
 
 拆解与逐 PR 的推进记录见 `docs/roadmap.md` 与 `docs/journal/`。
 
