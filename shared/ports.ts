@@ -95,7 +95,8 @@ export interface LlmProvider {
 export interface TtsRequest {
   text: string;
   voice: string;
-  format: 'mp3';
+  /** provider 的容器格式（TtsProvider.format）。 */
+  format: 'mp3' | 'wav';
   speed?: number;
   signal?: CancelSignal;
 }
@@ -108,6 +109,12 @@ export interface TtsResult {
 /** 缓存不在 provider 里，在 core/tts.ts：键含 providerId，换 provider 不污染旧缓存。 */
 export interface TtsProvider {
   readonly id: string;
+  /**
+   * 这个 provider 吐什么容器。引擎靠它决定缓存文件的后缀、`/tts/<key>.<ext>` 的路由，
+   * 以及算时长用哪个解析器 —— provider 是叶子，不让引擎去猜字节。
+   * 一个引擎只挂一个 provider，所以格式是**引擎级**属性，不是单句的。
+   */
+  readonly format: 'mp3' | 'wav';
   synthesize(req: TtsRequest): Promise<TtsResult>;
 }
 
@@ -146,6 +153,7 @@ export type PrefKey =
   | 'llm.apiKey'
   | 'tts.provider'
   | 'tts.voice'
+  | 'tts.baseUrl'
   | 'tts.apiKey'
   | 'music.provider'
   | 'music.cookie';
@@ -157,6 +165,7 @@ export interface PrefMap {
   'llm.apiKey': string;
   'tts.provider': string;
   'tts.voice': string;
+  'tts.baseUrl': string;
   'tts.apiKey': string;
   'music.provider': string;
   'music.cookie': string;

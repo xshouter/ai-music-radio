@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { Clock, EnvProvider, PrefMap, Store, TasteRepo } from '../shared/ports.ts';
+import type { Clock, EnvProvider, PrefMap, Store, TasteRepo, TtsProvider } from '../shared/ports.ts';
 import type { DayPlan, DjMessage, DjState, PlayEvent, QualityLevel, Show, SpokenLine, Track, TrackRef } from '../shared/domain.ts';
 import type {
   ErrorCode, FavoriteAction, NowPlaying, PlaybackReport, SettingsInput, SettingsView, StreamEvent, TasteDoc,
@@ -12,6 +12,7 @@ import { createLocalSource } from './music/local.ts';
 import { createOpenAiLlm } from './providers/llm-openai.ts';
 import { createAnthropicLlm } from './providers/llm-anthropic.ts';
 import { createFishTts } from './providers/tts-fish.ts';
+import { createPiperTts } from './providers/tts-piper.ts';
 import { createTtsEngine, wordsFor, TtsFailure } from './tts.ts';
 import { DEFAULT_PREFS, PREF_KEYS } from './state/prefs.ts';
 import { localDateKey } from './prompt.ts';
@@ -53,6 +54,11 @@ export interface RadioOptions {
   localDir: string;
   /** 口播缓存目录（cache/tts）。 */
   cacheDir: string;
+  /**
+   * 本地语音运行时目录：里面有 piper.exe、espeak-ng-data/ 和 <voice>.onnx。
+   * 组装层必须保证它是**纯 ASCII** —— piper 用 fopen 读自己的数据目录，非 ASCII 路径直接崩（实测）。
+   */
+  ttsDir: string;
   fetch?: HttpFetch;
   warn?: (message: string) => void;
 }
@@ -83,6 +89,19 @@ interface Deps {
   tts: ReturnType<typeof createTtsEngine>;
   music: ReturnType<typeof createMusicSourceChain>;
   brain: ToolLoopBrain;
+}
+
+/**
+ * 嗓子（TTS）的选择只有这一处 —— ADR-0008 的「换厂商 = 换一个 provider 文件」。
+ *
+ * piper 是默认：离线、零 key、打进包里就有声音。
+ * fish 走 HTTP：`baseUrl` 指托管端点，或指自己跑的 fish-speech（同一个 `POST /v1/tts`）。
+ */
+function ttsProviderFor(prefs: PrefMap, ttsDir: string, http: HttpFetch): TtsProvider {
+  if (prefs['tts.provider'] === 'fish') {
+    return createFishTts({ apiKey: prefs['tts.apiKey'], baseUrl: prefs['tts.baseUrl'], fetch: http });
+  }
+  return createPiperTts({ dir: ttsDir });
 }
 
 const clampLimit = (raw: number | undefined): number => {
@@ -166,7 +185,7 @@ export function createRadio(options: RadioOptions): Radio {
     const llm = prefs['llm.protocol'] === 'anthropic'
       ? createAnthropicLlm({ baseUrl: prefs['llm.baseUrl'], apiKey: prefs['llm.apiKey'], fetch: http })
       : createOpenAiLlm({ baseUrl: prefs['llm.baseUrl'], apiKey: prefs['llm.apiKey'], fetch: http });
-    const tts = createTtsEngine({ provider: createFishTts({ apiKey: prefs['tts.apiKey'], fetch: http }), dir: options.cacheDir });
+    const tts = createTtsEngine({ provider: ttsProviderFor(prefs, options.ttsDir, http), dir: options.cacheDir });
     const music = createMusicSourceChain([
       createNeteaseSource({ baseUrl: options.neteaseBaseUrl, cookie: prefs['music.cookie'], fetch: http }),
       createLocalSource({ dir: options.localDir }),
@@ -336,7 +355,7 @@ export function createRadio(options: RadioOptions): Radio {
       const prefs = await readPrefs();
       return {
         llm: { baseUrl: prefs['llm.baseUrl'], model: prefs['llm.model'], protocol: prefs['llm.protocol'], apiKeySet: prefs['llm.apiKey'] !== '' },
-        tts: { provider: prefs['tts.provider'], voice: prefs['tts.voice'], apiKeySet: prefs['tts.apiKey'] !== '' },
+        tts: { provider: prefs['tts.provider'], voice: prefs['tts.voice'], baseUrl: prefs['tts.baseUrl'], apiKeySet: prefs['tts.apiKey'] !== '' },
         music: { provider: prefs['music.provider'], cookieSet: prefs['music.cookie'] !== '' },
       };
     },
@@ -352,6 +371,7 @@ export function createRadio(options: RadioOptions): Radio {
       if (input.tts !== undefined) {
         if (typeof input.tts.provider === 'string' && input.tts.provider !== '') await store.setPref('tts.provider', input.tts.provider);
         if (typeof input.tts.voice === 'string' && input.tts.voice !== '') await store.setPref('tts.voice', input.tts.voice);
+        if (typeof input.tts.baseUrl === 'string' && input.tts.baseUrl !== '') await store.setPref('tts.baseUrl', input.tts.baseUrl);
         if (typeof input.tts.apiKey === 'string' && input.tts.apiKey !== '') await store.setPref('tts.apiKey', input.tts.apiKey);
       }
       if (input.music !== undefined) {

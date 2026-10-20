@@ -10,8 +10,8 @@ permissions:
   contents: write   # 建 Release / 上传资产要写权限；其余步骤不需要更多
 
 jobs:
-  windows-installer:
-    name: Windows 安装包
+  windows-portable:
+    name: Windows 便携版
     # 用 windows-latest 而不是 ubuntu：本地就是 Windows，发行不该换一条从没人走过的路
     # （electron-builder 在 Linux 上打 NSIS 要多一层 wine，那是一类"只在 CI 上坏"的差异）。
     runs-on: windows-latest
@@ -35,23 +35,27 @@ jobs:
       - name: 构建渲染进程
         run: npm run build
 
+      # 离线嗓子（约 95MB，不进 git）：CI 的网络是干净的，两个镜像都直连。
+      - name: 拉语音资产
+        run: npm run fetch:voice
+
       # 打主进程 + preload（esbuild），不跑 electron:dev。
       - name: 打包主进程
         run: node tools/build-electron.mjs
 
       # --publish never：出包只管出包。发布下一步用 gh 明确地做。
-      - name: 出 Windows 安装包
+      - name: 出 Windows 便携版 exe
         run: npx electron-builder --win --publish never
 
-      # 一个 tag 一个 draft，资产只有安装包本身。
+      # 一个 tag 一个 draft，资产只有那个 portable exe。
       # 不传 latest.yml / blockmap：那是自动更新通道的元数据，而这个应用还没有更新器 ——
       # 传上去等于对外宣称有一条并不存在的更新通道。
-      - name: 建 draft Release 并上传安装包
+      - name: 建 draft Release 并上传 portable exe
         shell: bash
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
             || gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" \
-                 --notes "EdgeRunner $GITHUB_REF_NAME。怎么装、怎么填自己的 key 见 README。"
-          gh release upload "$GITHUB_REF_NAME" release/EdgeRunner-*-setup.exe --clobber
+                 --notes "EdgeRunner $GITHUB_REF_NAME —— 单文件 portable exe，双击即用，不装任何东西。嗓子是打包进去的离线模型，开箱就有声音；怎么填自己的 LLM key 见 README。"
+          gh release upload "$GITHUB_REF_NAME" release/EdgeRunner-*-portable.exe --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

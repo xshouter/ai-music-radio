@@ -66,11 +66,6 @@ export function App() {
   };
   const openOral = (turns: SpokenLine[]) => setOral((prev) => ({ turns, seq: (prev?.seq ?? 0) + 1 }));
 
-  const onFav = () => {
-    setQueueShown(true);
-    radio.setSource(radio.source === 'fav' ? 'ai' : 'fav');
-  };
-
   return (
     <div className="viewport">
       <div className="stage">
@@ -88,7 +83,6 @@ export function App() {
             volume={radio.volume}
             queueShown={queueShown}
             liked={radio.liked}
-            source={radio.source}
             onToggle={radio.toggle}
             onStop={radio.stop}
             onSkip={radio.skip}
@@ -96,7 +90,6 @@ export function App() {
             onVolume={radio.setVolume}
             onToggleQueue={() => setQueueShown((prev) => !prev)}
             onLike={onLike}
-            onFav={onFav}
           />
 
           {queueShown && (
@@ -107,6 +100,7 @@ export function App() {
               currentId={radio.current?.id ?? null}
               onPlay={radio.play}
               onFavorite={radio.favorite}
+              onSource={radio.setSource}
             />
           )}
 

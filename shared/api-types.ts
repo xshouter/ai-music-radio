@@ -26,7 +26,7 @@ export interface TasteDoc {
  */
 export interface SettingsView {
   llm: { baseUrl: string; model: string; protocol: 'openai' | 'anthropic'; apiKeySet: boolean };
-  tts: { provider: string; voice: string; apiKeySet: boolean };
+  tts: { provider: string; voice: string; baseUrl: string; apiKeySet: boolean };
   music: { provider: string; cookieSet: boolean };
 }
 
@@ -36,7 +36,7 @@ export interface SettingsView {
  */
 export interface SettingsInput {
   llm?: { baseUrl?: string; model?: string; protocol?: 'openai' | 'anthropic'; apiKey?: string };
-  tts?: { provider?: string; voice?: string; apiKey?: string };
+  tts?: { provider?: string; voice?: string; baseUrl?: string; apiKey?: string };
   music?: { provider?: string; cookie?: string };
 }
 

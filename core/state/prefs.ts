@@ -3,7 +3,8 @@ import type { PrefKey, PrefMap } from '../../shared/ports.ts';
 /**
  * 设置项的出厂值。ADR-0005 的「解析失败回默认值」里的默认值就是这里的值。
  *
- * tts 的默认是 fish（ADR-0008）：tts.voice 留空 = 用音色库默认音色。
+ * tts 的默认是 piper（ADR-0022）：离线、零 key，装好就出声；voice 就是本地模型名。
+ * 想换回 Fish Audio（或自己跑的 fish-speech），把 tts.provider 改成 fish 并填 tts.baseUrl。
  * llm 的默认指向百炼的 OpenAI 兼容端点（怎么填 key 见 README「填上你自己的钥匙」），
  * 但换任何兼容 key 只是改 llm.baseUrl + llm.model，不动代码。
  */
@@ -12,8 +13,9 @@ export const DEFAULT_PREFS: PrefMap = {
   'llm.model': 'qwen-plus',
   'llm.protocol': 'openai',
   'llm.apiKey': '',
-  'tts.provider': 'fish',
-  'tts.voice': '',
+  'tts.provider': 'piper',
+  'tts.voice': 'en_US-amy-medium',
+  'tts.baseUrl': 'http://127.0.0.1:8080',
   'tts.apiKey': '',
   'music.provider': 'netease',
   'music.cookie': '',

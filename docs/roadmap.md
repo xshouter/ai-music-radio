@@ -82,6 +82,7 @@
 | 5.1 | `chore/electron-shell` | Electron 外壳：唯一组装点 + 窗口 + 令牌桥（ADR-0021） | ✅ 已合并（#31） |
 | 5.2 | `chore/release-pipeline` | Actions 打 tag 出 Windows 安装包 → draft Release；README 写清自备 key / cookie | ✅ 已合并（#32） |
 | 5.3 | `chore/release-publish-own` | 发布这一步由工作流用 `gh` 做（electron-builder 的 publisher 会建两个 draft） | ✅ 已合并（#34） |
+| 5.4 | `feat/piper-voice-and-icon` | 语音引擎换**离线 Piper**（ADR-0022，`format` 成为引擎属性）+ 只发便携 exe（ADR-0023）+ 应用图标 | ✅ 已合并（#38） |
 
 ## 贯穿全程的两件事
 
