@@ -19,6 +19,7 @@
     "boundaries": "node tools/check-boundaries.mjs",
     "smoke:llm": "node --experimental-strip-types tools/smoke-llm.mjs",
     "fetch:voice": "node tools/fetch-voice.mjs",
+    "fetch:netease": "node tools/fetch-netease.mjs",
     "smoke:tts": "node --experimental-strip-types tools/smoke-tts.mjs",
     "electron:build": "npm run build && node tools/build-electron.mjs",
     "electron:dev": "npm run electron:build && electron .",
