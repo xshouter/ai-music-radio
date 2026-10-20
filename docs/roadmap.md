@@ -81,7 +81,7 @@
 | 5.0 | `feat/serve-ui` | 打包后的 UI 由内核一起发（ADR-0020）—— 同源，免掉 CORS | ✅ 已合并（#29） |
 | 5.1 | `chore/electron-shell` | Electron 外壳：唯一组装点 + 窗口 + 令牌桥（ADR-0021） | ✅ 已合并（#31） |
 | 5.2 | `chore/release-pipeline` | Actions 打 tag 出 Windows 安装包 → draft Release；README 写清自备 key / cookie | ✅ 已合并（#32） |
-| 5.3 | `chore/release-publish-own` | 发布这一步由工作流用 `gh` 做（electron-builder 的 publisher 会建两个 draft） | ✅ 本 PR |
+| 5.3 | `chore/release-publish-own` | 发布这一步由工作流用 `gh` 做（electron-builder 的 publisher 会建两个 draft） | ✅ 已合并（#34） |
 
 ## 贯穿全程的两件事
 
