@@ -10,6 +10,7 @@
 //   POST /__mock/control  {"degraded":true}       # 电台进入降级态，WS 立刻推新的 now
 //   POST /__mock/control  {"error":"TTS_FAILED"}  # 之后所有 JSON 端点都返回该错误信封
 //   POST /__mock/control  {"error":null}          # 清除
+//   POST /__mock/control  {"boot":true}           # 放一遍假的开机进度（调进度界面用）
 //   冷启动也可用环境变量：MOCK_DEGRADED=1 / MOCK_ERROR=NO_LLM_KEY
 //
 // 不校验 x-radio-token：校验是**真 server** 的事（契约第 5 节）；mock 保持宽松，方便直接 curl。
@@ -307,6 +308,22 @@ function encodeFrame(text) {
 const push = (socket, event) => socket.write(encodeFrame(JSON.stringify(event)));
 const broadcast = (event) => { for (const socket of sockets) push(socket, event); };
 
+// 假的开机进度（ADR-0032）。steps 每次都给**累积**的那一份 —— 契约就是这么定的，
+// 于是「晚连上的客户端补一条就对齐」在 mock 上也是真的。
+const BOOT_STEPS = ['daily-pool', 'recent-plays', 'draft-plan', 'opening-line'];
+
+function playBoot() {
+  BOOT_STEPS.forEach((_, index) => {
+    setTimeout(() => {
+      broadcast({ type: 'progress', payload: { phase: 'running', steps: BOOT_STEPS.slice(0, index + 1) } });
+    }, 1500 * (index + 1));
+  });
+  setTimeout(
+    () => broadcast({ type: 'progress', payload: { phase: 'done', steps: BOOT_STEPS } }),
+    1500 * (BOOT_STEPS.length + 1),
+  );
+}
+
 // 口播逐句推：UI 的「逐句浮现」只有在 mock 上能跑出来，才不会等真后端才发现（需求·假设 2）。
 function speak(lines, only) {
   // 只发给「这一轮开始时已在线的」客户端：否则上一轮的 setTimeout 会漏进之后才连上来的客户端，
@@ -370,6 +387,7 @@ async function control(req, res) {
     TASTE.recent.length = 0;
     PLAN.blocks.length = 0;
   }
+  if (body.boot) playBoot();
   // 状态变化要广播出去：UI 不改一行代码就能显示降级/错误态（验收标准第 3 条）。
   broadcast({ type: 'now', payload: nowPlaying() });
   if (state.error) broadcast({ type: 'error', payload: { code: state.error, ...ERRORS[state.error] } });

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { BootProgress } from './components/BootProgress.tsx';
 import { Clock } from './components/Clock.tsx';
 import { Composer } from './components/Composer.tsx';
 import { Credentials } from './components/Credentials.tsx';
@@ -159,6 +160,9 @@ export function App() {
             </span>
           </footer>
         </div>
+
+        {/* 开机进度档在主界面前面；它自己决定什么时候淡出（ADR-0032）。 */}
+        <BootProgress progress={radio.progress} />
 
         {radio.error && (
           <div className="banner" role="status">

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { Clock, EnvProvider, LlmProvider, PrefMap, Store, TasteRepo, TtsProvider } from '../shared/ports.ts';
 import type { DayPlan, DjMessage, DjState, PlayEvent, QualityLevel, Show, SpokenLine, Track, TrackRef } from '../shared/domain.ts';
 import type {
-  ErrorCode, FavoriteAction, NowPlaying, PlaybackReport, SettingsInput, SettingsView, StreamEvent, TasteDoc,
+  BootStep, ErrorCode, FavoriteAction, NowPlaying, PlaybackReport, SettingsInput, SettingsView, StreamEvent, TasteDoc,
 } from '../shared/api-types.ts';
 import { defaultHttpFetch, HttpError, type HttpFetch } from './http.ts';
 import { ToolLoopBrain, type ToolStep } from './brain/index.ts';
@@ -117,6 +117,21 @@ function ttsProviderFor(prefs: PrefMap, ttsDir: string, http: HttpFetch): TtsPro
   return createPiperTts({ dir: ttsDir });
 }
 
+/**
+ * 工具名 → 进度步骤（ADR-0032）。**这是一层翻译，不是契约**：契约里的 BootStep 是 UX 概念，
+ * 工具改名不该动它；反过来，前端也不该认识工具名。
+ */
+const bootStepOf = (tool: string): BootStep | undefined => {
+  switch (tool) {
+    case 'daily_recommend': return 'daily-pool';
+    case 'recent_plays': return 'recent-plays';
+    case 'search_tracks': return 'deep-search';
+    case 'emit_plan': return 'draft-plan';
+    case 'emit_show': return 'opening-line';
+    default: return undefined;
+  }
+};
+
 const clampLimit = (raw: number | undefined): number => {
   if (raw === undefined || !Number.isFinite(raw)) return 50;
   return Math.max(1, Math.min(200, Math.floor(raw)));
@@ -160,6 +175,26 @@ export function createRadio(options: RadioOptions): Radio {
     }
   };
   const emitState = (): void => emit({ type: 'state', payload: { onAir, djState } });
+
+  // —— 开机进度（ADR-0032）：只在 boot() 这一段里发光，别的时候一条都不发 ——
+  // 载荷带的是**累积**的 steps：晚连上的窗口补一条就对齐，不用重放事件。
+  let booting = false;
+  let bootSteps: BootStep[] = [];
+  const emitProgress = (phase: 'running' | 'done'): void => {
+    emit({ type: 'progress', payload: { phase, steps: [...bootSteps] } });
+  };
+  const pushStep = (step: BootStep): void => {
+    if (!booting || bootSteps.includes(step)) return;
+    bootSteps.push(step);
+    emitProgress('running');
+  };
+  // 只有「真的发过 running」才需要一句 done —— 当天已有日表时一个步骤都没有，
+  // 那时发 done 会让界面闪一下（需求 Q1）。
+  const endBoot = (): void => {
+    if (!booting) return;
+    booting = false;
+    if (bootSteps.length > 0) emitProgress('done');
+  };
   const emitError = (code: ErrorCode, message: string, retryable: boolean): void => {
     lastError = { code, message, retryable };
     emit({ type: 'error', payload: lastError });
@@ -204,6 +239,8 @@ export function createRadio(options: RadioOptions): Radio {
   };
 
   const harvest = (step: ToolStep): void => {
+    const bootStep = bootStepOf(step.tool);
+    if (bootStep !== undefined) pushStep(bootStep);
     // 工具结果是 { tracks: [...] }，不是裸数组 —— 只看 tracks，不然 catalog 永远是空的。
     const tracks = (step.result as { tracks?: unknown } | null)?.tracks;
     if (!Array.isArray(tracks)) return;
@@ -287,6 +324,8 @@ export function createRadio(options: RadioOptions): Radio {
       // 「说了什么」就是历史。放在这里而不是 think()：被挂起来、还没说出口的那几句不该进历史。
       await store.appendMessage({ id: randomUUID(), ts: clock.now().toISOString(), role: 'dj', text: line }).catch(() => {});
       emit({ type: 'say', payload: spoken });
+      // 开场第一句出声 = 开机的等待到此为止，进度界面交接（ADR-0032）。
+      if (kind === 'intro') endBoot();
     }
     djState = 'idle';
     emitState();
@@ -435,6 +474,10 @@ export function createRadio(options: RadioOptions): Radio {
       send({ type: 'queue', payload: [...queueRefs] });
       send({ type: 'state', payload: { onAir, djState } });
       if (lastError !== null) send({ type: 'error', payload: lastError });
+      // 晚连上的窗口也要看见正在跑的开机进度（ADR-0032）—— 否则窗口出生时那一段永远是空的。
+      if (booting && bootSteps.length > 0) {
+        send({ type: 'progress', payload: { phase: 'running', steps: [...bootSteps] } });
+      }
       return () => {
         subscribers.delete(send);
       };
@@ -443,12 +486,20 @@ export function createRadio(options: RadioOptions): Radio {
     async boot() {
       // 一开机我就打碟 —— 但先把今天的日表排出来：它是开场的来源（ADR-0024），
       // 也是这一档唯一能看见「早上定下的那批歌」的地方（第 26 条记下的那个缺口）。
+      // 这一段是**唯一**会发进度的时候（ADR-0032）：窗口已经先出生，进度经 WS 推进界面。
+      booting = true;
+      bootSteps = [];
       const mark = sourceFailures;
-      await ensureTodayPlan();
-      await thinkOrStep('schedule').catch((cause: unknown) => {
-        const failure = nameFailure(cause, sourceFailures > mark);
-        emitError(failure.code, failure.message, failure.retryable);
-      });
+      try {
+        await ensureTodayPlan();
+        await thinkOrStep('schedule').catch((cause: unknown) => {
+          const failure = nameFailure(cause, sourceFailures > mark);
+          emitError(failure.code, failure.message, failure.retryable);
+        });
+      } finally {
+        // 口播出声时进度早结束了；没出声（没 key / 出错 / 排表失败）也必须在收尾结束 —— 界面不许挂住。
+        endBoot();
+      }
     },
 
     now: nowPlaying,
