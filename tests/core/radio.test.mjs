@@ -88,6 +88,7 @@ const setup = async (options = {}) => {
   await store.setPref('tts.apiKey', 'fish-test');
   if (options.llmKey !== false) await store.setPref('llm.apiKey', options.llmKey ?? KEY);
 
+  const learned = [];
   const localDir = mkdtempSync(join(tmpdir(), 'edgerunner-local-'));
   if (options.localFile !== undefined) writeFileSync(join(localDir, options.localFile), AUDIO);
 
@@ -105,7 +106,7 @@ const setup = async (options = {}) => {
     clock,
     taste: {
       read: async () => ({ genres: ['ambient'], corpus: [{ name: 'taste.md', text: 'slow, warm, nothing fast' }], recent: [] }),
-      appendLearned: async () => {},
+      appendLearned: async (line) => { learned.push(line); },
     },
     env: { weather: async () => null, calendar: async () => [] },
     neteaseBaseUrl: 'http://music.test',
@@ -113,7 +114,7 @@ const setup = async (options = {}) => {
     cacheDir: mkdtempSync(join(tmpdir(), 'edgerunner-cache-')),
     fetch,
   });
-  return { radio, store, calls };
+  return { radio, store, calls, learned };
 };
 
 const waitFor = async (predicate, ms = 3000) => {
@@ -278,7 +279,7 @@ test('HTTP：媒体路径豁免令牌 —— /tts 给字节、/api/audio 302 到
 });
 
 test('HTTP：播放事实、喜欢、统计、历史、日表都从这一处出', async () => {
-  const { radio } = await setup();
+  const { radio, learned } = await setup();
   await radio.boot();
   const { server, base } = await listen(radio);
   try {
@@ -294,6 +295,7 @@ test('HTTP：播放事实、喜欢、统计、历史、日表都从这一处出'
     assert.deepEqual((await call(base, '/api/favorites')).json.map((ref) => ref.id), ['1002']);
     assert.equal((await call(base, '/api/feedback', { method: 'POST', body: { songId: '1002', action: 'unlike' } })).status, 200);
     assert.deepEqual((await call(base, '/api/favorites')).json, []);
+    assert.deepEqual(learned, ['Kept Neon Hours — Kite & Ash.', 'Dropped Neon Hours — Kite & Ash.'], '♡ 是人的动作，记成一条学到的（ADR-0004）');
 
     const stats = (await call(base, '/api/stats')).json;
     assert.equal(stats.played, 1);
