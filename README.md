@@ -1,9 +1,11 @@
 # EdgeRunner · AI Music Radio
 
-**EdgeRunner** 是一个**本地常驻的个人 AI 电台**：它自己排当天的节目、自己挑歌、用英文开口讲一两句，
-然后把歌和话串成一条不断的流。
+**EdgeRunner** 是一个**本地常驻的个人 AI 电台**：打开就在放，DJ 用英文讲一两句，串成一条不断的流。
+你可以随时插话（"来点能专注的"），它会当场调头。
 
-交互形状复刻自 [Claudio x mmguo FM](https://mmguo.dev/claudio-fm/)，**代码从零写**（见 `docs/references.md`）。
+界面形状复刻自 [Claudio x mmguo FM](https://mmguo.dev/claudio-fm/)，**代码从零写**（见 `docs/references.md`）。
+
+![EdgeRunner](docs/journal/5.1-shell.png)
 
 [![CI](https://github.com/xshouter/edgerunner/actions/workflows/ci.yml/badge.svg)](https://github.com/xshouter/edgerunner/actions/workflows/ci.yml)
 
@@ -13,42 +15,80 @@
 
 ## 它是什么
 
-- 打开就是一个电台，不用点"播放"。
+- 打开就是一个电台，不用点"播放"。口号：**一开机我就打碟**。
 - DJ 每天排一次节目表，按时段换 mood（清晨 / 白天 / 深夜）。
-- 换歌之间，DJ 会用英文说一两句——为什么放这首、接下来往哪走。
-- 可以随时插话（`POST /api/chat`："来点能专注的"），DJ 会当场调头。
-- 歌词逐行跟着走。
+- 换歌之间，DJ 会用**英文**说一两句——为什么放这首、接下来往哪走。
+- 可以随时插话（`POST /api/chat`："something slow for focus"），DJ 当场改队列。
+- `♡` 是"我的口味"：点一下，系统就记一条"学到的"；`FAV` 面板就地换成喜欢列表。
+- 双主题（DARK / LIGHT），整块界面按固定比例等比缩放。
 
-只服务作者一个人：单用户、单机、无账号体系。
+只服务作者一个人：**单用户、单机（PC）、无账号体系**。
+
+## 下载并运行
+
+去 [Releases](https://github.com/xshouter/edgerunner/releases) 下 `EdgeRunner-x.y.z-setup.exe`，双击安装。
+
+**安装包里不含任何凭证。** 第一次打开是"哑"的（没有大脑、没有音乐源）——这一节教你把钥匙填进去。
+
+## 填上你自己的钥匙
+
+在界面右上角点 **LOGIN**，弹窗里填。三类，都只存在你自己机器的用户数据目录里：
+
+| 要什么 | 从哪来 | 不填会怎样 |
+|---|---|---|
+| **LLM key**（任何 OpenAI 或 Anthropic 兼容的） | 默认指阿里云百炼的 OpenAI 兼容端点（`llm.baseUrl` + `llm.model` 可改，`llm.protocol` 切 openai/anthropic） | 不做口播、不自己排歌；界面会提示 `No brain configured yet` |
+| **TTS key**（Fish Audio，ADR-0008） | [fish.audio](https://fish.audio) | 口播只剩文字，没有声音（`TTS_FAILED` 有兜底文案，不中断） |
+| **网易云 cookie**（ADR-0011） | 浏览器登录 music.163.com 后整条 Cookie 头 | 音乐源退到本地目录 |
+
+**再补一件（音乐源这一环不闭环，说明白）：** 网易云的 web 接口要过一层请求加密，而这层**不在内核里**
+（ADR-0016）——它由一个 NeteaseCloudMusicApi **兼容服务**承担。默认地址 `http://127.0.0.1:3000`，
+可以用环境变量 `EDGERUNNER_NETEASE_BASE_URL` 改：
+
+```powershell
+$env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & "$env:LOCALAPPDATA\Programs\EdgeRunner\EdgeRunner.exe"
+```
+
+没有它也能用：电台会退到**本地音乐目录**继续工作（界面上出现降级标记）。把 mp3 丢进
+`%APPDATA%\EdgeRunner\music\` 就有歌可放 —— 这条降级链是设计的一部分，不是兜底补丁。
+
+**数据存在哪**（全部在本机，不进仓库）：
+
+```
+%APPDATA%\EdgeRunner\
+  data\edgerunner.sqlite   # 设置（key/cookie）、播放事实、历史、日表、口味结论
+  data\taste\              # 语料：你自己写的 .md；系统的结论只写库，永不回写（ADR-0004）
+  music\                   # 本地音乐兜底目录
+```
 
 ## 进展
 
 | 阶段 | 状态 |
 |---|---|
-| 抽象层设计 + 五条铁律 | ✅ 已合并 |
-| 仓库地基（PR 模板 / ADR 模板 / 边界检查 + CI / 日志） | ✅ 已合并（PR #3） |
-| 冻结抽象层（ADR-0001…0007，含「只做 PC 单端」的范围修正） | ✅ 已合并（PR #4、#5） |
+| 抽象层设计 + 五条铁律 | ✅ 已合并（PR #3） |
+| 冻结抽象层（ADR-0001…0007） | ✅ 已合并（PR #4、#5） |
 | 契约 + mock | ✅ 已合并（PR #8） |
-| UI 复刻（宽窗大钟态 / 窄窗卡片态） | — |
-| 真后端（Store / Brain / 音乐降级链 / TTS / 调度器） | — |
-| Electron 打包 + Release | — |
+| UI 复刻（双主题、口播全屏态、队列/FAV、DJ 详情、LOGIN） | ✅ 已合并（阶段 3） |
+| 真后端（Store / Brain / 音乐降级链 / TTS / 调度器 / 语料） | ✅ 已合并（阶段 4） |
+| Electron 外壳 + 安装包 | ✅ 已合并（阶段 5.1，PR #31） |
+| Release 流水线（打 tag 出安装包） | ✅ 本 PR |
 
-拆解见 `docs/roadmap.md`。**UI 复刻是这个项目的重心**——它决定这个项目有没有"taste"。
+拆解与逐 PR 的推进记录见 `docs/roadmap.md` 与 `docs/journal/`。
 
 ## 架构
 
 ```mermaid
 flowchart LR
-  R["renderer/ 界面"] -- "HTTP + WS（唯一通道）" --> M["main/ Electron 外壳<br/>唯一组装点"]
-  M --> C["core/ 编排<br/>router · brain · scheduler · tts"]
+  R["renderer/ 界面"] -- "HTTP + WS（唯一通道）" --> M["main/ Electron 外壳<br/>唯一组装点 bootstrap.ts"]
+  M --> C["core/ 编排<br/>radio · brain · plan · tts · taste · server"]
   C -- "端口（interface）" --> P["core/providers/ 具体实现<br/>LLM · TTS · 音乐源"]
-  C --> S[("SQLite")]
+  C --> S[("SQLite<br/>node:sqlite，驱动由 main/ 注入")]
   SH["shared/ 只有类型"] -.-> R
   SH -.-> C
 ```
 
-依赖方向单向向下：`renderer/` 只认 `shared/` 的类型；`core/` 不认识 Electron；
+依赖方向单向向下：`renderer/` 只认 `shared/` 的类型；`core/` 不认识 Electron，也不认识具体的 SQLite 驱动；
 **具体实现只在 `main/bootstrap.ts` 被 `new` 出来**。
+
 完整定义（端口签名、数据与 API 契约、降级语义、测试切入点）见 `docs/abstraction-layer.md`。
 
 ## 工程纪律
@@ -62,7 +102,7 @@ flowchart LR
 5. **前端永远不碰数据库** —— `renderer/` 只能通过 HTTP/WS 说话
 
 其中第 1、5 条由机器而不是靠自觉保证：PR 模板强制四段正文，
-`tools/check-boundaries.mjs` 在 CI 里扫越界的 import 与 SQL 特征串。
+`tools/check-boundaries.mjs` 在 CI 里扫越界的 import 与 SQL 特征串（`renderer/` / `core/` / `main/` / `shared/` 四层）。
 
 ## 目录导览
 
@@ -70,33 +110,47 @@ flowchart LR
 |---|---|
 | `docs/abstraction-layer.md` | 系统的"缝"：分层、端口、契约、降级语义 |
 | `docs/roadmap.md` | 分阶段、按 PR 拆解的推进计划 |
+| `docs/requirements/` | 每个功能"被要求做什么"（铁律 2 的产出） |
 | `docs/adr/` | 架构决策记录（含模板） |
 | `docs/journal/` | 开发日志：踩到的坑与当时的判断 |
 | `docs/references.md` | 参考源、与原型的差异、版权边界 |
 | `docs/engineering-rules.md` | 五条铁律的落地细则 |
 | `AGENTS.md` | 五条铁律正文 |
-| `tools/check-boundaries.mjs` | 铁律 5 的机械检查 |
 | `shared/` | 前后端唯一真相：只有类型，零运行时依赖 |
-| `mock/` | 零依赖假后端（阶段 2）：UI 对着它开发 |
-| `tests/contract/` | 契约测试：同一组断言将来也打真 server |
+| `core/` | 内核：编排 + 端口 + 具体实现（不认识 Electron） |
+| `main/` | 唯一组装点 + Electron 外壳 + 令牌桥 |
+| `renderer/` | 界面（Vite + React 19 + TS） |
+| `mock/` | 零依赖假后端：UI 对着它开发 |
+| `tools/check-boundaries.mjs` | 铁律 5 的机械检查 |
 
-## 怎么跑
-
-先跑假后端（不需要任何 key）：
+## 开发
 
 ```bash
 npm install
-npm run mock          # http://127.0.0.1:8765
-npm test              # 契约测试
+
+npm run mock          # 零依赖假后端 → http://127.0.0.1:8765
+npm run dev           # 界面（vite）→ http://localhost:5173，/api 代理到 mock
+
+npm run boundaries    # 铁律 5 的机械检查
+npm run typecheck     # shared / core / main / renderer 四处
+npm test              # 内核 + 外壳的自检
+npm run build         # 构建界面
+
+npm run electron:dev  # 本机起壳：打主进程 + 开窗（等价于装了 exe 的效果）
+npm run dist          # 出 Windows 安装包 → release/
 ```
 
-`mock/` 是零依赖的假后端：它按 `shared/api-types.ts` 的第 5 节契约返回固定 fixture，
-并能整体切到降级态、逐项触发每个错误码（`/__mock/control`），UI 不必改一行代码就能显示对应状态。
+出包只从**绿的**树上切（见 `.github/workflows/release.yml`）：
 
-界面（`renderer/`）还没开始——那是阶段 3。exe 与「怎么填自己的 API key」在阶段 5 落地。
+```bash
+git tag v0.1.0 && git push origin v0.1.0     # 流水线建一个 draft Release
+gh release edit v0.1.0 --draft=false          # 人看过再放出去
+```
 
 ## 诚实声明
 
 - 与原型作者 mmguo **无关**，不使用其任何代码或素材；仓库内不含音频、歌词、封面素材。
 - 音乐播放定位为**个人自用**；取流逻辑全部收在 `MusicSource` 端口后面，换成合法音源只需新增一个实现。
 - 发布出去的 exe **不包含任何凭证**，所有 key 由使用者自己填写。
+- **已知边界（不藏）**：只做 PC 单端；不做歌词；网易云要一个外部兼容服务（上上节）；
+  口播是英文；TTS 响应没有词级时间戳，逐词高亮是按音频总长均分的（ADR-0017）。
