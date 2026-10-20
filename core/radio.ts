@@ -4,7 +4,7 @@ import type { DayPlan, DjMessage, DjState, PlayEvent, QualityLevel, Show, Spoken
 import type {
   ErrorCode, FavoriteAction, NowPlaying, PlaybackReport, SettingsInput, SettingsView, StreamEvent, TasteDoc,
 } from '../shared/api-types.ts';
-import { defaultHttpFetch, type HttpFetch } from './http.ts';
+import { defaultHttpFetch, HttpError, type HttpFetch } from './http.ts';
 import { ToolLoopBrain, type ToolStep } from './brain/index.ts';
 import { createMusicSourceChain } from './music/index.ts';
 import { createNeteaseSource } from './music/netease.ts';
@@ -43,6 +43,14 @@ export class RadioFailure extends Error {
     this.retryable = retryable;
   }
 }
+
+/**
+ * LLM 上游 HTTP 状态 → 封闭枚举里的真话（core/http.ts:48 那句注释欠的账）：
+ * 401/403 是 **key 不被接受**（用户要去做的事和"没配 key"是同一件：开 LOGIN 换一个），
+ * 429 是 **被限流**（等着就行）。其余按"上游坏了"算 INTERNAL —— 词表就这么大，没有第七个码。
+ */
+const llmFailureCode = (status: number): ErrorCode =>
+  status === 401 || status === 403 ? 'NO_LLM_KEY' : status === 429 ? 'RATE_LIMITED' : 'INTERNAL';
 
 export interface RadioOptions {
   store: Store;
@@ -134,6 +142,13 @@ export function createRadio(options: RadioOptions): Radio {
   let heldSay = new Map<string, string>();
   let deps: Deps | null = null;
   let signature = '';
+  // 音乐链喊过几回"源全都不可达"。**单调计数**而不是布尔：归因只问"这一段里涨没涨"，
+  // 免得一次偶发失败把后面所有无关的失败都算到音乐源头上。
+  let sourceFailures = 0;
+  // 最近一次还没被"好的一轮"抵掉或没被用户 DISMISS 的失败。
+  // 它存在的理由只有一个：**开场失败是在窗口存在之前发的**（main 先 boot 再建窗），
+  // 那条事件当时一个订阅者都没有 —— 快照得把它带上，否则用户什么都听不见。
+  let lastError: Extract<StreamEvent, { type: 'error' }>['payload'] | null = null;
 
   const emit = (event: StreamEvent): void => {
     for (const send of subscribers) {
@@ -145,8 +160,27 @@ export function createRadio(options: RadioOptions): Radio {
     }
   };
   const emitState = (): void => emit({ type: 'state', payload: { onAir, djState } });
-  const emitError = (code: ErrorCode, message: string, retryable: boolean): void =>
-    emit({ type: 'error', payload: { code, message, retryable } });
+  const emitError = (code: ErrorCode, message: string, retryable: boolean): void => {
+    lastError = { code, message, retryable };
+    emit({ type: 'error', payload: lastError });
+  };
+
+  /**
+   * 给一次失败定名。三档，按"谁更该被怪"排：
+   * 1. 上游 HTTP 的错说它自己的样子（key 被拒 / 被限流）；
+   * 2. 这一段里音乐源喊过"不可达" → 报源不可达。链把"源不在"收拾成空结果，
+   *    用户那边看到的就是"电台死了还不说话" —— UI 上那句人话就是为它写的；
+   * 3. 其余才落到笼统的 INTERNAL。
+   */
+  const nameFailure = (cause: unknown, sourceDown: boolean): RadioFailure => {
+    if (cause instanceof RadioFailure) return cause;
+    if (cause instanceof HttpError) {
+      const code = llmFailureCode(cause.status);
+      return new RadioFailure(code, cause.message, code !== 'NO_LLM_KEY');
+    }
+    if (sourceDown) return new RadioFailure('MUSIC_SOURCE_UNREACHABLE', 'The music source did not answer.', true);
+    return new RadioFailure('INTERNAL', cause instanceof Error ? cause.message : String(cause), true);
+  };
 
   const nowPlaying = (): NowPlaying => ({
     track: current,
@@ -193,10 +227,13 @@ export function createRadio(options: RadioOptions): Radio {
       ? createAnthropicLlm({ baseUrl: prefs['llm.baseUrl'], apiKey: prefs['llm.apiKey'], fetch: http })
       : createOpenAiLlm({ baseUrl: prefs['llm.baseUrl'], apiKey: prefs['llm.apiKey'], fetch: http });
     const tts = createTtsEngine({ provider: ttsProviderFor(prefs, options.ttsDir, http), dir: options.cacheDir });
-    const music = createMusicSourceChain([
-      createNeteaseSource({ baseUrl: options.neteaseBaseUrl, cookie: prefs['music.cookie'], fetch: http }),
-      createLocalSource({ dir: options.localDir }),
-    ]);
+    const music = createMusicSourceChain(
+      [
+        createNeteaseSource({ baseUrl: options.neteaseBaseUrl, cookie: prefs['music.cookie'], fetch: http }),
+        createLocalSource({ dir: options.localDir }),
+      ],
+      { onUnreachable: () => { sourceFailures += 1; } },
+    );
     const brain = new ToolLoopBrain({ llm, music, store, taste, env, model: prefs['llm.model'], onStep: harvest });
 
     deps = { prefs, tts, music, brain, llm };
@@ -256,6 +293,8 @@ export function createRadio(options: RadioOptions): Radio {
   };
 
   const applyShow = (show: Show): void => {
+    // 有一轮真的成了：上一条失败（比如"音乐源没在答话"）就是过去的事了，别让它继续挂着。
+    lastError = null;
     queueRefs = show.play;
     const first = show.play[0];
     if (first !== undefined) {
@@ -279,6 +318,8 @@ export function createRadio(options: RadioOptions): Radio {
   };
 
   const think = async (trigger: 'schedule' | 'chat' | 'track_end' | 'manual', userText?: string): Promise<Show> => {
+    // 这一轮的失败归因只看这段区间里音乐链有没有喊过（见 nameFailure）。
+    const mark = sourceFailures;
     const d = await providers();
     djState = 'thinking';
     emitState();
@@ -294,7 +335,7 @@ export function createRadio(options: RadioOptions): Radio {
       djState = 'idle';
       emitState();
       emit({ type: 'now', payload: nowPlaying() });
-      throw cause;
+      throw nameFailure(cause, sourceFailures > mark);
     }
   };
 
@@ -370,6 +411,7 @@ export function createRadio(options: RadioOptions): Radio {
       send({ type: 'now', payload: nowPlaying() });
       send({ type: 'queue', payload: [...queueRefs] });
       send({ type: 'state', payload: { onAir, djState } });
+      if (lastError !== null) send({ type: 'error', payload: lastError });
       return () => {
         subscribers.delete(send);
       };
@@ -378,9 +420,11 @@ export function createRadio(options: RadioOptions): Radio {
     async boot() {
       // 一开机我就打碟 —— 但先把今天的日表排出来：它是开场的来源（ADR-0024），
       // 也是这一档唯一能看见「早上定下的那批歌」的地方（第 26 条记下的那个缺口）。
+      const mark = sourceFailures;
       await ensureTodayPlan();
       await thinkOrStep('schedule').catch((cause: unknown) => {
-        emitError('INTERNAL', cause instanceof Error ? cause.message : String(cause), true);
+        const failure = nameFailure(cause, sourceFailures > mark);
+        emitError(failure.code, failure.message, failure.retryable);
       });
     },
 
@@ -520,9 +564,14 @@ export function createRadio(options: RadioOptions): Radio {
 
     async resolveAudio(songId, level) {
       const d = await providers();
+      const mark = sourceFailures;
       const resolved = await d.music.resolve(songId, level ?? 'exhigh').catch(() => null);
       if (resolved === null) {
-        // 链把"源不可达"和"解析不出来"都收敛成 null（ADR-0016 的既定取舍），所以这里只能报这一句。
+        // 链把"源不可达"和"解析不出来"都收敛成 null（ADR-0016 的既定取舍）——
+        // 但它刚喊过那一声，所以这次分得清：源不在，不该说成"这首歌没有可播的地址"。
+        if (sourceFailures > mark) {
+          throw new RadioFailure('MUSIC_SOURCE_UNREACHABLE', 'The music source did not answer.', true);
+        }
         throw new RadioFailure('MUSIC_NOT_RESOLVABLE', 'This track cannot be resolved at any quality level.', false);
       }
       levels.set(songId, resolved.level);

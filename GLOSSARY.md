@@ -25,6 +25,9 @@
 - **Provider** —— 端口的一个具体实现，住在 `core/providers/`。
 - **唯一组装点** —— `main/bootstrap.ts`。全仓库唯一允许 `new` 具体实现的地方。
 - **降级链（`MusicSourceChain`）** —— 依次尝试多个音乐源。这一层吸收全部"取不到"的失败，调用方只看到成功或 `null`。
+  但**"源不在"和"没这首"是两件事**：全空手而归、且至少一个源是抛错走的，它会喊一次 `onUnreachable`（ADR-0027）。
+- **错误码（`ErrorCode`）** —— `shared/api-types.ts` 里的**封闭枚举**（六个），每个码在 UI 上一句人话。
+  上游怎么坏，就必须翻译成这六个里的哪一个 —— 不许一律报 `INTERNAL`（ADR-0027）。
 - **Clock / EnvProvider** —— 被注入的"现在几点"和外部世界（天气、日历）。禁止直接 `new Date()`。
 
 ## 数据与状态

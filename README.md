@@ -51,8 +51,15 @@ $env:PORT = 3000; $env:HOST = "127.0.0.1"; npx --yes NeteaseCloudMusicApi
 $env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & ".\EdgeRunner-x.y.z-portable.exe"
 ```
 
-没有它也能用：电台会退到**本地音乐目录**继续工作（界面上出现降级标记）。把 mp3 丢进
-`%APPDATA%\EdgeRunner\music\` 就有歌可放 —— 这条降级链是设计的一部分，不是兜底补丁。
+**没起它也能用 —— 但前提是本地目录里真有歌。** 降级链退到**本地音乐目录**（界面上出现降级标记）：
+把 mp3 丢进 `%APPDATA%\EdgeRunner\music\` 就有歌可放 —— 这条降级链是设计的一部分，不是兜底补丁。
+
+反过来，**兼容服务没起、本地目录又是空的**：音乐源一首也拿不出来，大脑就没有可排的曲目，
+电台会停在 `OFF AIR`。这种情况下界面会明确报 `MUSIC_SOURCE_UNREACHABLE`：
+
+> The music source is not answering. Only what is cached locally can play.
+
+看到这一句就回去起上面那条命令 —— **它说的不是你的 key 有问题**（ADR-0027）。
 
 **数据存在哪**（全部在本机，不进仓库）：
 
@@ -78,6 +85,7 @@ $env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & ".\EdgeRunner-x.y.
 | 口播：连续化 + 逐首挂起 + 音色换成低沉有磁性的男声 | ✅ 已合并（PR #45、#46、#49、#51） |
 | 开机：歌单读成口味画像 → 日表 → 开场口播 | ✅ 已合并（PR #47、#48） |
 | 窗口与界面细节（等比缩小 / 圆角 / 环境光 / 进度条真实性） | ✅ 已合并（PR #41、#42、#44） |
+| 错误码说真话（源不可达 / key 被拒 / 限流各报各的，开场失败也看得见） | ✅ 已合并（PR #53） |
 
 拆解与逐 PR 的推进记录见 `docs/roadmap.md` 与 `docs/journal/`。
 
