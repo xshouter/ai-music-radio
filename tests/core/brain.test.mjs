@@ -2,7 +2,7 @@
 // 联网不该是测试的前提 —— 翻译的正确性靠脚本化的 fetch 钉死；真 key 只用来做手工冒烟。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ToolLoopBrain, TOOLS } from '../../core/brain/index.ts';
+import { ToolLoopBrain, TOOLS, PLAN_TOOLS } from '../../core/brain/index.ts';
 import { localDateKey } from '../../core/prompt.ts';
 import { createOpenAiLlm } from '../../core/providers/llm-openai.ts';
 import { createAnthropicLlm, toAnthropicMessages } from '../../core/providers/llm-anthropic.ts';
@@ -62,6 +62,13 @@ function makeBrain({ llm, music, store, env }) {
 
 const emit = (args) => reply([call('c9', 'emit_show', args)]);
 
+const emitPlan = (args) => reply([call('c9', 'emit_plan', args)]);
+/** 排表只认「槽位」：三个时段是产品的脾气（core/plan.ts 的 BLOCKS），大脑不自己发明。 */
+const PLAN_SPECS = [
+  { start: '07:00', end: '12:00', mood: 'morning', genres: ['acoustic', 'jazz'] },
+  { start: '12:00', end: '18:00', mood: 'daytime', genres: ['indie-pop', 'electronic'] },
+  { start: '18:00', end: '02:00', mood: 'late-night', genres: ['ambient', 'synthwave'] },
+];
 test('today_plan：日表以曲目形状回到手里，emit_show 直接用它的 id 开场', async () => {
   const store = new MemoryStore({ now: () => NOW });
   await store.savePlan({
@@ -201,6 +208,73 @@ test('步数耗尽就抛错，不假装成功（不静默返回一个空 Show）
   assert.equal(llm.requests[0].toolChoice, 'auto');
 });
 
+test('排表那一轮的工具集是它自己的：日推 + 搜 + 播放史 + emit_plan；放歌那一轮一个字没动', () => {
+  assert.deepEqual(PLAN_TOOLS.map((tool) => tool.name), ['daily_recommend', 'search_tracks', 'recent_plays', 'emit_plan']);
+  assert.deepEqual(TOOLS.map((tool) => tool.name), ['recommend_tracks', 'search_tracks', 'recent_plays', 'today_plan', 'emit_show']);
+  assert.ok(!TOOLS.some((tool) => tool.name === 'daily_recommend'), '排表专用工具不许漏进放歌那一轮');
+});
+
+test('排日表：日推进候选池（空场景词那条路），emit_plan 按槽位回三格', async () => {
+  const seeds = [];
+  const music = {
+    id: 'fake',
+    recommend: async (seed, limit) => { seeds.push(seed); return CATALOG.slice(0, limit); },
+    search: async () => [],
+    resolve: async () => null,
+  };
+  const llm = scripted([
+    reply([call('c1', 'daily_recommend', { limit: 20 })]),
+    emitPlan({ blocks: [['n1001', 'n1002'], ['n1003'], ['n1004', 'n1005']], reason: 'a day that warms up' }),
+  ]);
+  const { brain, steps } = makeBrain({ llm, music });
+  const blocks = await brain.plan({ trigger: 'schedule', now: NOW }, PLAN_SPECS);
+
+  assert.deepEqual(blocks.map((slot) => slot.map((t) => t.id)), [['n1001', 'n1002'], ['n1003'], ['n1004', 'n1005']]);
+  assert.deepEqual(blocks[0][0], ref(CATALOG[0]), '回到手里的还是 TrackRef');
+  assert.deepEqual(steps.map((s) => s.tool), ['daily_recommend']);
+  assert.deepEqual(seeds, [{}], 'daily_recommend 就是「没有场景词」那条路 —— 也就是日推');
+  // 三个槽位原样交给模型，且说清终局是 emit_plan（不是 emit_show）。
+  assert.match(llm.requests[0].messages[1].content, /1\. 07:00-12:00 morning \[acoustic, jazz\]/);
+  assert.match(llm.requests[0].messages[1].content, /3\. 18:00-02:00 late-night \[ambient, synthwave\]/);
+  assert.match(llm.requests[0].messages[1].content, /daily_recommend/);
+  assert.match(llm.requests[0].messages[0].content, /emit_plan/);
+  assert.doesNotMatch(llm.requests[0].messages[0].content, /emit_show/, '排表那一轮不该提「开口说话」的终局工具');
+});
+
+test('排日表：模型少给一格，那一格留空 —— 不许塌进前一格', async () => {
+  const llm = scripted([
+    reply([call('c1', 'search_tracks', { keywords: 'kite' })]),
+    emitPlan({ blocks: [['n1002'], ['n1005']], reason: 'only got two' }),
+  ]);
+  const blocks = await makeBrain({ llm }).brain.plan({ trigger: 'schedule', now: NOW }, PLAN_SPECS);
+  assert.equal(blocks.length, 3, '槽位是三个，就永远回三格');
+  assert.deepEqual(blocks[1].map((t) => t.id), ['n1005'], '后一格的歌不许并进前一格');
+  assert.deepEqual(blocks[2], [], '没给的那一格是空的，由调用方退到搜索');
+});
+
+test('排日表：编造的 id 一样被驳回，理由原样交回（自愈的唯一入口）', async () => {
+  const llm = scripted([
+    reply([call('c1', 'daily_recommend', {})]),
+    emitPlan({ blocks: [['ghost-9'], ['n1001'], ['n1002']], reason: 'x' }),
+    emitPlan({ blocks: [['n1003'], ['n1001'], ['n1002']], reason: 'fixed' }),
+  ]);
+  const blocks = await makeBrain({ llm }).brain.plan({ trigger: 'schedule', now: NOW }, PLAN_SPECS);
+  assert.deepEqual(blocks[0].map((t) => t.id), ['n1003']);
+  const rejected = llm.requests[2].messages.filter((m) => m.role === 'tool').find((m) => m.content.includes('emit_plan rejected'));
+  assert.ok(rejected, '驳回理由必须作为 tool 结果回到模型手里');
+  assert.match(rejected.content, /ghost-9/);
+});
+
+test('排日表：三格都空等于没排 —— 驳回，而不是交一份空日表', async () => {
+  const llm = scripted([
+    reply([call('c1', 'daily_recommend', {})]),
+    emitPlan({ blocks: [[], [], []], reason: 'nothing' }),
+    emitPlan({ blocks: [['n1001'], ['n1002'], ['n1003']], reason: 'ok' }),
+  ]);
+  const blocks = await makeBrain({ llm }).brain.plan({ trigger: 'schedule', now: NOW }, PLAN_SPECS);
+  assert.deepEqual(blocks.map((slot) => slot.length), [1, 1, 1]);
+  assert.match(llm.requests[2].messages.filter((m) => m.role === 'tool').map((m) => m.content).join(''), /no tracks in any block/);
+});
 const capture = (payload, status = 200) => {
   const calls = [];
   const fetch = async (request) => {

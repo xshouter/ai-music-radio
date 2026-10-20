@@ -11,9 +11,13 @@ import type {
   Store,
   TasteRepo,
 } from '../../shared/ports.ts';
-import { localDateKey, systemPrompt, userPrompt } from '../prompt.ts';
+import type { PlanBlockSpec } from '../plan.ts';
+import { localDateKey, planPrompt, systemPrompt, userPrompt } from '../prompt.ts';
 
 /** 一轮 tool 调用的观测点：调度器、开发时、测试都靠它看见"大脑到底做了什么"。 */
+/** 一次校验的裁决。`value` 是终端工具（emit_show / emit_plan）交上来的东西。 */
+type Verdict<T> = { ok: true; value: T } | { ok: false; reason: string };
+
 export interface ToolStep {
   index: number;
   tool: string;
@@ -35,6 +39,7 @@ export interface ToolLoopOptions {
 }
 
 const EMIT = 'emit_show';
+const EMIT_PLAN = 'emit_plan';
 const MIN_TRACKS = 3;
 const MAX_TRACKS = 6;
 /** 每首歌一句（ADR-0026），所以行数上限跟着曲目上限走。 */
@@ -118,6 +123,49 @@ export const TOOLS: readonly LlmToolSpec[] = [
   },
 ];
 
+const byName = (name: string): LlmToolSpec => {
+  const spec = TOOLS.find((tool) => tool.name === name);
+  // 模块加载期就喊：TOOLS 被改名 / 删掉时，这里比"模型突然找不到工具"先发现。
+  if (spec === undefined) throw new Error('brain: no such tool: ' + name);
+  return spec;
+};
+
+/**
+ * 排日表那一轮的工具集（ADR-0030）：把日推拉进候选池 + 搜 + 播放史，终局是 `emit_plan`。
+ * 播歌那一轮的 `TOOLS` 不跟着变 —— 「放歌」这件事的工具集只有一个定义。
+ */
+export const PLAN_TOOLS: readonly LlmToolSpec[] = [
+  {
+    name: 'daily_recommend',
+    description:
+      "This listener's own daily recommendations from the music source — the pool the day is laid out from. Returns tracks with ids you may use in emit_plan.",
+    parameters: {
+      type: 'object',
+      properties: { limit: { type: 'integer', description: 'How many candidates to return (1-50, default 30).' } },
+      required: [],
+    },
+  },
+  byName('search_tracks'),
+  byName('recent_plays'),
+  {
+    name: EMIT_PLAN,
+    description:
+      'Emit the whole day and END your turn. One track-id list per block, in the order the blocks were given to you.',
+    parameters: {
+      type: 'object',
+      properties: {
+        blocks: {
+          type: 'array',
+          items: { type: 'array', items: { type: 'string' } },
+          description: 'One array of track ids per block, in block order, in play order. Only ids a tool returned in THIS turn.',
+        },
+        reason: { type: 'string', description: 'One private sentence, not spoken: why the day looks like this.' },
+      },
+      required: ['blocks'],
+    },
+  },
+];
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 
@@ -132,6 +180,18 @@ const asStrings = (value: unknown): string[] | undefined => {
 const count = (value: unknown, fallback: number, max = 10): number => {
   const raw = typeof value === 'number' ? value : Number.NaN;
   return Number.isFinite(raw) ? Math.max(1, Math.min(max, Math.trunc(raw))) : fallback;
+};
+
+/** 有的模型不调工具，把 JSON 直接写进正文。从一整段话里榨出那个对象 —— 认它，但不为它放宽校验。 */
+const parseJson = (text: string): unknown | null => {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  try {
+    return JSON.parse(text.slice(start, end + 1)) as unknown;
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -151,56 +211,102 @@ export class ToolLoopBrain implements Brain {
 
   async think(input: BrainInput): Promise<Show> {
     const context = await this.gather(input);
-    const messages: LlmMessage[] = [
-      { role: 'system', content: systemPrompt(context) },
-      { role: 'user', content: userPrompt(context) },
-    ];
     const registry = new Map<string, Track>();
+    return this.loop(
+      [
+        { role: 'system', content: systemPrompt(context) },
+        { role: 'user', content: userPrompt(context) },
+      ],
+      registry,
+      input.now,
+      TOOLS,
+      EMIT,
+      (args) => this.readShow(args, registry),
+      (text) => this.tryParseShow(text, registry),
+    );
+  }
+
+  /**
+   * 排今天的日表（ADR-0030）。**同一个工具环**，只是换了终局工具与任务段：
+   * 一次裸 completion 里模型没法「搜一下再决定」，而日推之外它还允许自己搜。
+   * 抛错 = 这一轮排不出来 —— 调用方退到逐格搜索，电台不停。
+   */
+  async plan(input: BrainInput, blocks: readonly PlanBlockSpec[]): Promise<TrackRef[][]> {
+    const context = await this.gather(input);
+    const registry = new Map<string, Track>();
+    const prompt = planPrompt(context, blocks);
+    return this.loop(
+      [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user },
+      ],
+      registry,
+      input.now,
+      PLAN_TOOLS,
+      EMIT_PLAN,
+      (args) => this.readPlan(args, registry, blocks.length),
+      (text) => this.tryParsePlan(text, registry, blocks.length),
+    );
+  }
+
+  /**
+   * 工具环本体。两种任务共用：每一轮都把工具结果原样交回，并且**在模型自己说"完了"之前
+   * 不接受任何结论**（ADR-0015）。差别只在终局工具、工具集、以及怎么读它的参数。
+   */
+  private async loop<T>(
+    messages: LlmMessage[],
+    registry: Map<string, Track>,
+    now: Date,
+    tools: readonly LlmToolSpec[],
+    terminal: string,
+    read: (args: unknown) => Verdict<T>,
+    fromText: (text: string) => T | null,
+  ): Promise<T> {
     const maxSteps = this.deps.maxSteps ?? 6;
 
     for (let step = 0; step < maxSteps; step += 1) {
-      // 最后一步**强制**要 emit_show：与其在步数耗尽后抛错，不如给它一次"必须定稿"的机会。
+      // 最后一步**强制**要定稿：与其在步数耗尽后抛错，不如给它一次"必须定稿"的机会。
       const lastStep = step === maxSteps - 1;
       const response = await this.deps.llm.complete({
         model: this.deps.model,
         messages,
-        tools: [...TOOLS],
-        toolChoice: lastStep ? { name: EMIT } : 'auto',
+        tools: [...tools],
+        toolChoice: lastStep ? { name: terminal } : 'auto',
         ...(this.deps.temperature === undefined ? {} : { temperature: this.deps.temperature }),
       });
 
       let rejection: string | null = null;
-      const candidate = response.toolCalls.find((call) => call.name === EMIT);
+      const candidate = response.toolCalls.find((call) => call.name === terminal);
       if (candidate !== undefined) {
-        const verdict = this.readShow(candidate.args, registry);
-        if (verdict.ok) return verdict.show;
+        const verdict = read(candidate.args);
+        if (verdict.ok) return verdict.value;
         rejection = verdict.reason;
-        if (lastStep) throw new Error('brain: emit_show 始终不合法 —— ' + verdict.reason);
+        if (lastStep) throw new Error('brain: ' + terminal + ' 始终不合法 —— ' + verdict.reason);
       }
 
-      // 不用工具的模型：有的会把 JSON 直接写进正文。认它，但不为它放宽校验 —— 走同一套 readShow。
+      // 不用工具的模型：有的会把 JSON 直接写进正文。认它，但不为它放宽校验 —— 走同一套 read。
       if (candidate === undefined && response.toolCalls.length === 0 && response.text.trim() !== '') {
-        const parsed = this.tryParseShow(response.text, registry);
+        const parsed = fromText(response.text);
         if (parsed !== null) return parsed;
       }
 
       messages.push({ role: 'assistant', content: response.text, toolCalls: response.toolCalls });
 
-      // **每个** tool_call 都要有回音，包括被驳回的 emit_show：少一条，OpenAI 面直接 400。
+      // **每个** tool_call 都要有回音，包括被驳回的终局调用：少一条，OpenAI 面直接 400。
       for (const call of response.toolCalls) {
-        const result = call.name === EMIT
-          ? { error: 'emit_show rejected: ' + (rejection ?? 'invalid arguments') + '. Fix the arguments and call it again.' }
-          : await this.runTool(call, registry, input.now);
+        const result = call.name === terminal
+          ? { error: terminal + ' rejected: ' + (rejection ?? 'invalid arguments') + '. Fix the arguments and call it again.' }
+          : await this.runTool(call, registry, now);
         this.deps.onStep?.({ index: step, tool: call.name, args: call.args, result });
         messages.push({ role: 'tool', toolCallId: call.id, content: JSON.stringify(result) });
       }
 
       if (response.toolCalls.length === 0) {
-        messages.push({ role: 'user', content: 'You did not call a tool. Call one, and finish with ' + EMIT + '.' });
+        messages.push({ role: 'user', content: 'You did not call a tool. Call one, and finish with ' + terminal + '.' });
       }
     }
 
-    throw new Error('brain: ' + maxSteps + ' step budget exhausted without a valid ' + EMIT);
+    throw new Error('brain: ' + maxSteps + ' step budget exhausted without a valid ' + terminal);
   }
 
   /**
@@ -228,6 +334,10 @@ export class ToolLoopBrain implements Brain {
           const keywords = asString(args.keywords);
           if (keywords === '') return { error: '`keywords` is required' };
           return { tracks: remember(registry, await this.deps.music.search(keywords, count(args.limit, 6))) };
+        }
+        case 'daily_recommend': {
+          // 空场景词就是日推那一条路（netease 源：无场景词 → /recommend/songs → 退公开新歌）。
+          return { tracks: remember(registry, await this.deps.music.recommend({}, count(args.limit, 30, 50))) };
         }
         case 'today_plan': {
           // 日表里存的是 TrackRef（契约如此，ADR-0006）：补上 source 才是一首完整的 Track，
@@ -257,22 +367,24 @@ export class ToolLoopBrain implements Brain {
   }
 
   private tryParseShow(text: string, registry: Map<string, Track>): Show | null {
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    if (start < 0 || end <= start) return null;
-    try {
-      const verdict = this.readShow(JSON.parse(text.slice(start, end + 1)) as unknown, registry);
-      return verdict.ok ? verdict.show : null;
-    } catch {
-      return null;
-    }
+    const args = parseJson(text);
+    if (args === null) return null;
+    const verdict = this.readShow(args, registry);
+    return verdict.ok ? verdict.value : null;
+  }
+
+  private tryParsePlan(text: string, registry: Map<string, Track>, slots: number): TrackRef[][] | null {
+    const args = parseJson(text);
+    if (args === null) return null;
+    const verdict = this.readPlan(args, registry, slots);
+    return verdict.ok ? verdict.value : null;
   }
 
   /**
    * 校验是**硬**的：id 必须是本轮某次工具真的返回过的，`reason` 必须有，`say` 不能空。
    * 驳回时给出可操作的理由 —— 这条理由会原样回到模型手里，它是自愈的唯一入口。
    */
-  private readShow(args: unknown, registry: Map<string, Track>): { ok: true; show: Show } | { ok: false; reason: string } {
+  private readShow(args: unknown, registry: Map<string, Track>): Verdict<Show> {
     if (typeof args !== 'object' || args === null) return { ok: false, reason: '`arguments` must be an object' };
     const raw = asRecord(args);
 
@@ -312,7 +424,42 @@ export class ToolLoopBrain implements Brain {
     if (reason === '') return { ok: false, reason: '`reason` must be one non-empty sentence' };
 
     const segue = asString(raw.segue);
-    return { ok: true, show: { say: say.slice(0, MAX_LINES), play: play.slice(0, MAX_TRACKS), reason, segue: segue === '' ? null : segue } };
+    return { ok: true, value: { say: say.slice(0, MAX_LINES), play: play.slice(0, MAX_TRACKS), reason, segue: segue === '' ? null : segue } };
+  }
+
+  /**
+   * 日表的校验和 show **同源**：id 必须是本轮工具真的返回过的。
+   * 但它**不**照搬 MIN_TRACKS —— 日表是草图，一格空着不算坏（那一格由调用方退到搜索）。
+   * 只认前 `slots` 个块：三格是产品的脾气，不是模型的输入。
+   */
+  private readPlan(args: unknown, registry: Map<string, Track>, slots: number): Verdict<TrackRef[][]> {
+    if (typeof args !== 'object' || args === null) return { ok: false, reason: '`arguments` must be an object' };
+    const raw = asRecord(args);
+    if (!Array.isArray(raw.blocks)) return { ok: false, reason: '`blocks` must be an array with one track-id array per block' };
+
+    const blocks: TrackRef[][] = [];
+    for (let index = 0; index < slots; index += 1) {
+      const slot: unknown = raw.blocks[index];
+      const ids = Array.isArray(slot) ? slot.filter((id: unknown): id is string => typeof id === 'string') : [];
+      const unknown = ids.filter((id) => !registry.has(id));
+      if (unknown.length > 0) {
+        return { ok: false, reason: 'unknown track id(s) ' + JSON.stringify(unknown) + ' in block ' + (index + 1) + ' — only ids a tool returned in this turn are allowed' };
+      }
+      const refs: TrackRef[] = [];
+      const seen = new Set<string>();
+      for (const id of ids) {
+        const track = registry.get(id);
+        if (track !== undefined && !seen.has(id)) {
+          seen.add(id);
+          refs.push(asRef(track));
+        }
+      }
+      blocks.push(refs);
+    }
+    if (blocks.every((refs) => refs.length === 0)) {
+      return { ok: false, reason: 'no tracks in any block: call daily_recommend or search_tracks first' };
+    }
+    return { ok: true, value: blocks };
   }
 }
 
