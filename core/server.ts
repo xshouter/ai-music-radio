@@ -1,5 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { extname, resolve, sep } from 'node:path';
 import type { ErrorCode, StreamEvent } from '../shared/api-types.ts';
 import { RadioFailure, type Radio } from './radio.ts';
 
@@ -15,6 +17,8 @@ import { RadioFailure, type Radio } from './radio.ts';
 export interface RadioServerOptions {
   radio: Radio;
   /** 与本机渲染进程共享的一次性令牌；空字符串 = 不校验（只该在开发里这么用）。 */
+  /** 打包后的 UI 目录。给了它，UI 由内核一起发 —— 与 API 同源（ADR-0020）。开发期不给。 */
+  uiDir?: string;
   token?: string;
   warn?: (message: string) => void;
 }
@@ -82,6 +86,49 @@ const encodeFrame = (text: string): Buffer => {
 
 const TTS_PATH = /^\/tts\/([0-9a-f]{40})\.mp3$/;
 
+const MIME: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.ico': 'image/x-icon',
+};
+
+/**
+ * 打包后的 UI 与 API 同源（ADR-0020）。只发 uiDir 以内的静态文件、只认 GET/HEAD。
+ *
+ * 故意的取舍：初始文档没法带自定义头，所以这条路径**豁免令牌** —— 令牌护的是数据面
+ * （/api/* 与 /tts/*），不是"能不能看到我们自己的界面"。
+ */
+function serveUi(req: IncomingMessage, res: ServerResponse, uiDir: string, pathname: string): boolean {
+  const method = req.method ?? 'GET';
+  if (method !== 'GET' && method !== 'HEAD') return false;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return false;
+  }
+  const target = resolve(uiDir, '.' + (decoded === '/' ? '/index.html' : decoded));
+  // 越界检查必须在 resolve 之后：'..' 在 resolve 那一步就被规范化了。
+  if (!target.startsWith(uiDir + sep)) return false;
+  if (!existsSync(target) || !statSync(target).isFile()) return false;
+  const size = statSync(target).size;
+  res.writeHead(200, {
+    'content-type': MIME[extname(target).toLowerCase()] ?? 'application/octet-stream',
+    'content-length': size,
+  });
+  if (method === 'HEAD') {
+    res.end();
+    return true;
+  }
+  createReadStream(target).pipe(res);
+  return true;
+}
+
 function sendBytes(req: IncomingMessage, res: ServerResponse, audio: Uint8Array): void {
   const range = req.headers.range;
   if (range === undefined) {
@@ -115,6 +162,7 @@ function sendBytes(req: IncomingMessage, res: ServerResponse, audio: Uint8Array)
 export function createRadioServer(options: RadioServerOptions): Server {
   const radio = options.radio;
   const token = options.token ?? '';
+  const uiDir = options.uiDir === undefined ? '' : resolve(options.uiDir);
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
@@ -144,6 +192,14 @@ export function createRadioServer(options: RadioServerOptions): Server {
         }
         sendBytes(req, res, audio);
         return;
+      }
+
+      // —— 打包后的 UI：与 API 同源，豁免令牌（浏览器给初始文档设不了自定义头）——
+      if (uiDir !== '' && !path.startsWith('/api/') && !path.startsWith('/tts/')) {
+        // 给了 uiDir，非数据面的路径就只有一种含义：要一个静态文件。
+        // 一发不到就 404 —— 不让它掉进令牌检查（那会给出一个对"页面请求"毫无意义的 401）。
+        if (serveUi(req, res, uiDir, path)) return;
+        return sendError(res, 'INTERNAL', `No asset at ${path}`, 404);
       }
 
       // —— 其余全部要令牌 ——
