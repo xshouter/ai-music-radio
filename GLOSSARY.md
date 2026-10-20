@@ -52,3 +52,4 @@
 - **ADR** —— 架构决策记录，落在 `docs/adr/NNNN-<slug>.md`。
 - **契约** —— `shared/api-types.ts` 里的前后端唯一真相；改它等于 ADR 级改动。
 - **开机进度（`BootStep` / `BootProgress`）** —— `boot()` 期间给界面看的进度：五个 UX 步骤 id（不是工具名）+ 累积快照（不是增量日志）。见 ADR-0032。
+- **首次体验（demo / 文件嗓子）** —— 没填 LLM key 时的开机形态：随包的**一首本地歌** + 一段**冻住的口播**。那段音频由「文件嗓子」（`createFileTts`）读随包的 wav 发出去，与用户配的嗓子无关。见 ADR-0033。

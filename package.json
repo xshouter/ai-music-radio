@@ -19,6 +19,7 @@
     "boundaries": "node tools/check-boundaries.mjs",
     "smoke:llm": "node --experimental-strip-types tools/smoke-llm.mjs",
     "smoke:plan": "node --experimental-strip-types tools/smoke-plan.mjs",
+    "smoke:demo": "node --experimental-strip-types tools/smoke-demo.mjs",
     "fetch:voice": "node tools/fetch-voice.mjs",
     "fetch:netease": "node tools/fetch-netease.mjs",
     "smoke:tts": "node --experimental-strip-types tools/smoke-tts.mjs",

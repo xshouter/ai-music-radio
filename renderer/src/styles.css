@@ -595,6 +595,10 @@ button[aria-disabled='true'] { cursor: default; }
   font-size: 12px;
 }
 
+/* 引导版：不是故障，是「解锁」。所以描边走强调色，没有错误码那个红块（ADR-0033）。 */
+.banner.is-guide { border-color: var(--accent-ink); }
+.banner.is-guide .text { color: var(--text); }
+
 .banner .code { font-family: var(--label); font-size: 10px; letter-spacing: 0.16em; color: var(--danger); white-space: nowrap; }
 .banner .text { flex: 1 1 auto; }
 .banner .dismiss { font-family: var(--label); font-size: 9px; letter-spacing: 0.16em; color: var(--btn-text); }
