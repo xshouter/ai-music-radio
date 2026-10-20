@@ -31,6 +31,11 @@ export interface StartedRadio {
   radio: Radio;
   port: number;
   token: string;
+  /**
+   * 开机（排表 → 开场）。**故意不在这里 await**（ADR-0032）：窗口必须先出生，
+   * 否则当天第一次开机那 14–28s 屏幕上什么都没有 —— 连进度界面都无从谈起。
+   */
+  boot(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -73,12 +78,11 @@ export async function startRadio(options: BootstrapOptions): Promise<StartedRadi
     });
   });
 
-  await radio.boot();
-
   return {
     radio,
     port,
     token,
+    boot: () => radio.boot(),
     close: () =>
       new Promise<void>((resolve) => {
         server.close(() => {
