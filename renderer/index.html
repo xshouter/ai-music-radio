@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>EdgeRunner FM</title>
-    <!-- 先铺底色，避免字体与 CSS 到位前闪白。 -->
-    <style>html { background: #111111; }</style>
+    <!-- 这里不许给 html / body 铺底色：窗口无边框且透明，铺了底色，卡片圆角外面那圈就被填成不透明的直角。
+         底色由 .shell 自己画（styles.css）；首帧之前透出的是桌面，不是白屏。 -->
   </head>
   <body>
     <div id="root"></div>
