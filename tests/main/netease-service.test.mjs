@@ -61,10 +61,11 @@ test('真拉起一个子进程：给了地址就能用，stop() 之后端口松�
 
   service.stop();
   const port = portOf(service.baseUrl);
-  for (let i = 0; i < 50 && !(await occupied(port)); i += 1) {
+  // 等它松手：kill 到端口真的释放之间有一小段（这段的长度是机器的，不是契约的）。
+  for (let i = 0; i < 50 && (await occupied(port)); i += 1) {
     await new Promise((done) => setTimeout(done, 100));
   }
-  assert.equal(await occupied(port), true, 'stop() 之后不该还有东西占着端口');
+  assert.equal(await occupied(port), false, 'stop() 之后不该还有东西占着端口');
 });
 
 test('子进程秒退：不干等超时，返回 null，并且把为什么说出来', async () => {
