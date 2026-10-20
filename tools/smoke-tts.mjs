@@ -43,7 +43,7 @@ if (provider !== 'piper' && key === '') {
 
 // 目录里**放一句真的**：与界面上的口播同形（英文、一句话）。
 const text = arg('text', 'Midnight Drive, by The Long Way. Slow synth, and nothing above a walking pace.');
-const voice = arg('voice', provider === 'piper' ? 'en_US-ryan-high' : '');
+const voice = arg('voice', provider === 'piper' ? 'en_GB-alan-medium' : '');
 const dir = arg('dir', join(process.cwd(), 'cache', 'tts'));
 
 const engine = createTtsEngine({
