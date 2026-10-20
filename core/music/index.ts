@@ -37,6 +37,9 @@ export function createMusicSourceChain(sources: readonly MusicSource[]): MusicSo
 
     search: (keywords, limit) => firstNonEmpty((source) => source.search(keywords, limit)),
 
+    // 曲库同理：主源读不到他的歌单（没 cookie / 服务不在）就退到本地目录。
+    library: (limit) => firstNonEmpty((source) => source.library(limit)),
+
     async resolve(songId, level) {
       const from = LEVELS.indexOf(level);
       for (const candidate of LEVELS.slice(from < 0 ? 0 : from)) {

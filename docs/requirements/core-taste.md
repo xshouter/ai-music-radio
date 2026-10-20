@@ -42,3 +42,18 @@
 - `appendLearned` 只写库：语料是人的地盘，系统永不回写（ADR-0004）。
 
 `tests/core/radio.test.mjs` 的"播放事实"那条加了断言：♡ / 取消 ♡ 各落一条学到的。
+
+## 第三份语料：从歌单生成（ADR-0025）
+
+`buildTasteFromLibrary({music, llm, model, dir, limit?})` 是 `core/taste.ts` 的第二个导出：
+
+- **触发点只有一处**：`radio.saveSettings()` 里 cookie 从「没有」变「有」（第一次填）。后台跑，不挡保存。
+- 读听众自己的曲库（`MusicSource.library()`），让模型写一段 90 词以内的英文画像，落到 `dir/taste.md`。
+- **不覆盖**已存在的 `taste.md`（那可能是人自己改过的）；曲库为空就什么都不写，只回一个理由 —— 不抛错。
+- `read()` 一行都不用改：`taste.md` 就是目录里的一个 `.md`，自然进 `corpus`。
+
+## 测试（`tests/core/taste-build.test.mjs`，3 条）
+
+- 歌单 → `taste.md`：模型写什么就落什么，同目录里人写的 md 一个字节都不动。
+- 已经有一份就不覆盖，且**连模型都不叫**。
+- 曲库为空：什么都不写，只回理由，不抛错。

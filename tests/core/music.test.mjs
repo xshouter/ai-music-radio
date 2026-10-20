@@ -163,3 +163,48 @@ test('本地兜底：文件名就是元数据，resolve 给 file:// 地址；没
   assert.deepEqual(await missing.recommend({}, 5), []);
   assert.equal(await missing.resolve('local:x.mp3', 'standard'), null);
 });
+
+test('网易云 library：cookie → 我是谁 → 我的歌单（曲目多的先取）→ 歌单里的歌', async () => {
+  const { fetch, calls } = routes({
+    '/user/account': { body: { profile: { userId: 42 } } },
+    '/user/playlist': { body: { playlist: [
+      { id: 7, name: 'Rainy', trackCount: 2 },
+      { id: 9, name: 'Loud', trackCount: 40 },
+    ] } },
+    '/playlist/track/all': (request) => ({
+      body: { songs: new URL(request.url).searchParams.get('id') === '9'
+        ? [song(2001, 'Neon Hours', 'Kite & Ash')]
+        : [song(2002, 'Slow Static', 'Marina Vale')] },
+    }),
+  });
+  const source = createNeteaseSource({ baseUrl: NOWHERE, cookie: COOKIE, fetch });
+  const tracks = await source.library(10);
+
+  assert.deepEqual(tracks.map((t) => t.id), ['2001', '2002'], '曲目多的歌单先取');
+  assert.equal(new URL(calls[1].url).pathname, '/user/playlist');
+  assert.match(calls[1].url, /uid=42/);
+  assert.equal(calls[1].headers.cookie, COOKIE, 'cookie 只走请求头');
+});
+
+test('网易云 library：拿不到「我是谁」就回空数组，不抛错（没 cookie 是常态）', async () => {
+  const { fetch } = routes({ '/user/account': { body: { code: 301 } } });
+  const source = createNeteaseSource({ baseUrl: NOWHERE, fetch });
+  assert.deepEqual(await source.library(10), []);
+});
+
+test('链的 library 与其它方法同一套：主的空就换下一个源', async () => {
+  const bare = (id, shelf) => ({
+    id, recommend: async () => [], search: async () => [], resolve: async () => null, library: async () => shelf,
+  });
+  const chain = createMusicSourceChain([bare('a', []), bare('b', [{ id: 'l1', title: 'X', artist: 'Y', source: 'b' }])]);
+  assert.deepEqual((await chain.library(5)).map((t) => t.id), ['l1']);
+});
+
+test('本地源的曲库就是目录里所有的音频文件', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'er-local-'));
+  writeFileSync(join(dir, 'The Long Way - Midnight Drive.mp3'), 'x');
+  writeFileSync(join(dir, 'notes.txt'), 'x');
+  const tracks = await createLocalSource({ dir }).library(10);
+  assert.deepEqual(tracks.map((t) => t.title), ['Midnight Drive'], '非音频文件不算');
+  assert.equal(tracks[0].artist, 'The Long Way');
+});

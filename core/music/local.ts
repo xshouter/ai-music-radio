@@ -50,6 +50,11 @@ export function createLocalSource(options: LocalOptions): MusicSource {
       return scan().slice(0, limit).map(toTrack);
     },
 
+    /** 本地没有「歌单」这一层：目录里所有的音频文件都算他自己的曲库。 */
+    async library(limit: number): Promise<Track[]> {
+      return scan().slice(0, limit).map(toTrack);
+    },
+
     async search(keywords: string, limit: number): Promise<Track[]> {
       const needle = keywords.trim().toLowerCase();
       const all = scan();

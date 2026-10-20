@@ -95,6 +95,39 @@ export function createNeteaseSource(options: NeteaseOptions): MusicSource {
       return (fresh.result ?? []).slice(0, size).map((raw) => toTrack(raw.song ?? raw, id));
     },
 
+    /**
+     * 听众自己的曲库：cookie → 我是谁（/user/account）→ 我的歌单（/user/playlist）→ 歌单里的歌。
+     * 没有 cookie、或者这一环拿不到 → 回 []（ADR-0025 的冷启动常态），不抛错。
+     * 歌单按曲目数从多到少取 —— 先取他真正会听的那几张。
+     */
+    async library(limit: number): Promise<Track[]> {
+      const size = Math.max(1, Math.min(200, Number.isFinite(limit) ? Math.trunc(limit) : 60));
+      const account = await getJson<{ profile?: { userId?: number | string } }>(http, base + '/user/account', headers);
+      const uid = account.profile?.userId;
+      if (uid === undefined || uid === null || String(uid) === '') return [];
+      const mine = await getJson<{ playlist?: { id?: number | string; trackCount?: number }[] }>(
+        http, base + '/user/playlist?uid=' + encodeURIComponent(String(uid)) + '&limit=10', headers,
+      );
+      const owned = (mine.playlist ?? []).filter((item) => item.id !== undefined && item.id !== null);
+      owned.sort((a, b) => (b.trackCount ?? 0) - (a.trackCount ?? 0));
+      const out: Track[] = [];
+      const seen = new Set<string>();
+      for (const list of owned) {
+        if (out.length >= size) break;
+        const detail = await getJson<{ songs?: RawSong[] }>(
+          http, base + '/playlist/track/all?id=' + encodeURIComponent(String(list.id)) + '&limit=' + size, headers,
+        );
+        for (const raw of detail.songs ?? []) {
+          const track = toTrack(raw, id);
+          if (seen.has(track.id)) continue;
+          seen.add(track.id);
+          out.push(track);
+          if (out.length >= size) break;
+        }
+      }
+      return out;
+    },
+
     async resolve(songId: string, level): Promise<ResolvedAudio | null> {
       const payload = await getJson<{ data?: RawAudio[] }>(
         http,

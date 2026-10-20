@@ -7,7 +7,7 @@
 让电台**几乎不会哑**：优先放用户真正想听的（网易云），拿不到就退到本地目录，
 再拿不到就让上层进 `degraded`（UI 显示 `DEGRADED` 徽标）。**任何一环失败都不许抛异常。**
 
-## 端口（`shared/ports.ts` 第 3.3 节，已冻结，不改）
+## 端口（`shared/ports.ts` 第 3.3 节，已冻结：加一个方法＝写一份 ADR）
 
 ```ts
 interface MusicSource {
@@ -15,6 +15,7 @@ interface MusicSource {
   recommend(seed: MusicSeed, limit: number): Promise<Track[]>;
   search(keywords: string, limit: number): Promise<Track[]>;
   resolve(songId: string, level: QualityLevel): Promise<ResolvedAudio | null>;
+  library(limit: number): Promise<Track[]>;
 }
 ```
 
@@ -22,7 +23,7 @@ interface MusicSource {
 
 | 实现 | 角色 | 关键行为 |
 |---|---|---|
-| `NeteaseSource` | 主源 | 场景词 → `/cloudsearch`；无场景词 → `/recommend/songs`（要登录）→ 失败退 `/personalized/newsong`；`resolve` 用 `/song/url/v1`，只试请求的那一档 |
+| `NeteaseSource` | 主源 | 场景词 → `/cloudsearch`；无场景词 → `/recommend/songs`（要登录）→ 失败退 `/personalized/newsong`；`resolve` 用 `/song/url/v1`，只试请求的那一档；`library` 用 `/user/account` → `/user/playlist` → `/playlist/track/all` |
 | `LocalSource` | 兜底 | 目录里 `Artist - Title.mp3`；不做 ID3；`resolve` 回 `file://` |
 | `MusicSourceChain` | 链 | 源抛错/返回空 → 换下一个；`resolve` 是"档位 × 源"的笛卡尔积，从请求档往下；全失败 → `null` |
 
@@ -32,6 +33,7 @@ interface MusicSource {
 |---|---|
 | 音质 | `lossless → exhigh → higher → standard`（用户请求的那一档开始往下） |
 | 源 | `netease → local` |
+| 曲库 | `netease → local`；都没有就回 `[]` —— 读不到歌单是**常态**，不是降级（ADR-0025） |
 | 全失败 | `resolve` 返回 `null`；`recommend`/`search` 返回 `[]`。**不抛错**，由上层判 `degraded` |
 
 ## `limit` 的夹法
@@ -51,5 +53,5 @@ interface MusicSource {
 ## 明确不做
 
 - 不内联任何第三方实现的代码（roadmap 阶段 4 的约定）。
-- 不做歌单 / 专辑 / 歌手页。
+- 不做歌单 / 专辑 / 歌手页的**浏览 UI**。歌单只被读一次，用途是口味画像（ADR-0025）。
 - 不做下载与离线缓存（`core/tts.ts` 的缓存只覆盖口播，见 4.4）。
