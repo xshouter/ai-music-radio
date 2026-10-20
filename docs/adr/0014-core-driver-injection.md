@@ -46,7 +46,7 @@ export interface SqliteDatabase {
 
 - **好处**：`core/` 可测（内存驱动）、可换库（换驱动不动内核）、可打包（无原生模块）。
 - **代价**：`SqliteDatabase` 是**手写的**最小子集，`node:sqlite` 将来长出的新能力 core 看不到 —— 需要时显式扩这个接口。
-- **新的约束**：`core/tsconfig.json` 必须带上 `types: ["node"]`，而 `shared/tsconfig.json` 的 `types: []` 不能被污染 ——
+- **新的约束**：`core/tsconfig.json` 必须带上 `types: ["node"]`，而 `shared/` 那份（根 `tsconfig.json`）的 `types: []` 不能被污染 ——
   两份 tsconfig 分开正是为此（`shared/` 是跨进程的类型面，`core/` 是运行时）。
 - **重新打开的条件**：出现必须用 better-sqlite3 能力的场景（例如自定义 vtab / 扩展函数），
   或 `node:sqlite` 在目标 Electron 版本上不可用。
