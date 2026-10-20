@@ -15,6 +15,10 @@ extraResources:
   # 而且 piper 用 fopen 读自己的 espeak-ng-data（非 ASCII 路径会崩，见 main/tts-runtime.ts）。
   - from: vendor/piper
     to: piper
+  # 内置的音乐源（约 27MB）：它和 piper 一样是**要被 spawn 的进程**，所以也放 asar 外面。
+  # 目标只有一个：双击 exe 就能用，用户不必自己去起第二个进程（ADR-0028）。
+  - from: vendor/netease
+    to: netease
 win:
   # 应用图标：与界面同源的点阵播放三角（tools/make-icon.mjs 生成，含 7 个尺寸）。
   icon: assets/icon.ico

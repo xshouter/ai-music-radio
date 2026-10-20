@@ -39,6 +39,10 @@ jobs:
       - name: 拉语音资产
         run: npm run fetch:voice
 
+      # 内置的音乐源（约 27MB，不进 git）：没有它，"双击就能听"在音乐源这一环不闭环（ADR-0028）。
+      - name: 拉音乐源
+        run: npm run fetch:netease
+
       # 打主进程 + preload（esbuild），不跑 electron:dev。
       - name: 打包主进程
         run: node tools/build-electron.mjs
