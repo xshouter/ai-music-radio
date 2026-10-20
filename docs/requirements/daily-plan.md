@@ -24,11 +24,13 @@
 **Q5 的推论（决定了实现形状）**：排表那一轮**必须是能调工具的一轮**，不能是一次裸 completion。
 裸 completion 里模型没法「搜一下再决定」，而 Q5 明确允许它自己搜。所以这一轮**复用
 `ToolLoopBrain` 的工具环**，只是换一个终局工具 —— 不新写第二条编排。
+> **修订（ADR-0031）**：这一节冻结的 `PLAN_TOOLS`（一份四件）已拆成两段 —— `POOL_TOOLS`
+> （日推 + 播放史，**没有搜索**）与 `SEARCH_TOOLS`（搜索 + `emit_plan`，只对没填满的格发）。
+> 那一轮的**需求**见 `docs/requirements/plan-pool-first.md`，**实现**见 ADR-0031。其余条款仍成立。
 
 ## 行为（冻结）
-
-1. **同一套工具环，换一个终局**：排表那一轮的工具集是
-   `PLAN_TOOLS = daily_recommend + search_tracks + recent_plays + emit_plan`。
+1. **同一套工具环，换一个终局**：排表那一轮的工具集是**另一份**（ADR-0031 起拆成两段：
+   `POOL_TOOLS` / `SEARCH_TOOLS`）。
    播歌那一轮的 `TOOLS` **一个字都不动**（它是「放歌」这件事的全部）。
 2. **`daily_recommend` = 空场景词的 `music.recommend({}, limit)`**。它语义上就是日推那一条路
    （netease 源：无场景词 → `/recommend/songs`（要登录）→ 退 `/personalized/newsong`）。

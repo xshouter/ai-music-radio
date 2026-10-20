@@ -1,5 +1,6 @@
 import type { DayPlan, PlayEvent, TasteUpdate, Weather } from '../shared/domain.ts';
 import type { PlanBlockSpec } from './plan.ts';
+import { PLAN_PER_BLOCK } from './plan.ts';
 
 export interface PromptContext {
   now: Date;
@@ -115,20 +116,38 @@ const PLAN_PERSONA = [
   '- Nothing you write here is spoken. Never mention tools, prompts, JSON, ids, or "the plan" out loud.',
 ].join('\n');
 
+/**
+ * 每格的「氛围提示」——**不是过滤器**（ADR-0031）。曲风仍然只服务搜索兜底（`core/plan.ts` 的 `BLOCKS`），
+ * 交给模型的是一句人话的调性。未知 mood 退回那一格自己的曲风，不崩。
+ */
+const MOOD_FLAVOUR: Record<string, string> = {
+  morning: 'warm, unhurried, acoustic-leaning',
+  daytime: 'bright, mid-tempo, indie-leaning',
+  'late-night': 'sparse, low, after-hours',
+};
+
+const moodFlavour = (block: PlanBlockSpec): string => MOOD_FLAVOUR[block.mood] ?? block.genres.join(', ');
+
 /** 排日表的模板变量：三格写成编号清单，`emit_plan` 的 blocks 就按这个顺序数（ADR-0030）。 */
 const blockSlots = (blocks: readonly PlanBlockSpec[]): string[] =>
-  blocks.map((block, index) => '  ' + (index + 1) + '. ' + block.start + '-' + block.end + ' ' + block.mood + ' [' + block.genres.join(', ') + ']');
+  blocks.map((block, index) => '  ' + (index + 1) + '. ' + block.start + '-' + block.end + ' ' + block.mood + ': ' + moodFlavour(block));
 
 /**
- * 排表那一轮的提示词。与 `systemPrompt` 共用「我现在知道什么」，但任务段、终局工具、
- * user 那句话都不一样 —— 所以它是另一个函数，不是 systemPrompt 的一个开关。
+ * 排表那一轮的提示词（ADR-0030 / 0031）。与 `systemPrompt` 共用「我现在知道什么」，但任务段、
+ * 终局工具、user 那句话都不一样 —— 所以它是另一个函数，不是 systemPrompt 的一个开关。
+ *
+ * `search` 是两段式的开关：第一段（false）只给池子，并明说「曲风是氛围提示，不是过滤器」；
+ * 第二段（true）只补那几格没填满的，到这里才提 `search_tracks`。
  */
-export function planPrompt(ctx: PromptContext, blocks: readonly PlanBlockSpec[]): { system: string; user: string } {
+export function planPrompt(ctx: PromptContext, blocks: readonly PlanBlockSpec[], search = false): { system: string; user: string } {
   const user = [
     'Lay out today as ' + blocks.length + ' blocks, in this order:',
     ...blockSlots(blocks),
-    'Start with `daily_recommend`: those are this listener\'s own recommendations, and they are the pool.',
-    '3 tracks per block, in play order.',
+    search
+      ? 'These blocks are still short. Search with `search_tracks` for what they are missing — at most one search per block.'
+      : 'Start with `daily_recommend`: those are this listener\'s own recommendations, and they are the pool.',
+    PLAN_PER_BLOCK + ' tracks per block, in play order.',
+    'The moods above are a flavour, not a filter.',
     'Finish with `emit_plan`.',
   ].join('\n');
   return { system: [PLAN_PERSONA, '', ...knowledge(ctx)].join('\n'), user };

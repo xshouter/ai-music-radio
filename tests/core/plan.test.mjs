@@ -78,3 +78,9 @@ test('源不可达：那一格留空，不把整份日表搞坏', async () => {
   assert.deepEqual(plan.blocks.map((block) => block.tracks), [[], [], []]);
   assert.deepEqual(plan.blocks.map((block) => block.mood), ['morning', 'daytime', 'late-night'], '格还在，只是空的');
 });
+test('排表的人填不满也不算坏：一格只给两首也照收，不退回搜索', async () => {
+  const { asked, music } = source();
+  const plan = await buildDayPlan({ ...DAY, music, curate: async () => [[ref('a'), ref('b')], [ref('c')], [ref('d'), ref('e'), ref('f')]] });
+  assert.deepEqual(plan.blocks.map((block) => block.tracks.map((track) => track.id)), [['a', 'b'], ['c'], ['d', 'e', 'f']]);
+  assert.deepEqual(asked, [], '三格都有人填，一次搜索都不该发生 —— 少给是合法结果（ADR-0031）');
+});
