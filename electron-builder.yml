@@ -1,0 +1,20 @@
+# 打包配置。产物里**不含任何凭证**：key / cookie 一律由使用者在 LOGIN 弹窗里填，落在用户数据目录。
+appId: dev.edgerunner.app
+productName: EdgeRunner
+directories:
+  output: release
+files:
+  - electron/main.cjs
+  - electron/preload.cjs
+  - package.json
+# UI 放到 asar 外面，交给内核的静态文件服务去读（core/server.ts 用 createReadStream）。
+extraResources:
+  - from: renderer/dist
+    to: ui
+win:
+  target: nsis
+  artifactName: EdgeRunner-${version}-setup.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false

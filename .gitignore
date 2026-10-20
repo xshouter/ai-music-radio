@@ -39,3 +39,6 @@ docs/reference/
 
 # Agent scratch space. Durable records live in docs/requirements, docs/adr, docs/journal.
 .scratch/
+# Electron build output (produced by tools/build-electron.mjs) and packaged installers.
+electron/
+release/
