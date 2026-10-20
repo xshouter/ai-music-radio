@@ -116,6 +116,34 @@ test('链：一个源抛错就换下一个；全空给空数组，不抛错', as
   assert.equal(empty.id, 'chain');
 });
 
+test('链：全空手而归时，只有真抛过错的源才算「不可达」（ADR-0016 收敛了空结果，但没收敛归因）', async () => {
+  const boom = new HttpError(502, 'service down');
+  const broken = source('broken', {
+    search: async () => { throw boom; },
+    recommend: async () => { throw boom; },
+    resolve: async () => { throw boom; },
+  });
+  const quiet = source('quiet');
+  const hears = () => { const seen = []; return { seen, chain: (sources) => createMusicSourceChain(sources, { onUnreachable: (cause) => seen.push(cause) }) }; };
+
+  const a = hears();
+  assert.deepEqual(await a.chain([broken]).search('x', 5), []);
+  assert.deepEqual(a.seen, [boom], '源抛错且一个结果都没有 → 喊一声，把原始错带上');
+
+  const b = hears();
+  await b.chain([quiet]).search('x', 5);
+  assert.deepEqual(b.seen, [], '只是没搜到 —— 源答了话，不许说成不可达');
+
+  const c = hears();
+  const later = source('later', { search: async (_k, limit) => [{ id: 'n1', title: 'T', artist: 'A', source: 'later' }].slice(0, limit) });
+  assert.deepEqual((await c.chain([broken, later]).search('x', 5)).map((t) => t.id), ['n1']);
+  assert.deepEqual(c.seen, [], '后面那个源接住了，就不是不可达');
+
+  const d = hears();
+  assert.equal(await d.chain([broken]).resolve('n1', 'standard'), null);
+  assert.deepEqual(d.seen, [boom], 'resolve 走的是同一套规矩');
+});
+
 test('链 resolve：从请求的那一档往下试，档位 × 源 是笛卡尔积', async () => {
   const attempts = [];
   const picky = source('picky', {

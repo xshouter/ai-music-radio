@@ -98,7 +98,8 @@ const setup = async (options = {}) => {
 
   const { fetch, calls } = routes({
     ...(options.netease ?? NETEASE_UP),
-    '/v1/chat/completions': llmRoute(
+    // 默认走真 tool loop；要验"上游怎么坏的"，整条聊天路由换掉。
+    '/v1/chat/completions': options.llmChat ?? llmRoute(
       options.firstArgs ?? { genres: ['ambient'], mood: 'low and steady', limit: 3 },
       options.showArgs ?? SHOW,
     ),
@@ -369,4 +370,80 @@ test('切歌时才说下一首：口播是预生成压着的，轮到那首歌�
 
   assert.equal(radio.now().track.id, '1002', '切歌先发生，口播跟着来');
   assert.deepEqual(linesOf(), SHOW.say, '压着的那句轮到 1002 才说出口');
+});
+
+// 上游怎么说，就怎么报。401 / 429 / 503 都是"上游坏了"，但用户该去做的事完全不同。
+const upstream = (status, body = '{}') => () => ({ status, text: async () => body, bytes: async () => new Uint8Array() });
+
+test('LLM 401/403 报 NO_LLM_KEY：key 不被接受，不是"没配 key"，也不是笼统的 INTERNAL', async () => {
+  const denied = await setup({ llmChat: upstream(401, '{"error":"invalid api key"}') });
+  await assert.rejects(() => denied.radio.chat('hello'), (error) => {
+    assert.equal(error.code, 'NO_LLM_KEY');
+    assert.equal(error.retryable, false, '换 key 是人做的事，重试没有意义');
+    return true;
+  });
+
+  const forbidden = await setup({ llmChat: upstream(403) });
+  await assert.rejects(() => forbidden.radio.chat('hello'), (error) => error.code === 'NO_LLM_KEY');
+});
+
+test('LLM 429 报 RATE_LIMITED，而且可重试；别的 5xx 还是 INTERNAL', async () => {
+  const throttled = await setup({ llmChat: upstream(429, '{"error":"slow down"}') });
+  await assert.rejects(() => throttled.radio.chat('hello'), (error) => {
+    assert.equal(error.code, 'RATE_LIMITED');
+    assert.equal(error.retryable, true, '限流是等一会儿的事');
+    return true;
+  });
+
+  const broken = await setup({ llmChat: upstream(503) });
+  await assert.rejects(() => broken.radio.chat('hello'), (error) => error.code === 'INTERNAL');
+});
+
+test('音乐源全挂：开场失败报 MUSIC_SOURCE_UNREACHABLE，不再是"电台内部炸了"', async () => {
+  // 网易云 502，本地目录又是空的 —— 两个源都拿不出歌，链会喊那一声。
+  const DOWN = { '/cloudsearch': { status: 502, text: async () => '{}', bytes: async () => new Uint8Array() } };
+  const { radio } = await setup({ netease: DOWN });
+  const events = subscribe(radio);
+  await radio.boot();
+
+  const errors = events.filter((event) => event.type === 'error');
+  assert.equal(errors.at(-1).payload.code, 'MUSIC_SOURCE_UNREACHABLE');
+  assert.equal(errors.at(-1).payload.retryable, true);
+  assert.equal(radio.now().track, null, '没歌可放就是没歌可放，不假装在播');
+});
+
+test('只是没搜到（源好着）：不许栽给音乐源', async () => {
+  // 搜索回了空结果（不是抛错），链不该喊"不可达"。
+  const empty = { '/cloudsearch': { status: 200, text: async () => JSON.stringify({ result: { songs: [] } }), bytes: async () => new Uint8Array() } };
+  const { radio } = await setup({ netease: empty });
+  const events = subscribe(radio);
+  await radio.boot();
+
+  const codes = events.filter((event) => event.type === 'error').map((event) => event.payload.code);
+  assert.ok(!codes.includes('MUSIC_SOURCE_UNREACHABLE'), '源答了话，只是库里没这首');
+});
+
+test('开场就失败：连上时快照把它带上 —— 那条事件是在窗口存在之前发的', async () => {
+  const DOWN = { '/cloudsearch': { status: 502, text: async () => '{}', bytes: async () => new Uint8Array() } };
+  const { radio } = await setup({ netease: DOWN });
+  await radio.boot(); // main.ts 是先 await boot()、窗口才建起来
+  const codes = subscribe(radio).filter((event) => event.type === 'error').map((event) => event.payload.code);
+  assert.deepEqual(codes, ['MUSIC_SOURCE_UNREACHABLE'], 'boot 期没人听见的那句话，快照要补上说');
+});
+
+test('快照只在还没解决时带错误：好着的时候静默，好起来之后旧的自动撤掉', async () => {
+  const fine = await setup();
+  await fine.radio.boot();
+  assert.deepEqual(subscribe(fine.radio).filter((event) => event.type === 'error'), [], '没出错就别吓人');
+
+  // 源先坏后好：失败过，但最后有一轮真的成了。
+  let down = true;
+  const flip = () => (down
+    ? { status: 502, text: async () => '{}', bytes: async () => new Uint8Array() }
+    : json({ result: { songs: SONGS } }));
+  const flaky = await setup({ netease: { '/cloudsearch': flip } });
+  await flaky.radio.boot();
+  down = false;
+  await flaky.radio.chat('try again');
+  assert.deepEqual(subscribe(flaky.radio).filter((event) => event.type === 'error'), [], '这一轮成了，旧横幅就不该再弹');
 });
