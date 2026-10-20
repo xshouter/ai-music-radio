@@ -60,13 +60,15 @@
 
 | 顺序 | 分支 | 内容 |
 |---|---|---|
-| 4.1 | `feat/core-store` | `core/state/sqlite-store.ts` + 迁移 + `Store` 的内存测试替身 |
+| 4.1 | `feat/core-store` | `core/state/sqlite-store.ts` + 迁移 + `Store` 的内存测试替身 + `core/tsconfig.json` | ✅ 本 PR（#23） |
 | 4.2 | `feat/core-brain` | 自建 tool loop + `LlmProvider` 抽象（OpenAI 兼容 / Anthropic 兼容两个实现） |
 | 4.3 | `feat/music-chain` | `MusicSourceChain` + 网易云实现 + 本地兜底 |
 | 4.4 | `feat/tts-pipeline` | `core/tts.ts` 缓存 + 两个 `TtsProvider` 实现 |
 | 4.5 | `feat/scheduler-and-serving` | 调度器（`Clock` 注入）+ `core/server.ts` 实现第 5 节的全部契约 |
 
 > 4.3 / 4.4 走**自建适配层**：只借鉴公开实现的做法，用本项目自己的端口与抽象重写，**不内联任何第三方代码**。
+> 4.1 顺手定了两件基建：`core/` **不认具体 SQLite 驱动**（结构化接口 + `main/` 注入，见 ADR-0014），
+> 以及 CI 的 Node 从 22 提到 24（`node:sqlite` 在 22 上要 `--experimental-sqlite`，本地却不用 —— 这是最容易分叉的地方）。
 
 **门槛**：切到真后端时 UI **一行不改**，只换 base URL。改了 UI 就说明契约没冻结住。
 

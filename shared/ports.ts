@@ -132,6 +132,36 @@ export interface MusicSource {
   // 债已还清：契约 / mock / 测试 / renderer 里的歌词面都已删除（PR #15），端口这边没有尾巴要跟。
 }
 
+// ── 3.4 Prefs —— 封闭 key 映射（ADR-0005）────────────────────────────────
+
+/**
+ * 设置项的 key 集合是**封闭**的：加一个设置项 = 改契约（ADR-0005）。
+ * 每个值都与 shared/api-types.ts 的 SettingsView / SettingsInput 一一对应 ——
+ * `apiKey` 与 `music.cookie` 也住在这里，但只进不出：回显规则见 ADR-0005 / ADR-0011。
+ */
+export type PrefKey =
+  | 'llm.baseUrl'
+  | 'llm.model'
+  | 'llm.protocol'
+  | 'llm.apiKey'
+  | 'tts.provider'
+  | 'tts.voice'
+  | 'tts.apiKey'
+  | 'music.provider'
+  | 'music.cookie';
+
+export interface PrefMap {
+  'llm.baseUrl': string;
+  'llm.model': string;
+  'llm.protocol': 'openai' | 'anthropic';
+  'llm.apiKey': string;
+  'tts.provider': string;
+  'tts.voice': string;
+  'tts.apiKey': string;
+  'music.provider': string;
+  'music.cookie': string;
+}
+
 // ── 3.5 Store —— 前端永远拿不到它 ────────────────────────────────────────
 
 /** server 侧端口。永远不出现在渲染进程：前端拿到的是 api-types 里的 JSON。 */
@@ -149,8 +179,8 @@ export interface Store {
    */
   favorites(): Promise<TrackRef[]>;
   setFavorite(track: TrackRef, liked: boolean): Promise<void>;
-  getPref<T>(key: string): Promise<T | null>;
-  setPref<T>(key: string, value: T): Promise<void>;
+  getPref<K extends PrefKey>(key: K): Promise<PrefMap[K] | null>;
+  setPref<K extends PrefKey>(key: K, value: PrefMap[K]): Promise<void>;
   appendTasteUpdate(u: TasteUpdate): Promise<void>;
   recentTasteUpdates(limit: number): Promise<TasteUpdate[]>;
 }

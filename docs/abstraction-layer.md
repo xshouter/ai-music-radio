@@ -144,15 +144,19 @@ export interface Store {
   playStats(since: Date): Promise<PlayStats>;
   savePlan(p: DayPlan): Promise<void>;
   activePlan(date: string): Promise<DayPlan | null>;
-  getPref<T>(key: string): Promise<T | null>;
-  setPref<T>(key: string, value: T): Promise<void>;
+  getPref<K extends PrefKey>(key: K): Promise<PrefMap[K] | null>;
+  setPref<K extends PrefKey>(key: K, value: PrefMap[K]): Promise<void>;
   appendTasteUpdate(u: TasteUpdate): Promise<void>;
   recentTasteUpdates(limit: number): Promise<TasteUpdate[]>;
 }
 ```
 
 **`Store` 是 server 侧的端口，永远不出现在渲染进程。** 前端拿到的是第 5 节的 JSON。
-实现：`core/state/sqlite-store.ts`（better-sqlite3）。测试：`MemoryStore`。
+**已落地**（阶段 4.1）：`getPref` / `setPref` 已按 [ADR-0005](adr/0005-typed-prefs.md) 换成封闭 key 映射
+（`PrefKey` / `PrefMap` 就在 `shared/ports.ts` 里，key 集合与 `SettingsView` 一一对应）。
+实现：`core/state/sqlite-store.ts`。测试替身：`core/state/memory-store.ts` 的 `MemoryStore`。
+**驱动不是内核的一部分**：`SqliteStore` 只认一个结构化的 `SqliteDatabase`（`exec` + `prepare`），
+`node:sqlite` 由 `main/bootstrap.ts` 注入 —— 理由与代价见 [ADR-0014](adr/0014-core-driver-injection.md)。
 
 ### 3.6 Clock / EnvProvider / TasteRepo
 
