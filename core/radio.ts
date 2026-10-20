@@ -17,7 +17,7 @@ import { createTtsEngine, wordsFor, TtsFailure } from './tts.ts';
 import { buildTasteFromLibrary } from './taste.ts';
 import { DEFAULT_PREFS, PREF_KEYS } from './state/prefs.ts';
 import { localDateKey } from './prompt.ts';
-import { buildDayPlan } from './plan.ts';
+import { buildDayPlan, type PlanCurator } from './plan.ts';
 
 /**
  * 电台本身（4.5 的调度部分）。server.ts 只做"把 HTTP/WS 翻译成对它的调用"。
@@ -384,6 +384,15 @@ export function createRadio(options: RadioOptions): Radio {
   };
 
   /**
+   * 排表那一轮的接线（ADR-0030）：日表交给大脑去排，它自己会叫 `daily_recommend` 去拿日推。
+   * 没配 key 就不发这一轮 —— 白等一轮没有意义，直接走逐格搜索的兜底。
+   */
+  const planCurator: PlanCurator = async (blocks) => {
+    const d = await providers();
+    if (d.prefs['llm.apiKey'] === '') return null;
+    return d.brain.plan({ trigger: 'schedule', now: clock.now() }, blocks);
+  };
+  /**
    * 今天还没有日表就排一份。**一天只排一次**：重启复用同一份，不然「今天的歌单」每开一次窗口就换一批。
    * 排不出来不是错误 —— 大脑还能自己挑歌，只是开场没有「早上定下的那首」可指。
    */
@@ -394,7 +403,7 @@ export function createRadio(options: RadioOptions): Radio {
     try {
       const at = clock.now();
       const d = await providers();
-      const plan = await buildDayPlan({ date, createdAt: at.toISOString(), music: d.music });
+      const plan = await buildDayPlan({ date, createdAt: at.toISOString(), music: d.music, curate: planCurator });
       await store.savePlan(plan);
       emit({ type: 'plan', payload: plan });
       return plan;
@@ -464,7 +473,7 @@ export function createRadio(options: RadioOptions): Radio {
     async regeneratePlan() {
       const at = clock.now();
       const d = await providers();
-      const plan = await buildDayPlan({ date: localDateKey(at), createdAt: at.toISOString(), music: d.music });
+      const plan = await buildDayPlan({ date: localDateKey(at), createdAt: at.toISOString(), music: d.music, curate: planCurator });
       await store.savePlan(plan);
       emit({ type: 'plan', payload: plan });
       return plan;

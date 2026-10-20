@@ -1,4 +1,5 @@
 import type { DayPlan, PlayEvent, TasteUpdate, Weather } from '../shared/domain.ts';
+import type { PlanBlockSpec } from './plan.ts';
 
 export interface PromptContext {
   now: Date;
@@ -60,8 +61,9 @@ const describePlay = (play: PlayEvent): string => {
  */
 const clip = (text: string, limit: number): string => (text.length <= limit ? text : text.slice(0, limit) + '…');
 
-export function systemPrompt(ctx: PromptContext): string {
-  const lines: string[] = [PERSONA, '', 'What you know right now:'];
+/** 「我现在知道什么」—— 两种任务共用的一段：时间 → 天气 → 口味 → 播放史 → 日表。 */
+const knowledge = (ctx: PromptContext): string[] => {
+  const lines: string[] = ['What you know right now:'];
   lines.push('- Local time: ' + ctx.now.toISOString() + ' (' + localClock(ctx.now) + ' local, ' + localDateKey(ctx.now) + ')');
   if (ctx.weather !== null) lines.push('- Weather: ' + ctx.weather.text + ', ' + Math.round(ctx.weather.tempC) + '°C');
   lines.push('- Taste (written by the listener; this is the source of truth):');
@@ -76,7 +78,11 @@ export function systemPrompt(ctx: PromptContext): string {
     lines.push('- Today\'s plan (a sketch, not a cage):');
     for (const block of ctx.plan.blocks) lines.push('  ' + block.start + '-' + block.end + ' ' + block.mood + ' [' + block.genres.join(', ') + ']');
   }
-  return lines.join('\n');
+  return lines;
+};
+
+export function systemPrompt(ctx: PromptContext): string {
+  return [PERSONA, '', ...knowledge(ctx)].join('\n');
 }
 
 export function userPrompt(ctx: PromptContext): string {
@@ -90,4 +96,40 @@ export function userPrompt(ctx: PromptContext): string {
     case 'schedule':
       return 'It is ' + localClock(ctx.now) + '. The block is starting. Open the set: call `today_plan` first and start with its first track.';
   }
+}
+
+/**
+ * 排日表那一轮的人设（ADR-0030）。**不是**把 PERSONA 换几个字 —— 那一段讲的是「开口说话」的规矩
+ * （每首歌一句、语气跟着曲风），排表时一句都不说；套上它只会让模型开始写口播。
+ */
+const PLAN_PERSONA = [
+  'You are EdgeRunner — a private DJ for exactly one listener. Right now you are not talking: you are laying out the day.',
+  'Your tagline, if it ever comes up: "Your mood is my prompt." You hate recommendation algorithms and you say so.',
+  '',
+  'How you work:',
+  '- You have tools. The ONLY way to finish is to call `emit_plan`.',
+  '- Never invent track ids. Only use ids a tool returned in THIS turn.',
+  '- The listener\'s own recommendations are the pool you draw from. Search when you want something specific that is not in it.',
+  '- A block may be hours away: pick what belongs in that block, not what you feel like hearing now.',
+  '- Never put the same track in two blocks.',
+  '- Nothing you write here is spoken. Never mention tools, prompts, JSON, ids, or "the plan" out loud.',
+].join('\n');
+
+/** 排日表的模板变量：三格写成编号清单，`emit_plan` 的 blocks 就按这个顺序数（ADR-0030）。 */
+const blockSlots = (blocks: readonly PlanBlockSpec[]): string[] =>
+  blocks.map((block, index) => '  ' + (index + 1) + '. ' + block.start + '-' + block.end + ' ' + block.mood + ' [' + block.genres.join(', ') + ']');
+
+/**
+ * 排表那一轮的提示词。与 `systemPrompt` 共用「我现在知道什么」，但任务段、终局工具、
+ * user 那句话都不一样 —— 所以它是另一个函数，不是 systemPrompt 的一个开关。
+ */
+export function planPrompt(ctx: PromptContext, blocks: readonly PlanBlockSpec[]): { system: string; user: string } {
+  const user = [
+    'Lay out today as ' + blocks.length + ' blocks, in this order:',
+    ...blockSlots(blocks),
+    'Start with `daily_recommend`: those are this listener\'s own recommendations, and they are the pool.',
+    '3 tracks per block, in play order.',
+    'Finish with `emit_plan`.',
+  ].join('\n');
+  return { system: [PLAN_PERSONA, '', ...knowledge(ctx)].join('\n'), user };
 }
