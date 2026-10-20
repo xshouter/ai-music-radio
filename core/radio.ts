@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { Clock, EnvProvider, PrefMap, Store, TasteRepo, TtsProvider } from '../shared/ports.ts';
+import type { Clock, EnvProvider, LlmProvider, PrefMap, Store, TasteRepo, TtsProvider } from '../shared/ports.ts';
 import type { DayPlan, DjMessage, DjState, PlayEvent, QualityLevel, Show, SpokenLine, Track, TrackRef } from '../shared/domain.ts';
 import type {
   ErrorCode, FavoriteAction, NowPlaying, PlaybackReport, SettingsInput, SettingsView, StreamEvent, TasteDoc,
@@ -14,6 +14,7 @@ import { createAnthropicLlm } from './providers/llm-anthropic.ts';
 import { createFishTts } from './providers/tts-fish.ts';
 import { createPiperTts } from './providers/tts-piper.ts';
 import { createTtsEngine, wordsFor, TtsFailure } from './tts.ts';
+import { buildTasteFromLibrary } from './taste.ts';
 import { DEFAULT_PREFS, PREF_KEYS } from './state/prefs.ts';
 import { localDateKey } from './prompt.ts';
 import { buildDayPlan } from './plan.ts';
@@ -54,6 +55,8 @@ export interface RadioOptions {
   localDir: string;
   /** 口播缓存目录（cache/tts）。 */
   cacheDir: string;
+  /** 语料目录（`taste.md` 落在这里）。与 createTasteRepo 的 dir 是同一个。 */
+  tasteDir: string;
   /**
    * 本地语音运行时目录：里面有 piper.exe、espeak-ng-data/ 和 <voice>.onnx。
    * 组装层必须保证它是**纯 ASCII** —— piper 用 fopen 读自己的数据目录，非 ASCII 路径直接崩（实测）。
@@ -89,6 +92,8 @@ interface Deps {
   tts: ReturnType<typeof createTtsEngine>;
   music: ReturnType<typeof createMusicSourceChain>;
   brain: ToolLoopBrain;
+  /** 口味画像要用它写一份 md，所以它也在这里（不是给大脑用的那条路）。 */
+  llm: LlmProvider;
 }
 
 /**
@@ -192,7 +197,7 @@ export function createRadio(options: RadioOptions): Radio {
     ]);
     const brain = new ToolLoopBrain({ llm, music, store, taste, env, model: prefs['llm.model'], onStep: harvest });
 
-    deps = { prefs, tts, music, brain };
+    deps = { prefs, tts, music, brain, llm };
     signature = key;
     return deps;
   };
@@ -325,6 +330,20 @@ export function createRadio(options: RadioOptions): Radio {
     }
   };
 
+  /**
+   * 读听众自己的歌单 → 让模型写一份口味画像 → 落到 `taste/<taste.md>`（ADR-0025）。
+   * 只在**第一次填 cookie** 之后跑一次；后台跑，不挡保存设置。
+   */
+  const learnTaste = async (): Promise<void> => {
+    const d = await providers();
+    if (d.prefs['llm.apiKey'] === '' || d.prefs['music.cookie'] === '') return;
+    const verdict = await buildTasteFromLibrary({
+      music: d.music, llm: d.llm, model: d.prefs['llm.model'], dir: options.tasteDir,
+    });
+    warn(verdict.written
+      ? 'radio: 口味画像已写入 taste.md（读了 ' + verdict.tracks + ' 首）'
+      : 'radio: 口味画像没写 —— ' + verdict.reason);
+  };
   return {
     subscribe(send) {
       subscribers.add(send);
@@ -385,6 +404,7 @@ export function createRadio(options: RadioOptions): Radio {
 
     async saveSettings(input) {
       // 封闭 key，显式校验；**空字符串 = 不改**，所以 key / cookie 不可能被一次空提交清掉（ADR-0005 / ADR-0011）。
+      const hadCookie = (await readPrefs())['music.cookie'] !== '';
       if (input.llm !== undefined) {
         if (typeof input.llm.baseUrl === 'string' && input.llm.baseUrl !== '') await store.setPref('llm.baseUrl', input.llm.baseUrl);
         if (typeof input.llm.model === 'string' && input.llm.model !== '') await store.setPref('llm.model', input.llm.model);
@@ -402,6 +422,11 @@ export function createRadio(options: RadioOptions): Radio {
         if (typeof input.music.cookie === 'string' && input.music.cookie !== '') await store.setPref('music.cookie', input.music.cookie);
       }
       signature = ''; // 下一次 providers() 一定重建
+      // cookie 从「没有」变成「有」＝第一次填：后台去读他的歌单（ADR-0025）。
+      // 不 await：分析要等音乐源和模型，慢；设置存完就该立刻生效。
+      if (!hadCookie && typeof input.music?.cookie === 'string' && input.music.cookie !== '') {
+        void learnTaste().catch(() => {});
+      }
       const answer = await this.settings();
       return answer;
     },

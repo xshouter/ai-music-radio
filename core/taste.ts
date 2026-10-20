@@ -1,8 +1,8 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { TasteUpdate } from '../shared/domain.ts';
 import type { TasteDoc } from '../shared/api-types.ts';
-import type { Clock, Store, TasteRepo } from '../shared/ports.ts';
+import type { Clock, LlmProvider, MusicSource, Store, TasteRepo } from '../shared/ports.ts';
 
 /**
  * 语料仓库（抽象层第 3.6 节的 `TasteRepo`）。
@@ -79,4 +79,59 @@ export function createTasteRepo(options: TasteOptions): TasteRepo {
       });
     },
   };
+}
+
+/** 机器生成的那一份语料的文件名，**写死**（ADR-0025）：机器只碰这一个名字，人的语料用别的名字。 */
+export const GENERATED_TASTE_FILE = 'taste.md';
+
+export interface TasteBuildOptions {
+  music: MusicSource;
+  llm: LlmProvider;
+  model: string;
+  /** 语料目录 —— 与 createTasteRepo 的 dir 是同一个。 */
+  dir: string;
+  /** 读多少首歌去分析。默认 60。 */
+  limit?: number;
+}
+
+const TASTE_SYSTEM = [
+  'You are the music librarian for exactly one listener. You are given the tracks they keep.',
+  'Write their taste profile, in English, as plain prose: no headings, no bullets, no song titles.',
+  'Under 90 words. Be specific about what they return to — moods, textures, tempo, era. No flattery.',
+].join('\n');
+
+/**
+ * 读听众自己的曲库，让模型写一份口味画像，落到 `taste.md`（ADR-0025）。
+ *
+ * 三条不肯让步的地方：
+ * 1. **已经有一份就不覆盖** —— 那可能是人自己改过的。想重来就删掉文件。
+ * 2. 曲库是空的（没 cookie / 歌单没歌）→ 什么都不写，回一个理由，**不抛错**：这是冷启动的常态。
+ * 3. 这一笔是账外的：它失败不该把调用方（保存设置）弄失败。
+ */
+export async function buildTasteFromLibrary(
+  options: TasteBuildOptions,
+): Promise<{ written: boolean; reason: string; tracks: number }> {
+  const file = join(options.dir, GENERATED_TASTE_FILE);
+  if (existsSync(file)) return { written: false, reason: 'taste.md already exists', tracks: 0 };
+
+  const size = Math.max(1, Math.min(200, Math.trunc(options.limit ?? 60)));
+  const tracks = await options.music.library(size).catch(() => []);
+  if (tracks.length === 0) return { written: false, reason: 'no library to read', tracks: 0 };
+
+  const listing = tracks.map((track) => track.artist + ' — ' + track.title).join('\n');
+  const response = await options.llm.complete({
+    model: options.model,
+    messages: [
+      { role: 'system', content: TASTE_SYSTEM },
+      { role: 'user', content: 'These are the ' + tracks.length + ' tracks this listener keeps:' + '\n\n' + listing },
+    ],
+    temperature: 0.4,
+    maxTokens: 400,
+  });
+  const prose = response.text.trim();
+  if (prose === '') return { written: false, reason: 'model returned nothing', tracks: tracks.length };
+
+  mkdirSync(options.dir, { recursive: true });
+  writeFileSync(file, prose + '\n', 'utf8');
+  return { written: true, reason: '', tracks: tracks.length };
 }
