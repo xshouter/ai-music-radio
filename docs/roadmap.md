@@ -44,7 +44,7 @@
 | 3.9 | `feat/ui-credentials-modal` | `LOGIN` → 凭证弹窗（LLM / TTS 的 key + 网易云 cookie） | ✅ 已合并（PR #19） |
 | 3.10 | `feat/contracts-profile` | 契约增量 P6：`GET /api/stats` + `GET /api/history`（ADR-0013）+ mock 开始记账 + 断言 | ✅ 已合并（PR #20） |
 | 3.11 | `feat/ui-profile` | Profile：taste 语料、收听统计、口播历史、`plan` 的去处 | ✅ 已合并（PR #21） |
-| 3.12 | `fix/ui-button-ink` | 插队补丁：按钮小字 `--text-dim` → `--btn-text`；15px 以下的 Doto 回 `--label` | ✅ 本 PR |
+| 3.12 | `fix/ui-button-ink` | 插队补丁：按钮小字 `--text-dim` → `--btn-text`；15px 以下的 Doto 回 `--label` | ✅ 已合并（PR #22） |
 
 > 3.10 是**契约增量**（P6），跟 3.3 / 3.4 一个道理：先冻结再加界面；3.11 才是 Profile 本身。
 > 3.1 为什么被推翻：它是一个「能跑起来的电台界面」，不是「和参考分不出来的电台界面」。
@@ -60,10 +60,10 @@
 
 | 顺序 | 分支 | 内容 | 状态 |
 |---|---|---|---|
-| 4.1 | `feat/core-store` | `core/state/sqlite-store.ts` + 迁移 + `Store` 的内存测试替身 + `core/tsconfig.json` | ✅ 本 PR（#23） |
-| 4.2 | `feat/core-brain` | 自建 tool loop + `LlmProvider` 抽象（OpenAI 兼容 / Anthropic 兼容两个实现） | ✅ 本 PR（#24） |
-| 4.3 | `feat/music-chain` | `MusicSourceChain` + 网易云实现 + 本地兜底 | ✅ 本 PR（#25） |
-| 4.4 | `feat/tts-pipeline` | `core/tts.ts` 缓存 + 两个 `TtsProvider` 实现 | |
+| 4.1 | `feat/core-store` | `core/state/sqlite-store.ts` + 迁移 + `Store` 的内存测试替身 + `core/tsconfig.json` | ✅ 已合并（#23） |
+| 4.2 | `feat/core-brain` | 自建 tool loop + `LlmProvider` 抽象（OpenAI 兼容 / Anthropic 兼容两个实现） | ✅ 已合并（#24） |
+| 4.3 | `feat/music-chain` | `MusicSourceChain` + 网易云实现 + 本地兜底 | ✅ 已合并（#25） |
+| 4.4 | `feat/tts-pipeline` | `core/tts.ts`：内容寻址缓存 + 词时间戳（ADR-0017）+ Fish Audio 实现 | ✅ 本 PR |
 | 4.5 | `feat/scheduler-and-serving` | 调度器（`Clock` 注入）+ `core/server.ts` 实现第 5 节的全部契约 | |
 
 > 4.3 / 4.4 走**自建适配层**：只借鉴公开实现的做法，用本项目自己的端口与抽象重写，**不内联任何第三方代码**。

@@ -19,10 +19,10 @@ const routes = (map) => {
     calls.push({ url: request.url, headers: request.headers });
     const path = new URL(request.url).pathname;
     const handler = map[path];
-    if (handler === undefined) return { status: 404, text: async () => '{"code":404}' };
+    if (handler === undefined) return { status: 404, text: async () => '{"code":404}', bytes: async () => new Uint8Array(), };
     const result = typeof handler === 'function' ? handler(request) : handler;
     if (result instanceof Error) throw result;
-    return { status: result.status ?? 200, text: async () => JSON.stringify(result.body ?? result) };
+    return { status: result.status ?? 200, text: async () => JSON.stringify(result.body ?? result), bytes: async () => new Uint8Array(), };
   };
   return { fetch, calls };
 };
