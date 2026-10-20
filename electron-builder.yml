@@ -18,8 +18,6 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   perMachine: false
-# 发布到 GitHub Release。releaseType: draft —— tag 推上来先落成草稿，
-# 人看过再 `gh release edit <tag> --draft=false` 放出去（见 .github/workflows/release.yml）。
-publish:
-  provider: github
-  releaseType: draft
+# 这里**没有** publish 配置，是故意的：出包只负责出包，发布交给工作流用 `gh` 明确地做
+# （.github/workflows/release.yml）。electron-builder 自带的 GitHub publisher 在同一次运行里
+# 会为同一个 tag 建出**两个** draft Release（v0.1.0 上实测过），不如自己来。
