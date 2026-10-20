@@ -13,7 +13,8 @@
     "build": "npm run build --workspace @edgerunner/renderer",
     "typecheck": "tsc -p tsconfig.json && tsc -p core/tsconfig.json && npm run typecheck --workspace @edgerunner/renderer",
     "test": "node --experimental-strip-types --test",
-    "boundaries": "node tools/check-boundaries.mjs"
+    "boundaries": "node tools/check-boundaries.mjs",
+    "smoke:llm": "node --experimental-strip-types tools/smoke-llm.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
