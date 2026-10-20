@@ -83,6 +83,7 @@
 | 5.2 | `chore/release-pipeline` | Actions 打 tag 出 Windows 安装包 → draft Release；README 写清自备 key / cookie | ✅ 已合并（#32） |
 | 5.3 | `chore/release-publish-own` | 发布这一步由工作流用 `gh` 做（electron-builder 的 publisher 会建两个 draft） | ✅ 已合并（#34） |
 | 5.4 | `feat/piper-voice-and-icon` | 语音引擎换**离线 Piper**（ADR-0022，`format` 成为引擎属性）+ 只发便携 exe（ADR-0023）+ 应用图标 | ✅ 已合并（#38） |
+| 5.5 | `chore/release-0.1.1` + tag | 第一次发便携版：版本推到 0.1.1（#39）→ tag `v0.1.1` → 流水线出 `EdgeRunner-0.1.1-portable.exe` | ✅ 已发布（v0.1.1，Latest） |
 
 ## 贯穿全程的两件事
 
