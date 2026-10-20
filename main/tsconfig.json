@@ -1,0 +1,19 @@
+{
+  // main/ = 唯一组装点 + Electron 外壳。只有这一层可以 import electron。
+  // 它把 core/（内核）与 node: 内建接起来：core/ 不认驱动、不认 Electron，接线全在这里。
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": ["."]
+}
