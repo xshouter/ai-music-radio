@@ -130,6 +130,8 @@ export function createRadio(options: RadioOptions): Radio {
   let djState: DjState = 'idle';
   let onAir = false;
   let queueRefs: readonly TrackRef[] = [];
+  // 预生成、压着还没说的那几句：按**曲目 id** 挂，不按下标 —— 用户点某一首跳过去时下标会错位。
+  let heldSay = new Map<string, string>();
   let deps: Deps | null = null;
   let signature = '';
 
@@ -231,6 +233,8 @@ export function createRadio(options: RadioOptions): Radio {
         emitError('TTS_FAILED', cause instanceof TtsFailure ? cause.message : String(cause), true);
         spoken = { index, line, audioUrl: d.tts.urlOf(d.tts.keyOf(line, voice)), words: wordsFor(line, 0) };
       }
+      // 「说了什么」就是历史。放在这里而不是 think()：被挂起来、还没说出口的那几句不该进历史。
+      await store.appendMessage({ id: randomUUID(), ts: clock.now().toISOString(), role: 'dj', text: line }).catch(() => {});
       emit({ type: 'say', payload: spoken });
     }
     djState = 'idle';
@@ -238,9 +242,16 @@ export function createRadio(options: RadioOptions): Radio {
     emit({ type: 'now', payload: nowPlaying() });
   };
 
-  const rememberDjLines = async (lines: readonly string[]): Promise<void> => {
-    for (const text of lines) {
-      await store.appendMessage({ id: randomUUID(), ts: clock.now().toISOString(), role: 'dj', text }).catch(() => {});
+  /**
+   * 把「开场之后的那几句」按曲目挂起来（ADR-0026）：它们是随这一轮推理**预生成**的，
+   * 但轮到那首歌时才说。开场那句（say[0]）立刻说，所以不在里面。
+   */
+  const holdIntros = (show: Show): void => {
+    heldSay = new Map<string, string>();
+    for (let i = 1; i < show.play.length; i += 1) {
+      const ref = show.play[i];
+      const line = show.say[i];
+      if (ref !== undefined && line !== undefined && line !== '') heldSay.set(ref.id, line);
     }
   };
 
@@ -278,7 +289,6 @@ export function createRadio(options: RadioOptions): Radio {
         ...(userText === undefined ? {} : { userText }),
       });
       applyShow(show);
-      await rememberDjLines(show.say);
       return show;
     } catch (cause: unknown) {
       djState = 'idle';
@@ -297,7 +307,9 @@ export function createRadio(options: RadioOptions): Radio {
       return;
     }
     const show = await think(trigger, userText);
-    void speak(d, show.say).catch(() => {});
+    // 开场只说第一句；剩下的挂起来，切歌时才轮到它们（ADR-0026）。
+    holdIntros(show);
+    void speak(d, show.say.slice(0, 1)).catch(() => {});
   };
 
   const advance = async (): Promise<void> => {
@@ -307,6 +319,13 @@ export function createRadio(options: RadioOptions): Radio {
       return;
     }
     stepLocally();
+    // 切到下一首：把早就写好、一直压着的那一句推出去 —— 文本落进 feed，音频跟着响（ADR-0026）。
+    const arrived = current;
+    if (arrived === null) return;
+    const intro = heldSay.get(arrived.id);
+    if (intro === undefined) return;
+    heldSay.delete(arrived.id);
+    void speak(await providers(), [intro]).catch(() => {});
   };
 
   /**
@@ -444,6 +463,8 @@ export function createRadio(options: RadioOptions): Radio {
           ? cause
           : new RadioFailure('INTERNAL', cause instanceof Error ? cause.message : String(cause), true);
       });
+      // 对话的回答要一次说完，不是「每首歌一句」：挂起来的那些必须清掉。
+      heldSay.clear();
       // 逐句推是**流**的事，不是这次 POST 的事：POST 立刻回 Show，音频在后台一句句到。
       void speak(d, show.say).catch(() => {});
       return show;
