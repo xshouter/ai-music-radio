@@ -43,9 +43,11 @@
 
 **再补一件（音乐源这一环不闭环，说明白）：** 网易云的 web 接口要过一层请求加密，而这层**不在内核里**
 （ADR-0016）——它由一个 NeteaseCloudMusicApi **兼容服务**承担。默认地址 `http://127.0.0.1:3000`，
-可以用环境变量 `EDGERUNNER_NETEASE_BASE_URL` 改：
+可以用环境变量 `EDGERUNNER_NETEASE_BASE_URL` 改。**起它只要一行**（不用装进这个仓库 —— 它就是 ADR-0016 说的那个
+「可单独替换的组件」）：
 
 ```powershell
+$env:PORT = 3000; $env:HOST = "127.0.0.1"; npx --yes NeteaseCloudMusicApi
 $env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & ".\EdgeRunner-x.y.z-portable.exe"
 ```
 
