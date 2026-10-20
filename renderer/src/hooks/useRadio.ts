@@ -40,6 +40,15 @@ export interface Radio {
   setSource: (source: QueueSource) => void;
   favorite: (track: TrackRef, on: boolean) => void;
   dismissError: () => void;
+  /* 口播管道（ADR-0029）：播放权在这一处，不在全屏态组件里 —— 切歌能顶掉、暂停能跟着停。 */
+  oralOpen: boolean;
+  oralLines: SpokenLine[];
+  oralPlaying: boolean;
+  oralMs: number;
+  playOral: (line: SpokenLine) => void;
+  closeOral: () => void;
+  toggleOral: () => void;
+  seekOral: (ms: number) => void;
 }
 
 let messageSeq = 0;
@@ -65,18 +74,12 @@ const withCards = (prev: DjMessage[], pending: { after: string; tracks: TrackRef
   return next;
 };
 
-/* 一句口播到达：文本叠到同一条 DJ 消息上，同时把「这一句的时间戳 + 音频」挂进 meta.turns。
-   口播界面靠它逐词高亮、算进度。meta 是自由字段，所以这不需要动契约（ADR-0012 只加了 payload）。 */
+/* 一条到达：intro 和 talk **各是独立的一条** DJ 消息（一首歌一条，用户定）。
+   intro 带上 meta.turns —— UI 靠它给 PLAY / REPLAY 入口、并把它喂进口播管道；
+   talk 不带 —— 于是没有入口，也进不了全屏口播。 */
 const withSay = (prev: DjMessage[], line: SpokenLine): DjMessage[] => {
-  const last = prev[prev.length - 1];
-  if (last && last.role === 'dj') {
-    const turns = Array.isArray(last.meta?.turns) ? (last.meta.turns as SpokenLine[]) : [];
-    return [
-      ...prev.slice(0, -1),
-      { ...last, text: last.text ? `${last.text} ${line.line}` : line.line, meta: { ...last.meta, turns: [...turns, line] } },
-    ];
-  }
-  return [...prev, { ...message('dj', line.line), meta: { turns: [line] } }];
+  const entry = message('dj', line.line);
+  return line.kind === 'talk' ? [...prev, entry] : [...prev, { ...entry, meta: { turns: [line] } }];
 };
 
 const asError = (cause: unknown): RadioError =>
@@ -101,7 +104,15 @@ export function useRadio(): Radio {
   const [source, setSource] = useState<QueueSource>('ai');
   const [favorites, setFavorites] = useState<TrackRef[]>([]);
 
+  const [oralOpen, setOralOpen] = useState(false);
+  const [oralLines, setOralLines] = useState<SpokenLine[]>([]);
+  const [oralPlaying, setOralPlaying] = useState(false);
+  const [oralMs, setOralMs] = useState(0);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const oralAudioRef = useRef<HTMLAudioElement | null>(null);
+  // 口播在不在开着：WS 的 say 回调只挂一次，闭包会一直看到旧值，所以走 ref。
+  const oralOpenRef = useRef(false);
   const pending = useRef<{ after: string; tracks: TrackRef[] } | null>(null);
   // 「现在放的是哪首」和「跳下一首」要给媒体事件用：那两个监听只挂一次，闭包会一直看到旧值。
   const currentIdRef = useRef<string | null>(null);
@@ -157,6 +168,26 @@ export function useRadio(): Radio {
     };
   }, []);
 
+  // 口播的 <audio>：和音乐那个并列，自成一条管道。它不认识界面 —— 界面关不关由 ✕ 说了算。
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = 'auto';
+    oralAudioRef.current = audio;
+    const onTime = () => setOralMs(audio.currentTime * 1000);
+    const onPlay = () => setOralPlaying(true);
+    const onPause = () => setOralPlaying(false);
+    audio.addEventListener('timeupdate', onTime);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    return () => {
+      audio.pause();
+      audio.removeEventListener('timeupdate', onTime);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+      oralAudioRef.current = null;
+    };
+  }, []);
+
   // 首屏：四个 GET + 一条 WS。WS 连上会自带快照，所以这里的 GET 只为「连不上时也有东西看」。
   useEffect(() => {
     let alive = true;
@@ -176,12 +207,16 @@ export function useRadio(): Radio {
         case 'state':
           setNow((prev) => (prev ? { ...prev, ...event.payload } : prev));
           break;
-        case 'say':
+        case 'say': {
+          const line = event.payload;
           setFeed((prev) => {
-            const base = withSay(prev, event.payload);
+            const base = withSay(prev, line);
             return pending.current ? withCards(base, pending.current) : base;
           });
+          // 开着口播时：新的一条直接顶上（一首歌一条，切歌不排队 —— 过期的介绍直接丢弃，用户定）。
+          if (line.kind === 'intro' && oralOpenRef.current) setOralLines((prev) => [...prev, line]);
           break;
+        }
         case 'error':
           setError(event.payload);
           break;
@@ -227,15 +262,32 @@ export function useRadio(): Radio {
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
 
+  // 口播那条一到就从这一条说起：切歌 = 换一条 = 直接顶上当前句（用户定）。
+  const oralLine = oralLines.length > 0 ? (oralLines[oralLines.length - 1] ?? null) : null;
+  useEffect(() => {
+    const audio = oralAudioRef.current;
+    if (!audio || oralLine === null) return;
+    audio.src = oralLine.audioUrl;
+    setOralMs(0);
+    void audio.play().catch(() => undefined);
+  }, [oralLine]);
+
   // 队列里的 TrackRef 不带时长（领域类型就是这么定的）；时长只可能来自 <audio> 或 now.track。
   const nowMatches = now?.track?.id === currentId ? (now.track.durationMs ?? 0) : 0;
   const durationMs = mediaMs || nowMatches;
 
+  // 一个「暂停」把这一台都停住：音乐停，口播跟着停；音乐再走，口播也跟着走（用户定）。
   const toggle = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (audio.paused) void audio.play().catch(() => undefined);
-    else audio.pause();
+    const oral = oralAudioRef.current;
+    if (audio.paused) {
+      void audio.play().catch(() => undefined);
+      if (oral && oral.src !== '') void oral.play().catch(() => undefined);
+    } else {
+      audio.pause();
+      if (oral) oral.pause();
+    }
   }, []);
 
   const stop = useCallback(() => {
@@ -243,6 +295,7 @@ export function useRadio(): Radio {
     if (!audio) return;
     audio.pause();
     audio.currentTime = 0;
+    oralAudioRef.current?.pause();
   }, []);
 
   // 播放权威在客户端（ADR-0010）：切歌就是「我切到这首了」，server 只记账。
@@ -287,6 +340,46 @@ export function useRadio(): Radio {
   useEffect(() => {
     skipRef.current = () => move(1);
   }, [move]);
+
+  // 开一场口播：从这一条说起（点 PLAY / REPLAY / 开机自动进）。这一段就是这一场的稿子。
+  const playOral = useCallback((line: SpokenLine) => {
+    oralOpenRef.current = true;
+    setOralOpen(true);
+    setOralLines([line]);
+    const audio = oralAudioRef.current;
+    if (audio) {
+      // 显式从头说：点 REPLAY 要真的重来（用户定：play 和 replay 都从头开始播）。
+      audio.src = line.audioUrl;
+      setOralMs(0);
+      void audio.play().catch(() => undefined);
+    }
+  }, []);
+
+  // ✕ = 主动停止口播并回主界面（用户定）—— 这是**唯一**的停止方式。
+  const closeOral = useCallback(() => {
+    oralOpenRef.current = false;
+    setOralOpen(false);
+    setOralLines([]);
+    setOralMs(0);
+    const audio = oralAudioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute('src');
+    }
+  }, []);
+
+  const toggleOral = useCallback(() => {
+    const audio = oralAudioRef.current;
+    if (!audio) return;
+    if (audio.paused) void audio.play().catch(() => undefined);
+    else audio.pause();
+  }, []);
+
+  const seekOral = useCallback((ms: number) => {
+    const audio = oralAudioRef.current;
+    if (!audio) return;
+    audio.currentTime = Math.max(0, ms) / 1000;
+  }, []);
 
   const say = useCallback((text: string) => {
     const trimmed = text.trim();
@@ -334,5 +427,13 @@ export function useRadio(): Radio {
     setSource,
     favorite,
     dismissError: () => setError(null),
+    oralOpen,
+    oralLines,
+    oralPlaying,
+    oralMs,
+    playOral,
+    closeOral,
+    toggleOral,
+    seekOral,
   };
 }

@@ -179,7 +179,25 @@ test('chat：立刻回一段 Show，且对话进历史', async () => {
 
   const history = await radio.history(10);
   assert.ok(history.some((message) => message.role === 'me' && message.text === 'something quiet please'));
-  assert.ok(history.some((message) => message.role === 'dj' && message.text === SHOW.say[0]));
+  // 答话不是口播：整段一条，不是「一首歌一句」（用户定）。
+  assert.ok(history.some((message) => message.role === 'dj' && message.text === SHOW.say.join(' ')));
+});
+
+test('chat 的答话是 talk：一条、整段、不合成、没有音频与词表', async () => {
+  const { radio } = await setup();
+  const events = subscribe(radio);
+  await radio.boot();
+  await waitFor(() => events.filter((event) => event.type === 'say').length >= 1);
+  events.length = 0;
+
+  await radio.chat('something quiet please');
+  await waitFor(() => events.filter((event) => event.type === 'say').length >= 1);
+
+  const says = events.filter((event) => event.type === 'say').map((event) => event.payload);
+  assert.deepEqual(says.map((say) => say.kind), ['talk'], '答话只推一条，而且是 talk');
+  assert.equal(says[0].line, SHOW.say.join(' '), 'talk 整段一条');
+  assert.equal(says[0].audioUrl, '', 'talk 不合成：没有音频');
+  assert.deepEqual(says[0].words, [], 'talk 没有词表 —— UI 也就不会给它入口');
 });
 
 test('降级：源不可达时链落到本地，degraded 由队列推断出来', async () => {

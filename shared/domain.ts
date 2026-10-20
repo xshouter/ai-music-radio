@@ -52,12 +52,16 @@ export interface SpokenWord {
 /**
  * 一句口播。逐句推是为了「一句一句浮现 + 一句一句合成」（ADR-0001）；
  * audioUrl 与 words 让 UI 能放这一句、并按词高亮、并算出口播进度（ADR-0012）。
+ *
+ * kind 是**来源**（ADR-0029）：intro = 对一首歌的介绍（进 feed、进全屏口播、有 PLAY / REPLAY 入口）；
+ * talk = 对听众的答话（只有文字：不合成、没入口、不进全屏口播）。UI 在 `withSay` 那一处分岔。
  */
 export interface SpokenLine {
   index: number;
   line: string;
   audioUrl: string;
   words: SpokenWord[];
+  kind: 'intro' | 'talk';
 }
 
 export interface DjMessage {

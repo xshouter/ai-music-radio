@@ -37,10 +37,8 @@ export function App() {
   const [djOpen, setDjOpen] = useState(false);
   const [credOpen, setCredOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  // 口播全屏态：只记「哪条消息」，turns 每次从 feed 现取 —— 后台新生成的口播会自动接上（连续）。
-  // seq 每开一次 +1：靠 key 重开一份干净的播放状态（口播从头播）。
-  const [oral, setOral] = useState<{ id: string; seq: number } | null>(null);
   // 听过哪几条：决定入口写 PLAY 还是 REPLAY。会话内有效，刷新即归零（feed 本来也是会话内的）。
+  // 口播的播放状态不在这里 —— 它在 useRadio 的管道里（ADR-0029），界面开不开都不改变它。
   const [heard, setHeard] = useState<ReadonlySet<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   // 开机自动进口播界面只来一次；用户自己开口（或在别处点过歌）之后就不再抢屏幕。
@@ -68,24 +66,34 @@ export function App() {
   const onLike = () => {
     if (radio.current) radio.favorite(radio.current, !radio.liked);
   };
-  // 口播入口：点 PLAY / REPLAY 也要把音乐放起来（用户定）。
+  // 口播入口：点 PLAY / REPLAY 也要把音乐放起来（用户定），并从这一条说起。
   const openOral = (id: string) => {
+    const entry = radio.feed.find((item) => item.id === id);
+    const line = entry === undefined ? undefined : turnsOf(entry)[0];
+    if (line === undefined) return;
     if (!radio.playing) radio.toggle();
     setHeard((prev) => new Set(prev).add(id));
-    setOral((prev) => ({ id, seq: (prev?.seq ?? 0) + 1 }));
+    radio.playOral(line);
   };
-  const oralEntry = oral === null ? undefined : radio.feed.find((entry) => entry.id === oral.id);
-  const oralTurns = oralEntry === undefined ? [] : turnsOf(oralEntry);
 
-  // 开机进台（用户定）：第一句口播一到就打开口播界面。只自动开这一次 ——
-  // 后面几句由 OnAir 自己接上（连续），所以这里只认「第一句」这一下。
+  // 开机进台（用户定）：第一条口播一到就打开口播界面。只自动开这一次 ——
+  // 之后切歌换口播由 useRadio 的管道接手（连续），这里只认「第一条」这一下。
   useEffect(() => {
-    if (!autoOpenRef.current || oral !== null) return;
+    if (!autoOpenRef.current || radio.oralOpen) return;
     const first = radio.feed.find((entry) => turnsOf(entry).length > 0);
     if (first === undefined) return;
     autoOpenRef.current = false;
     openOral(first.id);
-  }, [oral, radio.feed]);
+  }, [radio.oralOpen, radio.feed]);
+
+  // 说过的就算「听过」：入口于是从 PLAY 变 REPLAY（用户定）。管道里说到哪条，这里就记哪条。
+  useEffect(() => {
+    const last = radio.oralLines[radio.oralLines.length - 1];
+    if (last === undefined) return;
+    const entry = radio.feed.find((item) => turnsOf(item)[0] === last);
+    if (entry === undefined) return;
+    setHeard((prev) => (prev.has(entry.id) ? prev : new Set(prev).add(entry.id)));
+  }, [radio.oralLines, radio.feed]);
 
   return (
     <div className="viewport">
@@ -178,19 +186,19 @@ export function App() {
 
         {profileOpen && <Profile onClose={() => setProfileOpen(false)} onPlay={radio.play} />}
 
-        {oral && (
+        {radio.oralOpen && (
           <OnAir
-            key={'oral-' + oral.seq}
-            turns={oralTurns}
+            lines={radio.oralLines}
             track={radio.current}
             playing={radio.playing}
             positionMs={radio.positionMs}
             durationMs={radio.durationMs}
+            oralPlaying={radio.oralPlaying}
+            oralMs={radio.oralMs}
             onToggleSong={radio.toggle}
-            onStartSong={() => {
-              if (!radio.playing) radio.toggle();
-            }}
-            onClose={() => setOral(null)}
+            onToggleOral={radio.toggleOral}
+            onSeekOral={radio.seekOral}
+            onClose={radio.closeOral}
           />
         )}
 
