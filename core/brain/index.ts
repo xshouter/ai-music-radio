@@ -142,7 +142,7 @@ export class ToolLoopBrain implements Brain {
       { role: 'system', content: systemPrompt(context) },
       { role: 'user', content: userPrompt(context) },
     ];
-    const registry = new Map<string, TrackRef>();
+    const registry = new Map<string, Track>();
     const maxSteps = this.deps.maxSteps ?? 6;
 
     for (let step = 0; step < maxSteps; step += 1) {
@@ -203,7 +203,7 @@ export class ToolLoopBrain implements Brain {
     return { now: input.now, trigger: input.trigger, userText: input.userText, taste, recentPlays, plan, weather };
   }
 
-  private async runTool(call: LlmToolCall, registry: Map<string, TrackRef>): Promise<unknown> {
+  private async runTool(call: LlmToolCall, registry: Map<string, Track>): Promise<unknown> {
     const args = asRecord(call.args);
     try {
       switch (call.name) {
@@ -234,7 +234,7 @@ export class ToolLoopBrain implements Brain {
     }
   }
 
-  private tryParseShow(text: string, registry: Map<string, TrackRef>): Show | null {
+  private tryParseShow(text: string, registry: Map<string, Track>): Show | null {
     const start = text.indexOf('{');
     const end = text.lastIndexOf('}');
     if (start < 0 || end <= start) return null;
@@ -250,7 +250,7 @@ export class ToolLoopBrain implements Brain {
    * 校验是**硬**的：id 必须是本轮某次工具真的返回过的，`reason` 必须有，`say` 不能空。
    * 驳回时给出可操作的理由 —— 这条理由会原样回到模型手里，它是自愈的唯一入口。
    */
-  private readShow(args: unknown, registry: Map<string, TrackRef>): { ok: true; show: Show } | { ok: false; reason: string } {
+  private readShow(args: unknown, registry: Map<string, Track>): { ok: true; show: Show } | { ok: false; reason: string } {
     if (typeof args !== 'object' || args === null) return { ok: false, reason: '`arguments` must be an object' };
     const raw = asRecord(args);
 
@@ -271,7 +271,7 @@ export class ToolLoopBrain implements Brain {
       const track = registry.get(id);
       if (track !== undefined && !seen.has(id)) {
         seen.add(id);
-        play.push(track);
+        play.push(asRef(track));
       }
     }
     if (play.length === 0) {
@@ -280,7 +280,7 @@ export class ToolLoopBrain implements Brain {
         if (play.length >= MIN_TRACKS) break;
         if (!seen.has(track.id)) {
           seen.add(track.id);
-          play.push(track);
+          play.push(asRef(track));
         }
       }
     }
@@ -295,10 +295,12 @@ export class ToolLoopBrain implements Brain {
 }
 
 /** 记住本轮见过的曲目：`emit_show` 的 id 只能从这里查，这是"不许编 id"的执行点。 */
-function remember(registry: Map<string, TrackRef>, tracks: Track[]): TrackRef[] {
-  return tracks.map((track) => {
-    const ref: TrackRef = { id: track.id, title: track.title, artist: track.artist };
-    registry.set(ref.id, ref);
-    return ref;
-  });
+function remember(registry: Map<string, Track>, tracks: Track[]): Track[] {
+  for (const track of tracks) registry.set(track.id, track);
+  return tracks;
+}
+
+/** 交给 UI 的只有 ref：队列契约就是 TrackRef，多一个字段都是契约变更（ADR-0006）。 */
+function asRef(track: Track): TrackRef {
+  return { id: track.id, title: track.title, artist: track.artist };
 }
