@@ -21,6 +21,8 @@ export interface HttpRequest {
 export interface HttpResponse {
   status: number;
   text(): Promise<string>;
+  /** TTS 回来的是音频字节，不是文本 —— 少这一个方法就没法接任何语音服务。 */
+  bytes(): Promise<Uint8Array>;
 }
 
 export type HttpFetch = (request: HttpRequest) => Promise<HttpResponse>;
@@ -34,7 +36,11 @@ const defaultHttpFetch: HttpFetch = async (request) => {
     ...(request.body === undefined ? {} : { body: request.body }),
     signal: request.signal as AbortSignal | undefined,
   });
-  return { status: response.status, text: () => response.text() };
+  return {
+    status: response.status,
+    text: () => response.text(),
+    bytes: async () => new Uint8Array(await response.arrayBuffer()),
+  };
 };
 
 export { defaultHttpFetch };
