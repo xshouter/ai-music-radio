@@ -62,7 +62,7 @@ renderer/ views/player views/profile views/settings  api/client.ts
 所有端口定义在 `shared/ports.ts`，只有类型。实现住在 `core/providers/`。
 
 **已落地**：端口现在真的在 [`shared/ports.ts`](../shared/ports.ts) 里（此前只有文档）。
-落地时发现原文有一处编译不过：第 3.1 节写的是 `AbortSignal`，但 `shared/tsconfig.json` 是
+落地时发现原文有一处编译不过：第 3.1 节写的是 `AbortSignal`，但根 `tsconfig.json`（`include: ["shared"]`）是
 `lib: ES2022` + `types: []`——那里**没有** `AbortSignal`。文档没被编译过，所以一直没暴露。
 没有引 DOM lib 来补（`shared/` 同时被 `renderer/` 与 `core/` 消费，开 DOM 就等于让这一层能随手写 `document`），
 改成结构化类型 `CancelSignal`：原生 `AbortSignal` 满足它的形状，直接传即可。
