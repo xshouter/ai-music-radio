@@ -79,8 +79,8 @@
 | 顺序 | 分支 | 内容 | 状态 |
 |---|---|---|---|
 | 5.0 | `feat/serve-ui` | 打包后的 UI 由内核一起发（ADR-0020）—— 同源，免掉 CORS | ✅ 已合并（#29） |
-| 5.1 | `chore/electron-shell` | Electron 外壳：唯一组装点 + 窗口 + 令牌桥（ADR-0021） | ✅ 本 PR |
-| 5.2 | `chore/release-pipeline` | Actions 自动构建 Windows exe 并发 Release；**exe 内不含任何凭证** |
+| 5.1 | `chore/electron-shell` | Electron 外壳：唯一组装点 + 窗口 + 令牌桥（ADR-0021） | ✅ 已合并（#31） |
+| 5.2 | `chore/release-pipeline` | Actions 打 tag 出 Windows 安装包 → draft Release；README 写清自备 key / cookie | ✅ 本 PR |
 
 ## 贯穿全程的两件事
 
