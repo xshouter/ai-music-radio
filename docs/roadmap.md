@@ -45,6 +45,7 @@
 | 3.10 | `feat/contracts-profile` | 契约增量 P6：`GET /api/stats` + `GET /api/history`（ADR-0013）+ mock 开始记账 + 断言 | ✅ 已合并（PR #20） |
 | 3.11 | `feat/ui-profile` | Profile：taste 语料、收听统计、口播历史、`plan` 的去处 | ✅ 已合并（PR #21） |
 | 3.12 | `fix/ui-button-ink` | 插队补丁：按钮小字 `--text-dim` → `--btn-text`；15px 以下的 Doto 回 `--label` | ✅ 已合并（PR #22） |
+| 3.13 | `fix/ui-legibility` | 追补：3.12 只换了颜色，9–10px 的标签字仍然太淡 —— 字号 / 字重 / 墨色一起提上来 | ✅ 本 PR |
 
 > 3.10 是**契约增量**（P6），跟 3.3 / 3.4 一个道理：先冻结再加界面；3.11 才是 Profile 本身。
 > 3.1 为什么被推翻：它是一个「能跑起来的电台界面」，不是「和参考分不出来的电台界面」。
