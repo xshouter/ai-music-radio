@@ -1104,14 +1104,24 @@ button[aria-disabled='true'] { cursor: default; }
   color: var(--text-dim);
 }
 
-/* auto 上下边距 = 在头与脚之间垂直居中：开机中途只有两行时，它也不会贴顶。 */
-.boot-lines { display: flex; flex-direction: column; gap: 12px; margin: auto 0; }
+/* 撑满头与脚之间、再把内容居中：开机中途只有两行也不会贴顶。
+   list-style / margin / padding 清零是必要的 —— ul 的默认缩进会把整列推得比表头右 40px。 */
+.boot-lines {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 
 .boot-line { display: flex; align-items: baseline; gap: 10px; }
 
 .boot-bullet { flex: 0 0 auto; width: 11px; color: var(--text-dim); }
 
-.boot-text { flex: 1 1 auto; color: var(--text); }
+.boot-text { flex: 0 1 auto; color: var(--text); }
 
 .boot-mark { flex: 0 0 auto; color: var(--accent-ink); }
 
@@ -1125,7 +1135,7 @@ button[aria-disabled='true'] { cursor: default; }
   animation: boot-caret 1s steps(1, end) infinite;
 }
 
-.boot-foot { margin-top: auto; font-size: 11px; color: var(--text-dim); }
+.boot-foot { font-size: 11px; color: var(--text-dim); }
 
 @keyframes boot-caret {
   0%, 50% { opacity: 1; }
