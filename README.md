@@ -46,7 +46,7 @@
 可以用环境变量 `EDGERUNNER_NETEASE_BASE_URL` 改：
 
 ```powershell
-$env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & "D:\EdgeRunner-0.1.0-portable.exe"
+$env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & ".\EdgeRunner-x.y.z-portable.exe"
 ```
 
 没有它也能用：电台会退到**本地音乐目录**继续工作（界面上出现降级标记）。把 mp3 丢进
