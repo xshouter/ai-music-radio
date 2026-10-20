@@ -19,10 +19,16 @@ button[aria-disabled='true'] { cursor: default; }
 
 :focus-visible { outline: 1px solid var(--accent-ink); outline-offset: 1px; }
 
-.viewport { height: 100%; display: grid; place-items: center; }
+/* 舞台永远居中：绝对定位 + 半个画布的负边距。
+   原来用 grid 的 place-items: center —— 画布比窗口大时它会被挤到起始边，缩放后卡片就贴到右下角
+   （0.5 倍下实测偏 154 / 219 px）。负边距的居中在溢出时也成立。 */
+.viewport { position: relative; height: 100%; }
 
 .stage {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -438px 0 0 -308px;
   width: 616px;
   height: 876px;
   transform: scale(var(--scale, 1));
