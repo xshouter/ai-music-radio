@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { SpokenLine, SpokenWord } from '../shared/domain.ts';
 import type { CancelSignal, TtsProvider } from '../shared/ports.ts';
@@ -33,6 +33,8 @@ export interface TtsEngineOptions {
   routePrefix?: string;
   /** 失败重试的间隔（毫秒）。默认 400。测试里调成 0。 */
   retryDelayMs?: number;
+  /** 缓存里最多留几个文件，超了按 mtime 删最旧的。默认 400。 */
+  maxFiles?: number;
 }
 
 export interface TtsEngine {
@@ -50,6 +52,32 @@ const HASH_HEX = 40;
 const KEY_RE = /^[0-9a-f]{40}$/;
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * 缓存是**内容寻址**的，所以它只会因为"同一句话说第二遍"而命中 —— 而口播的文本是大脑每次现写的，
+ * 几乎不重复。也就是说：**只有上限能停住它的增长**，没有别的机制会让它变小。
+ * 每写一份新的就按 mtime 删最旧的，把份数收在上限里 —— 刚写的那份永远是最新的，不会被自己删掉。
+ */
+const prune = (dir: string, ext: string, keep: number): void => {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return; // 目录都还没有 = 没有东西可删
+  }
+  const files: { name: string; at: number }[] = [];
+  for (const name of names) {
+    if (!name.endsWith('.' + ext)) continue;
+    try {
+      files.push({ name, at: statSync(join(dir, name)).mtimeMs });
+    } catch {
+      // 刚好被别处删了：跳过这一个，不因为一个坏文件放弃整轮回收
+    }
+  }
+  if (files.length <= keep) return;
+  files.sort((a, b) => a.at - b.at);
+  for (const file of files.slice(0, files.length - keep)) rmSync(join(dir, file.name), { force: true });
+};
 
 /**
  * 逐词时间戳。
@@ -164,6 +192,7 @@ export function createTtsEngine(options: TtsEngineOptions): TtsEngine {
   const dir = options.dir;
   const prefix = (options.routePrefix ?? '/tts').replace(/\/+$/, '');
   const retryDelayMs = options.retryDelayMs ?? 400;
+  const maxFiles = options.maxFiles ?? 400;
   // 容器格式是引擎级属性（shared/ports.ts 的 TtsProvider.format）：后缀 / 路由 / 时长解析器都跟着它。
   const ext = provider.format;
   const durationOf = ext === 'wav' ? wavDurationMs : mp3DurationMs;
@@ -206,6 +235,7 @@ export function createTtsEngine(options: TtsEngineOptions): TtsEngine {
         audio = await synthesize(line, voice, signal);
         mkdirSync(dir, { recursive: true });
         writeFileSync(file, audio);
+        prune(dir, ext, maxFiles);
       }
       return { index, line, audioUrl: urlOf(key), words: wordsFor(line, durationOf(audio)) };
     },
