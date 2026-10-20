@@ -56,9 +56,9 @@
 视觉不明确时（颜色、间距、圆角、字体层级、动效、空/错误/加载态、图标风格…）**自己做决定并继续**，
 不要停下来等用户给截图。可用手段：
 
-- 参考源的**线上真源**（<https://mmguo.dev/claudio-fm/>，本地留档 `.scratch/ref.html`）—— 复刻部分以它为准；
+- 参考源的**线上真源**（<https://mmguo.dev/claudio-fm/>）—— 复刻部分以它为准；可公开说的行为观察记在 `docs/references.md`；
 - skill / 公开设计系统 / 组件库；这一步**允许联网搜索与下载资源**（例如字体）；
-- 手边已有的参考截图（`docs/reference/`）。
+- 用户给的参考截图：放 `docs/reference/`（**不入库** —— 那是别人的画面，只在本地对版，见 `.gitignore`）。
 
 **唯一硬约束**：**1:1 复刻参考源的部分不许走样**（尺寸、层级、分工照抄真值）。
 自由发挥只发生在参考源没覆盖的地方（新界面、新状态）。
@@ -77,9 +77,13 @@
 - `renderer/` 里**禁止**出现：SQL 字符串、数据库文件路径、任何 API key 的明文读写逻辑。
 - 数据库只属于 `core/state/`，且只通过 `Store` 端口被访问。
 
-**机械检查**（两道，CI 上都跑）
-1. ESLint `no-restricted-imports` + `import/no-restricted-paths`，按 `docs/abstraction-layer.md` 第 2 节的依赖表配置，`renderer/` 违规即 error。
-2. CI 里一条脚本：扫 `renderer/**` 是否出现 `sqlite`/`better-sqlite3`/`SELECT `/`INSERT ` 等特征串。
+**机械检查**（一道，CI 与本地同一份脚本）：`tools/check-boundaries.mjs`。零依赖，按 `docs/abstraction-layer.md` 第 2 节的依赖表扫
+`renderer/` / `core/` / `main/` / `shared/` 四层 —— 被禁的裸模块名与路径前缀，以及 `sqlite` / `better-sqlite3` /
+`SELECT … FROM` / `INSERT INTO` / 数据库文件 / `MUSIC_U` / API key 明文这些特征串。有违规就红，改到绿为止。
+
+**为什么不是 ESLint**：要拦的规则只有一张表，写进一份零依赖脚本比再养一份配置 + 一套插件 + 一个 lint 脚本更好读、
+更快，而且在 `npm ci` 之前就能跑。规则多到脚本读不动时再换，那时先开 ADR。（原文案声称的「两道检查」里
+ESLint 那道从未落地，这里改成事实 —— 过程见 journal「收尾审计」。）
 
 **被违反的样子**：为了"性能"让前端直连库；把 key 存在前端 localStorage 再由前端调第三方 API。
 

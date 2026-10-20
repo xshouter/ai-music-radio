@@ -33,7 +33,7 @@ jobs:
       - name: 类型检查
         run: npm run typecheck
 
-      # 同一组断言将来也打真 server（设 RADIO_BASE_URL 即可切换）。
+      # 契约测试：mock 一份（tests/contract）+ 真 server 一份（tests/core/radio.test.mjs）。
       - name: 契约测试
         run: npm test
 
