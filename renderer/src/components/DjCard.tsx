@@ -9,8 +9,9 @@ const STATS = [
 ];
 
 /** ③ DJ 详情弹层。点顶栏头像弹出；点空白处或 Esc 关掉。
-    曲风胶囊来自 TasteDoc.genres —— 是数据，不是写死的装饰（ADR-0010）。 */
-export function DjCard({ taste, onClose }: { taste: TasteDoc | null; onClose: () => void }) {
+    曲风胶囊来自 TasteDoc.genres —— 是数据，不是写死的装饰（ADR-0010）。
+    页脚的 PROFILE 是下一级入口：这里回答「你是谁」，Profile 回答「你听了什么」。 */
+export function DjCard({ taste, onClose, onMore }: { taste: TasteDoc | null; onClose: () => void; onMore: () => void }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
@@ -66,7 +67,12 @@ export function DjCard({ taste, onClose }: { taste: TasteDoc | null; onClose: ()
           ))}
         </div>
 
-        <div className="dj-foot">EDGERUNNER × TASTE.MD</div>
+        <div className="dj-foot">
+          <span>EDGERUNNER × TASTE.MD</span>
+          <button className="dj-more" type="button" onClick={onMore}>
+            PROFILE →
+          </button>
+        </div>
       </div>
     </div>
   );

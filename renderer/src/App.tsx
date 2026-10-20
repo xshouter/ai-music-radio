@@ -5,6 +5,7 @@ import { Credentials } from './components/Credentials.tsx';
 import { DjCard } from './components/DjCard.tsx';
 import { DjFeed } from './components/DjFeed.tsx';
 import { OnAir } from './components/OnAir.tsx';
+import { Profile } from './components/Profile.tsx';
 import { Queue } from './components/Queue.tsx';
 import { TopBar } from './components/TopBar.tsx';
 import { Transport } from './components/Transport.tsx';
@@ -36,6 +37,7 @@ export function App() {
   const [queueShown, setQueueShown] = useState(true);
   const [djOpen, setDjOpen] = useState(false);
   const [credOpen, setCredOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   // 口播全屏态。seq 每开一次 +1：靠 key 重开一份干净的播放状态（口播从头播）。
   const [oral, setOral] = useState<{ turns: SpokenLine[]; seq: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -138,9 +140,21 @@ export function App() {
           </div>
         )}
 
-        {djOpen && <DjCard taste={radio.taste} onClose={() => setDjOpen(false)} />}
+        {djOpen && (
+          <DjCard
+            taste={radio.taste}
+            onClose={() => setDjOpen(false)}
+            // 打开 Profile 就关掉 DjCard：弹层永远只有一层，Esc 不会一次关两个。
+            onMore={() => {
+              setDjOpen(false);
+              setProfileOpen(true);
+            }}
+          />
+        )}
 
         {credOpen && <Credentials onClose={() => setCredOpen(false)} />}
+
+        {profileOpen && <Profile onClose={() => setProfileOpen(false)} onPlay={radio.play} />}
 
         {oral && (
           <OnAir
