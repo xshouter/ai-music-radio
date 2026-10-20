@@ -4,7 +4,7 @@ import type { PrefKey, PrefMap } from '../../shared/ports.ts';
  * 设置项的出厂值。ADR-0005 的「解析失败回默认值」里的默认值就是这里的值。
  *
  * tts 的默认是 fish（ADR-0008）：tts.voice 留空 = 用音色库默认音色。
- * llm 的默认指向百炼的 OpenAI 兼容端点（见 ADR-0002 与 CONNECTING 文档），
+ * llm 的默认指向百炼的 OpenAI 兼容端点（怎么填 key 见 README「填上你自己的钥匙」），
  * 但换任何兼容 key 只是改 llm.baseUrl + llm.model，不动代码。
  */
 export const DEFAULT_PREFS: PrefMap = {
