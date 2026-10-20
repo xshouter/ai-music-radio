@@ -5,10 +5,12 @@ import { join } from 'node:path';
 import { startRadio, type StartedRadio } from './bootstrap.ts';
 import { resolveTtsDir } from './tts-runtime.ts';
 
-// 设计画布 616×876 的 1.5 倍：整数倍缩放最清晰，窗口怎么拉界面都等比。
+// 设计画布 616×876：窗口怎么拉，界面都是这一张等比缩放的画布。
 const STAGE = { width: 616, height: 876 };
 // 1.0：窗口就是那张卡片本身（无边框 + 透明），照设计尺寸 1:1 摆。
 const ZOOM = 1;
+// 缩小的下限 = 画布的一半（308×438）。默认尺寸就等于画布，所以没有下限时窗口只能放大、不能缩小。
+const MIN_ZOOM = 0.5;
 
 let started: StartedRadio | null = null;
 
@@ -43,8 +45,8 @@ async function openWindow(): Promise<void> {
   const win = new BrowserWindow({
     width: Math.round(STAGE.width * ZOOM),
     height: Math.round(STAGE.height * ZOOM),
-    minWidth: STAGE.width,
-    minHeight: STAGE.height,
+    minWidth: Math.round(STAGE.width * MIN_ZOOM),
+    minHeight: Math.round(STAGE.height * MIN_ZOOM),
     useContentSize: true,
     // 悬浮的卡片：没有系统边框，窗口底透明 —— 圆角与描边由 .shell 自己画。
     frame: false,
