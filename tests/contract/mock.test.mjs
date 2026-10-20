@@ -321,15 +321,13 @@ test('WS /stream：连上先给快照（并开口），chat 的口播逐句推�
     assert.ok(snapshotTypes.includes(type), `缺少 ${type} 快照事件`);
   }
 
-  // 连上时 DJ 就会开口（「一开机我就打碟」）：等开场那几句推完，再清零数这一轮的。
+  // 连上时 DJ 就会开口（「一开机我就打碟」）：开场那几句是逐句推的 intro。
   await sleep(400);
-  events.length = 0;
-  await api('/api/chat', { method: 'POST', body: JSON.stringify({ text: 'go on then' }) });
-  await sleep(900);
 
-  const says = events.filter((e) => e.type === 'say');
-  assert.ok(says.length >= 2, 'say 必须是逐句的多条事件，不能是一条整段（需求·假设 2）');
-  says.forEach((event, index) => {
+  const intros = events.filter((e) => e.type === 'say');
+  assert.ok(intros.length >= 2, 'say 必须是逐句的多条事件，不能是一条整段（需求·假设 2）');
+  intros.forEach((event, index) => {
+    assert.equal(event.payload.kind, 'intro');
     assert.equal(event.payload.index, index);
     assert.equal(typeof event.payload.line, 'string');
     // ADR-0012：一句口播自带音频与词级时间戳，否则 UI 没法逐词高亮 / 算口播进度。
@@ -347,12 +345,25 @@ test('WS /stream：连上先给快照（并开口），chat 的口播逐句推�
   });
 
   // 这一句的音频真的取得到，而且长度就等于词时间戳的长度（高亮与音频必须同源）。
-  const last = says[says.length - 1].payload;
+  const last = intros[intros.length - 1].payload;
   const tts = await fetch(base + last.audioUrl);
   assert.equal(tts.status, 200);
   assert.ok((tts.headers.get('content-type') ?? '').startsWith('audio/'));
   const wav = Buffer.from(await tts.arrayBuffer());
   assert.ok(Math.abs(wav.readUInt32LE(40) / 16000 - last.words.at(-1).endMs / 1000) < 0.05, '音频长度要等于口播时长');
+
+  // 对听众的答话是 talk（用户定）：一条、整段，没有音频与词表 —— UI 于是不给它入口、也不进口播。
+  events.length = 0;
+  await api('/api/chat', { method: 'POST', body: JSON.stringify({ text: 'go on then' }) });
+  await sleep(400);
+
+  const talks = events.filter((e) => e.type === 'say');
+  assert.equal(talks.length, 1, '答话只推一条，不能是一首歌一条');
+  assert.equal(talks[0].payload.kind, 'talk');
+  assert.equal(typeof talks[0].payload.line, 'string');
+  assert.ok(talks[0].payload.line.length > 0);
+  assert.equal(talks[0].payload.audioUrl, '', 'talk 不合成：没有音频');
+  assert.deepEqual(talks[0].payload.words, [], 'talk 没有词表');
   assert.ok(events.some((e) => e.type === 'state'), '结束时要回到 idle');
 });
 

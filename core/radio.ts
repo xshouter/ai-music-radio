@@ -254,21 +254,35 @@ export function createRadio(options: RadioOptions): Radio {
   const trackFromRef = (ref: TrackRef): Track => catalog.get(ref.id) ?? { ...ref, source: 'unknown' };
 
   // —— 口播：逐句合、逐句推。任何一句失败都不许把电台停掉（抽象层第 6 节） ——
-  const speak = async (d: Deps, lines: readonly string[]): Promise<void> => {
+  // kind 由调用方给：intro = 对一首歌的介绍（要说出口），talk = 对听众的答话（只落文本）。
+  const speak = async (d: Deps, lines: readonly string[], kind: SpokenLine['kind']): Promise<void> => {
     const voice = d.prefs['tts.voice'];
     onAir = true;
     djState = 'thinking';
     emitState();
+    if (kind === 'talk') {
+      // 答话不是口播（用户定）：整段一条文本消息，不合成、没入口、不进全屏口播。
+      // 为什么不合成：没有界面承接它 —— 合了也没人听，白花钱、白等。
+      const text = lines.join(' ').trim();
+      if (text !== '') {
+        await store.appendMessage({ id: randomUUID(), ts: clock.now().toISOString(), role: 'dj', text }).catch(() => {});
+        emit({ type: 'say', payload: { kind: 'talk', index: 0, line: text, audioUrl: '', words: [] } });
+      }
+      djState = 'idle';
+      emitState();
+      emit({ type: 'now', payload: nowPlaying() });
+      return;
+    }
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index] ?? '';
       let spoken: SpokenLine;
       try {
-        spoken = await d.tts.speak(index, line, voice);
+        spoken = { ...(await d.tts.speak(index, line, voice)), kind };
       } catch (cause: unknown) {
         // 文字照给、音频缺席：ADR-0008 说的是"不许把音乐停掉"，而整条口播消失比"有字没声"更糟。
         // 缺口由横幅说明（TTS_FAILED），不假装音频在。词表退化成覆盖全句的一个词（ADR-0012 允许）。
         emitError('TTS_FAILED', cause instanceof TtsFailure ? cause.message : String(cause), true);
-        spoken = { index, line, audioUrl: d.tts.urlOf(d.tts.keyOf(line, voice)), words: wordsFor(line, 0) };
+        spoken = { index, line, audioUrl: d.tts.urlOf(d.tts.keyOf(line, voice)), words: wordsFor(line, 0), kind };
       }
       // 「说了什么」就是历史。放在这里而不是 think()：被挂起来、还没说出口的那几句不该进历史。
       await store.appendMessage({ id: randomUUID(), ts: clock.now().toISOString(), role: 'dj', text: line }).catch(() => {});
@@ -350,7 +364,7 @@ export function createRadio(options: RadioOptions): Radio {
     const show = await think(trigger, userText);
     // 开场只说第一句；剩下的挂起来，切歌时才轮到它们（ADR-0026）。
     holdIntros(show);
-    void speak(d, show.say.slice(0, 1)).catch(() => {});
+    void speak(d, show.say.slice(0, 1), 'intro').catch(() => {});
   };
 
   const advance = async (): Promise<void> => {
@@ -366,7 +380,7 @@ export function createRadio(options: RadioOptions): Radio {
     const intro = heldSay.get(arrived.id);
     if (intro === undefined) return;
     heldSay.delete(arrived.id);
-    void speak(await providers(), [intro]).catch(() => {});
+    void speak(await providers(), [intro], 'intro').catch(() => {});
   };
 
   /**
@@ -510,7 +524,7 @@ export function createRadio(options: RadioOptions): Radio {
       // 对话的回答要一次说完，不是「每首歌一句」：挂起来的那些必须清掉。
       heldSay.clear();
       // 逐句推是**流**的事，不是这次 POST 的事：POST 立刻回 Show，音频在后台一句句到。
-      void speak(d, show.say).catch(() => {});
+      void speak(d, show.say, 'talk').catch(() => {});
       return show;
     },
 

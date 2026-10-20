@@ -52,7 +52,7 @@ function speech(index, line) {
   });
   const hash = createHash('sha1').update(line).digest('hex').slice(0, 12);
   TTS_SECONDS.set(hash, at / 1000);
-  return { index, line, audioUrl: `/tts/${hash}.mp3`, words };
+  return { kind: 'intro', index, line, audioUrl: `/tts/${hash}.mp3`, words };
 }
 
 const analysis = (track) => [
@@ -447,9 +447,14 @@ async function handle(req, res) {
       messages.push({ id: nextId(), ts: new Date().toISOString(), role: 'me', text: body.text.trim() });
     }
     const result = show();
-    // 口播进历史：Profile 的 HISTORY 要能回看 DJ 说过什么（ADR-0013）。
-    for (const line of result.say) messages.push({ id: nextId(), ts: new Date().toISOString(), role: 'dj', text: line });
-    speak(result.say);
+    // 对听众的答话不是口播（用户定）：整段一条 dj 消息 + 一条 kind:'talk'。talk 没有音频、没有词表，
+    // 于是 UI 不给它入口、也不进全屏口播。历史照记（ADR-0013）。
+    const reply = result.say.join(' ');
+    messages.push({ id: nextId(), ts: new Date().toISOString(), role: 'dj', text: reply });
+    broadcast({ type: 'say', payload: { kind: 'talk', index: 0, line: reply, audioUrl: '', words: [] } });
+    broadcast({ type: 'state', payload: { onAir: true, djState: 'idle' } });
+    broadcast({ type: 'now', payload: nowPlaying() });
+    broadcast({ type: 'queue', payload: currentQueue() });
     return sendJson(res, 200, result);
   }
 
