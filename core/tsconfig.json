@@ -1,0 +1,19 @@
+{
+  // core/ 与 shared/ 不同：它会在运行时被执行，所以需要 node 的类型（node:sqlite 的驱动由 main/ 注入）。
+  // lib 里**没有** DOM —— core/ 里写不出 document；这条线另有 tools/check-boundaries.mjs 机械检查。
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": ["."]
+}

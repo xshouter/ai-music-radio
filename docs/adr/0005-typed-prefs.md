@@ -4,6 +4,8 @@
 - **日期**：2026-10-20
 - **关联**：`docs/abstraction-layer.md` 第 3.5 节；开放问题 5
 - **修订**：2026-10-20 删除 `net.lanAccess`（多端取消，见 ADR-0007）
+- **修订**：2026-10-20 落地阶段 4.1 时把 key 集合扩到**设置面全量**：补 `tts.provider` / `tts.apiKey` / `music.provider` / `music.cookie`
+  （ADR-0008 把 TTS 换成 Fish Audio、ADR-0011 让网易云凭证进 settings）。key 集合仍然封闭，只是这四条当时还没存在。
 
 ## 背景
 
@@ -15,13 +17,20 @@ v0.1 的 `getPref<T>(key: string): Promise<T | null>` 里，`T` 由**调用方�
 去掉泛型，改成封闭映射：
 
 ```ts
-type PrefKey = 'llm.baseUrl' | 'llm.model' | 'llm.protocol' | 'llm.apiKey' | 'tts.voice';
+type PrefKey =
+  | 'llm.baseUrl' | 'llm.model' | 'llm.protocol' | 'llm.apiKey'
+  | 'tts.provider' | 'tts.voice' | 'tts.apiKey'
+  | 'music.provider' | 'music.cookie';
 type PrefMap = {
   'llm.baseUrl': string;
   'llm.model': string;
   'llm.protocol': 'openai' | 'anthropic';
   'llm.apiKey': string;
+  'tts.provider': string;
   'tts.voice': string;
+  'tts.apiKey': string;
+  'music.provider': string;
+  'music.cookie': string;
 };
 getPref<K extends PrefKey>(key: K): Promise<PrefMap[K] | null>;
 setPref<K extends PrefKey>(key: K, value: PrefMap[K]): Promise<void>;

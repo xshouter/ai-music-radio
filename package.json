@@ -11,11 +11,12 @@
     "mock": "node mock/server.mjs",
     "dev": "npm run dev --workspace @edgerunner/renderer",
     "build": "npm run build --workspace @edgerunner/renderer",
-    "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspace @edgerunner/renderer",
+    "typecheck": "tsc -p tsconfig.json && tsc -p core/tsconfig.json && npm run typecheck --workspace @edgerunner/renderer",
     "test": "node --experimental-strip-types --test",
     "boundaries": "node tools/check-boundaries.mjs"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "typescript": "^5.9.2"
   }
 }
