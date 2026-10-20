@@ -36,7 +36,8 @@
 
   --grid: rgba(255, 255, 255, 0.045);
   --dot-grid: rgba(255, 255, 255, 0.12);
-  --glow: rgba(41, 255, 184, 0.1);
+  /* 顶部环境光 = 参考源的 header tone（站点 tweaks 面板自己写着 Blue hue 256° / Violet hue 330° / blur 71px）。 */
+  --glow: rgba(114, 108, 230, 0.14);
   --row-odd: rgba(255, 255, 255, 0.018);
   --row-current: rgba(41, 255, 184, 0.07);
   --pill-active-bg: #ededed;
@@ -91,7 +92,7 @@
 
   --grid: rgba(0, 0, 0, 0.05);
   --dot-grid: rgba(0, 0, 0, 0.13);
-  --glow: rgba(41, 255, 184, 0.18);
+  --glow: rgba(150, 156, 255, 0.32);
   --row-odd: rgba(0, 0, 0, 0.02);
   --row-current: rgba(41, 255, 184, 0.12);
   --pill-active-bg: #111114;
