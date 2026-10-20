@@ -23,7 +23,7 @@ const readTheme = (): Theme => (localStorage.getItem(THEME_KEY) === 'light' ? 'l
 
 // 错误码是封闭枚举（抽象层第 5 节），所以每个码都要有一句人话 —— 包括「还差什么」。
 const ERROR_COPY: Record<string, string> = {
-  NO_LLM_KEY: 'No brain configured yet. Open LOGIN and paste an API key — until then the DJ cannot think.',
+  NO_LLM_KEY: 'Demo record. Add your key and your Netease cookie to make this station yours.',
   MUSIC_SOURCE_UNREACHABLE: 'The music source is not answering. Only what is cached locally can play.',
   MUSIC_NOT_RESOLVABLE: 'That track has no playable URL. Skipping it.',
   TTS_FAILED: 'Voice synthesis failed. Lines still show up as text.',
@@ -164,7 +164,17 @@ export function App() {
         {/* 开机进度档在主界面前面；它自己决定什么时候淡出（ADR-0032）。 */}
         <BootProgress progress={radio.progress} />
 
-        {radio.error && (
+        {/* 没有 key 不是「出了故障」，是「这还不是你的电台」——所以它是一条引导，不是一条警告（ADR-0033）。 */}
+        {radio.error && radio.error.code === 'NO_LLM_KEY' && (
+          <div className="banner is-guide" role="status">
+            <span className="text">{ERROR_COPY.NO_LLM_KEY}</span>
+            <button className="dismiss" type="button" onClick={() => setCredOpen(true)}>
+              SET UP
+            </button>
+          </div>
+        )}
+
+        {radio.error && radio.error.code !== 'NO_LLM_KEY' && (
           <div className="banner" role="status">
             <span className="code">{radio.error.code}</span>
             <span className="text">{ERROR_COPY[radio.error.code] ?? radio.error.message}</span>

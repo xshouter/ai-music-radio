@@ -26,6 +26,10 @@ const uiDir = (): string =>
 const neteaseDir = (): string =>
   app.isPackaged ? join(process.resourcesPath, 'netease') : join(app.getAppPath(), 'vendor', 'netease');
 
+// 首次体验的素材（那一首歌 + 它那段冻结的口播）：打包后在 resources/demo，开发时在仓库的 assets/demo。
+const demoDir = (): string =>
+  app.isPackaged ? join(process.resourcesPath, 'demo') : join(app.getAppPath(), 'assets', 'demo');
+
 // 离线嗓子：打包后在 resources/piper，开发时在仓库的 vendor/piper。非 ASCII 路径要挪窝（main/tts-runtime.ts）。
 const ttsDir = (): string =>
   resolveTtsDir(
@@ -59,6 +63,7 @@ async function boot(): Promise<StartedRadio> {
       localDir: join(userData, 'music'),
       uiDir: uiDir(),
       ttsDir: ttsDir(),
+      demoDir: demoDir(),
       neteaseBaseUrl: override ?? netease?.baseUrl,
       warn: (message) => console.warn('[radio] ' + message),
     });
