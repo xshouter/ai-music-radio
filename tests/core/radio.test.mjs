@@ -138,13 +138,13 @@ const subscribe = (radio) => {
   return events;
 };
 
-test('boot 之后：队列与当前曲目就位，口播一句一句到，音频与词表同源', async () => {
+test('boot 之后：队列与当前曲目就位，开场只说第一句，音频与词表同源', async () => {
   const { radio } = await setup();
   const events = subscribe(radio);
   assert.deepEqual(events.map((event) => event.type), ['now', 'queue', 'state'], '连上先给一份快照');
 
   await radio.boot();
-  await waitFor(() => events.filter((event) => event.type === 'say').length >= 2);
+  await waitFor(() => events.filter((event) => event.type === 'say').length >= 1);
 
   assert.deepEqual(radio.queue().map((ref) => ref.id), ['1001', '1002', '1003']);
   const now = radio.now();
@@ -154,8 +154,8 @@ test('boot 之后：队列与当前曲目就位，口播一句一句到，音频
   assert.equal(now.djState, 'idle', '口播说完要落回 idle');
 
   const says = events.filter((event) => event.type === 'say');
-  assert.deepEqual(says.map((event) => event.payload.index), [0, 1]);
-  assert.deepEqual(says.map((event) => event.payload.line), SHOW.say);
+  assert.deepEqual(says.map((event) => event.payload.index), [0]);
+  assert.deepEqual(says.map((event) => event.payload.line), [SHOW.say[0]], '开场只说第一句，其余几首的挂起来等切歌（ADR-0026）');
   for (const event of says) {
     assert.match(event.payload.audioUrl, /^\/tts\/[0-9a-f]{40}\.mp3$/);
     assert.equal(event.payload.words.at(-1).endMs, AUDIO_MS, '末词必须收在音频真实总长上');
@@ -261,7 +261,7 @@ test('HTTP：媒体路径豁免令牌 —— /tts 给字节、/api/audio 302 到
   const { radio } = await setup();
   const events = subscribe(radio);
   await radio.boot();
-  await waitFor(() => events.filter((event) => event.type === 'say').length >= 2);
+  await waitFor(() => events.filter((event) => event.type === 'say').length >= 1);
   const { server, base } = await listen(radio);
   try {
     const url = events.find((event) => event.type === 'say').payload.audioUrl;
@@ -352,4 +352,21 @@ test('WS：/stream 完成握手，Accept 按 RFC 算出来', async () => {
   } finally {
     server.close();
   }
+});
+
+test('切歌时才说下一首：口播是预生成压着的，轮到那首歌才推出去（ADR-0026）', async () => {
+  const { radio } = await setup();
+  const events = subscribe(radio);
+  await radio.boot();
+  await waitFor(() => events.filter((event) => event.type === 'say').length >= 1);
+
+  const linesOf = () => events.filter((event) => event.type === 'say').map((event) => event.payload.line);
+  assert.deepEqual(linesOf(), [SHOW.say[0]], '开场那句先出来，第二句还压着 —— feed 里看不到它');
+
+  // 一首歌自然放完：客户端报事实，后端推进队列，顺手把压着的那句推出去。
+  await radio.playback({ songId: '1001', event: 'ended', at: AT.toISOString() });
+  await waitFor(() => events.filter((event) => event.type === 'say').length >= 2);
+
+  assert.equal(radio.now().track.id, '1002', '切歌先发生，口播跟着来');
+  assert.deepEqual(linesOf(), SHOW.say, '压着的那句轮到 1002 才说出口');
 });

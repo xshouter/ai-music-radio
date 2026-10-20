@@ -37,7 +37,8 @@ export interface ToolLoopOptions {
 const EMIT = 'emit_show';
 const MIN_TRACKS = 3;
 const MAX_TRACKS = 6;
-const MAX_LINES = 4;
+/** 每首歌一句（ADR-0026），所以行数上限跟着曲目上限走。 */
+const MAX_LINES = 6;
 
 /**
  * 工具集合是**封闭**的（ADR-0015）：模型在这一轮里能做的事就这四件。
@@ -102,7 +103,7 @@ export const TOOLS: readonly LlmToolSpec[] = [
         say: {
           type: 'array',
           items: { type: 'string' },
-          description: '1-4 short spoken sentences, in order. Each under 18 words.',
+          description: 'one short spoken line per track in `play`, in the same order: say[0] opens the first track. Each under 18 words.',
         },
         play: {
           type: 'array',
