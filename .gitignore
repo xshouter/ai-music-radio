@@ -45,3 +45,6 @@ release/
 
 # 离线嗓子的二进制与模型（约 95MB）：npm run fetch:voice 拉到本地，不进 git。
 vendor/piper/
+
+# 内置的网易云兼容服务（约 27MB）：npm run fetch:netease 拉到本地，不进 git —— 它是第三方代码。
+vendor/netease/
