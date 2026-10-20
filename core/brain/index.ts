@@ -81,6 +81,18 @@ export const TOOLS: readonly LlmToolSpec[] = [
     },
   },
   {
+    name: 'today_plan',
+    description:
+      'The playlist you already laid out for today, in play order (3 blocks flattened, deduped). Call it when you open the day or a block, and start with its first track.',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: { type: 'integer', description: 'How many of its tracks (1-12, default 9).' },
+      },
+      required: [],
+    },
+  },
+  {
     name: EMIT,
     description:
       'Emit the finished radio segment and END your turn. Everything you "say" comes from here, so it must sound spoken.',
@@ -177,7 +189,7 @@ export class ToolLoopBrain implements Brain {
       for (const call of response.toolCalls) {
         const result = call.name === EMIT
           ? { error: 'emit_show rejected: ' + (rejection ?? 'invalid arguments') + '. Fix the arguments and call it again.' }
-          : await this.runTool(call, registry);
+          : await this.runTool(call, registry, input.now);
         this.deps.onStep?.({ index: step, tool: call.name, args: call.args, result });
         messages.push({ role: 'tool', toolCallId: call.id, content: JSON.stringify(result) });
       }
@@ -203,7 +215,7 @@ export class ToolLoopBrain implements Brain {
     return { now: input.now, trigger: input.trigger, userText: input.userText, taste, recentPlays, plan, weather };
   }
 
-  private async runTool(call: LlmToolCall, registry: Map<string, Track>): Promise<unknown> {
+  private async runTool(call: LlmToolCall, registry: Map<string, Track>, now: Date): Promise<unknown> {
     const args = asRecord(call.args);
     try {
       switch (call.name) {
@@ -215,6 +227,15 @@ export class ToolLoopBrain implements Brain {
           const keywords = asString(args.keywords);
           if (keywords === '') return { error: '`keywords` is required' };
           return { tracks: remember(registry, await this.deps.music.search(keywords, count(args.limit, 6))) };
+        }
+        case 'today_plan': {
+          // 日表里存的是 TrackRef（契约如此，ADR-0006）：补上 source 才是一首完整的 Track，
+          // 也才能进本轮 registry 去给 emit_show 用。source 只是记号 —— 播放时按 songId 解析，与它无关。
+          const refs = planRefs(await this.deps.store.activePlan(localDateKey(now)).catch(() => null));
+          const tracks = remember(registry, refs.slice(0, count(args.limit, 9, 12)));
+          return tracks.length === 0
+            ? { tracks: [], note: 'No plan for today yet — build the set yourself.' }
+            : { tracks };
         }
         case 'recent_plays': {
           const plays = await this.deps.store.recentPlays(count(args.limit, 10, 30));
@@ -292,6 +313,20 @@ export class ToolLoopBrain implements Brain {
     const segue = asString(raw.segue);
     return { ok: true, show: { say: say.slice(0, MAX_LINES), play: play.slice(0, MAX_TRACKS), reason, segue: segue === '' ? null : segue } };
   }
+}
+
+/** 日表 → 曲目。三个时段摊平、按顺序去重：同一天里同一首只该出现一次。 */
+function planRefs(plan: DayPlan | null): Track[] {
+  const out: Track[] = [];
+  const seen = new Set<string>();
+  for (const block of plan?.blocks ?? []) {
+    for (const ref of block.tracks) {
+      if (seen.has(ref.id)) continue;
+      seen.add(ref.id);
+      out.push({ ...ref, source: 'plan' });
+    }
+  }
+  return out;
 }
 
 /** 记住本轮见过的曲目：`emit_show` 的 id 只能从这里查，这是"不许编 id"的执行点。 */
