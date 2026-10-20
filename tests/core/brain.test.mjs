@@ -162,7 +162,7 @@ const capture = (payload, status = 200) => {
   const calls = [];
   const fetch = async (request) => {
     calls.push({ url: request.url, headers: request.headers, body: JSON.parse(request.body) });
-    return { status, text: async () => JSON.stringify(payload) };
+    return { status, text: async () => JSON.stringify(payload), bytes: async () => new Uint8Array(), };
   };
   return { fetch, calls };
 };

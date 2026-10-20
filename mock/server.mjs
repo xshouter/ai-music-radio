@@ -115,7 +115,8 @@ const ERRORS = {
 // apiKey 永远只进不出：这里存的是「配没配」，不是 key 本身。
 const settings = {
   llm: { baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', protocol: 'openai', apiKeySet: false },
-  tts: { provider: 'dashscope', voice: 'Cherry', apiKeySet: false },
+  // tts.provider 的出厂值是 fish（ADR-0008）；voice 留空 = 用音色库默认音色。
+  tts: { provider: 'fish', voice: '', apiKeySet: false },
   // 第三块（ADR-0011）：cookie 的值一次都不存进内存，只存「配没配」。
   music: { provider: 'netease', cookieSet: false },
 };
