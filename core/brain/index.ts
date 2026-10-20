@@ -12,6 +12,7 @@ import type {
   TasteRepo,
 } from '../../shared/ports.ts';
 import type { PlanBlockSpec } from '../plan.ts';
+import { PLAN_PER_BLOCK } from '../plan.ts';
 import { localDateKey, planPrompt, systemPrompt, userPrompt } from '../prompt.ts';
 
 /** 一轮 tool 调用的观测点：调度器、开发时、测试都靠它看见"大脑到底做了什么"。 */
@@ -32,7 +33,7 @@ export interface ToolLoopOptions {
   taste: TasteRepo;
   env: EnvProvider;
   model: string;
-  /** 默认 6：够走完"搜一次 → 看看跳过史 → 定稿"，又不至于为了一个坏回答烧掉一整轮预算。 */
+  /** 默认 6 —— 预算按「一段」算，不是按整轮：第一段（池子）和第二段（补搜）各有 6 步。 */
   maxSteps?: number;
   temperature?: number;
   onStep?: (step: ToolStep) => void;
@@ -130,11 +131,32 @@ const byName = (name: string): LlmToolSpec => {
   return spec;
 };
 
+/** 排表那一轮的终局工具（两段共用）：交三格，或者交补上的那几格。 */
+const EMIT_PLAN_SPEC: LlmToolSpec = {
+  name: EMIT_PLAN,
+  description:
+    'Emit the whole day and END your turn. One track-id list per block, in the order the blocks were given to you.',
+  parameters: {
+    type: 'object',
+    properties: {
+      blocks: {
+        type: 'array',
+        items: { type: 'array', items: { type: 'string' } },
+        description: 'One array of track ids per block, in block order, in play order. Only ids a tool returned in THIS turn.',
+      },
+      reason: { type: 'string', description: 'One private sentence, not spoken: why the day looks like this.' },
+    },
+    required: ['blocks'],
+  },
+};
+
 /**
- * 排日表那一轮的工具集（ADR-0030）：把日推拉进候选池 + 搜 + 播放史，终局是 `emit_plan`。
- * 播歌那一轮的 `TOOLS` 不跟着变 —— 「放歌」这件事的工具集只有一个定义。
+ * 排日表那一轮的工具集拆成两段（ADR-0031）：
+ * - 第一段 `POOL_TOOLS` **没有** `search_tracks` —— 模型只能用池子填三格，池子优先是默认。
+ * - 第二段 `SEARCH_TOOLS` 只补那几格没填满的，格子重新编号，搜索是例外。
+ * 两段的终局都是 `emit_plan`；播歌那一轮的 `TOOLS` 一个字没动。
  */
-export const PLAN_TOOLS: readonly LlmToolSpec[] = [
+export const POOL_TOOLS: readonly LlmToolSpec[] = [
   {
     name: 'daily_recommend',
     description:
@@ -145,26 +167,11 @@ export const PLAN_TOOLS: readonly LlmToolSpec[] = [
       required: [],
     },
   },
-  byName('search_tracks'),
   byName('recent_plays'),
-  {
-    name: EMIT_PLAN,
-    description:
-      'Emit the whole day and END your turn. One track-id list per block, in the order the blocks were given to you.',
-    parameters: {
-      type: 'object',
-      properties: {
-        blocks: {
-          type: 'array',
-          items: { type: 'array', items: { type: 'string' } },
-          description: 'One array of track ids per block, in block order, in play order. Only ids a tool returned in THIS turn.',
-        },
-        reason: { type: 'string', description: 'One private sentence, not spoken: why the day looks like this.' },
-      },
-      required: ['blocks'],
-    },
-  },
+  EMIT_PLAN_SPEC,
 ];
+
+export const SEARCH_TOOLS: readonly LlmToolSpec[] = [byName('search_tracks'), EMIT_PLAN_SPEC];
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
@@ -227,26 +234,54 @@ export class ToolLoopBrain implements Brain {
   }
 
   /**
-   * 排今天的日表（ADR-0030）。**同一个工具环**，只是换了终局工具与任务段：
-   * 一次裸 completion 里模型没法「搜一下再决定」，而日推之外它还允许自己搜。
-   * 抛错 = 这一轮排不出来 —— 调用方退到逐格搜索，电台不停。
+   * 排今天的日表（ADR-0030 / 0031）。**同一个工具环**，分两段：
+   * 第一段只有池子（日推 + 播放史），代码数出没填满的格；第二段只对那几格放开搜索。
+   * 抛错 = 这一轮排不出来 —— 调用方退到逐格搜索，电台不停（ADR-0024）。
    */
   async plan(input: BrainInput, blocks: readonly PlanBlockSpec[]): Promise<TrackRef[][]> {
     const context = await this.gather(input);
-    const registry = new Map<string, Track>();
     const prompt = planPrompt(context, blocks);
-    return this.loop(
+    const registry = new Map<string, Track>();
+    const first = await this.loop(
       [
         { role: 'system', content: prompt.system },
         { role: 'user', content: prompt.user },
       ],
       registry,
       input.now,
-      PLAN_TOOLS,
+      POOL_TOOLS,
       EMIT_PLAN,
       (args) => this.readPlan(args, registry, blocks.length),
       (text) => this.tryParsePlan(text, registry, blocks.length),
     );
+
+    // 池子把三格填满就到此为止：第二段一个 token 都不再多发。
+    const short = first.map((refs, index) => (refs.length < PLAN_PER_BLOCK ? index : -1)).filter((index) => index >= 0);
+    if (short.length === 0) return first;
+
+    // 第二段：只带没填满的那几格（重新编号），放开搜索。整段失败就退回第一段（ADR-0030 的「缺哪格补哪格」）。
+    const refill = planPrompt(context, short.map((index) => blocks[index]), true);
+    const registry2 = new Map<string, Track>();
+    const second: TrackRef[][] | null = await this.loop(
+      [
+        { role: 'system', content: refill.system },
+        { role: 'user', content: refill.user },
+      ],
+      registry2,
+      input.now,
+      SEARCH_TOOLS,
+      EMIT_PLAN,
+      (args) => this.readPlan(args, registry2, short.length),
+      (text) => this.tryParsePlan(text, registry2, short.length),
+    ).catch(() => null);
+    if (second === null) return first;
+
+    // 只覆盖「真的更多」的格：一段给了两首、二段只找回一首时，不许退步。
+    const merged = first.map((refs) => refs);
+    short.forEach((slot, index) => {
+      if (second[index].length > merged[slot].length) merged[slot] = second[index];
+    });
+    return merged;
   }
 
   /**
@@ -333,11 +368,12 @@ export class ToolLoopBrain implements Brain {
         case 'search_tracks': {
           const keywords = asString(args.keywords);
           if (keywords === '') return { error: '`keywords` is required' };
-          return { tracks: remember(registry, await this.deps.music.search(keywords, count(args.limit, 6))) };
+          return { tracks: remember(registry, await this.deps.music.search(keywords, count(args.limit, 6))).map(asRef) };
         }
         case 'daily_recommend': {
           // 空场景词就是日推那一条路（netease 源：无场景词 → /recommend/songs → 退公开新歌）。
-          return { tracks: remember(registry, await this.deps.music.recommend({}, count(args.limit, 30, 50))) };
+          // 交给模型的那份只留 id/title/artist：池子里的和搜来的看起来一样有料，它才肯先挑池子（ADR-0031）。
+          return { tracks: remember(registry, await this.deps.music.recommend({}, count(args.limit, 30, 50))).map(asRef) };
         }
         case 'today_plan': {
           // 日表里存的是 TrackRef（契约如此，ADR-0006）：补上 source 才是一首完整的 Track，

@@ -27,21 +27,32 @@
 
 `limit` 越界按 [1, 10]（`recent_plays` 是 [1, 30]，`today_plan` 是 [1, 12]）夹住，非法值回默认 —— 与 ADR-0013 同一套"不新增错误码"的处理。
 
-## 排表那一轮（`emit_plan`，ADR-0030）
+## 排表那一轮（`emit_plan`，ADR-0030 / 0031）
 
-同一个工具环的第二个终局：排今天的日表。工具集是**另一份**（`PLAN_TOOLS`）；`TOOLS` 不变 ——
+同一个工具环的第二个终局：排今天的日表。**分两段**，工具集各一份；`TOOLS` 不变 ——
 「放歌」这件事的工具集只有一个定义。
+
+**第一段（`POOL_TOOLS`）没有搜索**：模型只能用池子填三格。
 
 | 工具 | 入参 | 返回 | 为什么需要它 |
 |---|---|---|---|
-| `daily_recommend` | `limit?` | `{tracks: TrackRef[]}` | 他自己的日推（`recommend` 的「无场景词」那条路）—— 这一天的候选池 |
-| `search_tracks` | `keywords` `limit?` | `{tracks: TrackRef[]}` | 「允许自己搜」：日推之外还想要别的 |
+| `daily_recommend` | `limit?` | `{tracks: {id,title,artist}[]}` | 他自己的日推（`recommend` 的「无场景词」那条路）—— 这一天的候选池 |
 | `recent_plays` | `limit?` | `{plays: {...}[]}` | 最近真的听了什么（跳过 / 重听） |
 | `emit_plan` | `blocks: string[][]` | ——（结束这一轮） | 按**槽位顺序**交三格，每格一个 id 数组 |
 
-- `blocks` 里的 id 与 `emit_show.play` 同一条铁律：**必须是本轮工具真的返回过的**。
-- 校验**宽松**：不照搬 `MIN_TRACKS = 3`，一格空着不算坏；比给的槽多的块忽略。
-- 三格都空 = 没排，驳回（与 `say` 为空同类）。
+**第二段（`SEARCH_TOOLS`）只对没填满 `PLAN_PER_BLOCK` 首的格发**，格子**重新编号**：
+
+| 工具 | 入参 | 返回 | 为什么需要它 |
+|---|---|---|---|
+| `search_tracks` | `keywords` `limit?` | `{tracks: {id,title,artist}[]}` | 「允许自己搜」：池子之外还想补什么 |
+| `emit_plan` | `blocks: string[][]` | ——（结束这一轮） | 只交**被问到的那几格**的 id 数组 |
+
+- 三格都填满 → **只发第一段**，第二段一个 token 都不多发。**最多两段，不递归。**
+- `blocks` 里的 id 与 `emit_show.play` 同一条铁律：**必须是本段工具真的返回过的**。
+- 校验**宽松**：不照搬 `MIN_TRACKS = 3`，一格给两首、给一首、空着都是合法结果（「少给」不是坏）；
+  比给的槽多的块忽略。
+- 三格都空 = 没排，驳回（与 `say` 为空同类）。第二段整段失败 → 保留第一段的结果，不塌。
+- 给**模型**的 `daily_recommend` / `search_tracks` 只回 `id / title / artist`（`registry` 里仍是完整 `Track`）。
 - 整轮失败 / 没配 key：调用方退到逐格搜索（`buildDayPlan` 的 `curate` 是**可选**的）。
 
 ## 定稿校验（硬规则）

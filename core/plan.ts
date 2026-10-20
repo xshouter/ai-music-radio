@@ -16,6 +16,9 @@ const BLOCKS: readonly PlanBlockSpec[] = [
   { start: '18:00', end: '02:00', mood: 'late-night', genres: ['ambient', 'synthwave'] },
 ];
 
+/** 每格几首 —— 提示词与搜索兜底共用这一个数（ADR-0031）。 */
+export const PLAN_PER_BLOCK = 3;
+
 /**
  * 排表的人（ADR-0030）：给它三个槽位，它回三格的歌；回 null = 这一轮排不出来。
  * 它是**可选**的 —— 没有它（或者它失败），`buildDayPlan` 就是原来那个「逐格搜索」。
@@ -41,9 +44,9 @@ const searchBlock = async (music: MusicSource, block: PlanBlockSpec, limit: numb
   }
 };
 
-// shortcut: 排表的提示词里写死「每格 3 首」，perBlock 换别的值时提示词不跟着变；真要支持就把 perBlock 传进 curator。
+// shortcut: 排表的提示词按 PLAN_PER_BLOCK 写死「每格 3 首」，perBlock 传别的值时提示词不跟着变；真要支持就把 perBlock 传进 curator。
 export async function buildDayPlan(options: DayPlanOptions): Promise<DayPlan> {
-  const perBlock = options.perBlock ?? 3;
+  const perBlock = options.perBlock ?? PLAN_PER_BLOCK;
   // 排表那一轮的任何失败都只是一次退让：抛错、说话不算数、模型吐坏 JSON —— 全在这一个 catch 里。
   const curated = options.curate === undefined ? null : await options.curate(BLOCKS).catch(() => null);
   const blocks: PlanBlock[] = [];
