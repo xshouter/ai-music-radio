@@ -23,7 +23,7 @@ import type { TasteDoc } from './api-types.ts';
 /**
  * 取消语义。
  *
- * 第 3 节原文写的是 AbortSignal，但 shared/tsconfig.json 是 lib: ES2022 + types: []，
+ * 第 3 节原文写的是 AbortSignal，但根 tsconfig.json（include: shared）是 lib: ES2022 + types: []，
  * 那里**没有** AbortSignal —— 说明那份文档从没被编译过。
  * 不引 DOM lib 来补：shared/ 同时被 renderer 与 core 消费，开 DOM 就等于让这一层随手能写 document。
  * 用结构化类型代替：原生 AbortSignal 满足这个形状，直接传即可。
