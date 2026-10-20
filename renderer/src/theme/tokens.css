@@ -16,7 +16,7 @@
   --line: #232327;
 
   --text: #dbdbdb;
-  --text-dim: #8a8a90;
+  --text-dim: #9c9ca3;
 
   --accent: #29ffb8;       /* 深浅两态同值：light 模式采样得 #2ffdb4，是同一个绿 */
   --accent-deep: #0f3a2a;
@@ -26,7 +26,7 @@
 
   --btn: #0a0a10;
   --btn-line: #35353d;
-  --btn-text: #acacac;
+  --btn-text: #d2d2d2;
   --send: #22222a;
   --send-text: #dbdbdb;
 
@@ -67,7 +67,7 @@
   --line: #e6e6e4;
 
   --text: #111114;
-  --text-dim: #8a8a90;
+  --text-dim: #6b6b72;
 
   --accent: #29ffb8;
   --accent-deep: #d6f5e8;
@@ -78,7 +78,7 @@
 
   --btn: transparent;
   --btn-line: #c9c9c9;
-  --btn-text: #565656;
+  --btn-text: #3c3c3c;
   --send: #111114;
   --send-text: #f6f6f2;
 

@@ -90,8 +90,9 @@ button[aria-disabled='true'] { cursor: default; }
 
 .pill {
   font-family: var(--label);
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 7px 13px;
   border-radius: 999px;
@@ -108,8 +109,9 @@ button[aria-disabled='true'] { cursor: default; }
 
 .seg button {
   font-family: var(--label);
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   padding: 4px 10px;
   border-radius: 999px;
   color: var(--btn-text);
@@ -223,8 +225,9 @@ button[aria-disabled='true'] { cursor: default; }
 
 .np .k {
   font-family: var(--label);
-  font-size: 9px;
-  letter-spacing: 0.18em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   color: var(--accent-ink);
 }
 
@@ -254,8 +257,9 @@ button[aria-disabled='true'] { cursor: default; }
   align-items: center;
   gap: 6px;
   font-family: var(--label);
-  font-size: 9px;
-  letter-spacing: 0.16em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   color: var(--btn-text);
 }
 
@@ -265,8 +269,9 @@ button[aria-disabled='true'] { cursor: default; }
 
 .progress .time {
   font-family: var(--label);
-  font-size: 9px;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   color: var(--text-dim);
   min-width: 30px;
 }
@@ -422,11 +427,11 @@ button[aria-disabled='true'] { cursor: default; }
 .feed-list::-webkit-scrollbar, .q-list::-webkit-scrollbar { width: 6px; }
 .feed-list::-webkit-scrollbar-thumb, .q-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
 
-.sys { text-align: center; font-family: var(--label); font-size: 9px; letter-spacing: 0.08em; color: var(--text-dim); }
+.sys { text-align: center; font-family: var(--label); font-size: 10px; letter-spacing: 0.06em; color: var(--text-dim); }
 
 .msg { display: flex; flex-direction: column; gap: 6px; }
 
-.msg .who { font-family: var(--label); font-size: 9px; letter-spacing: 0.16em; color: var(--text-dim); }
+.msg .who { font-family: var(--label); font-size: 10px; font-weight: 500; letter-spacing: 0.1em; color: var(--text-dim); }
 .msg.me .who { text-align: right; }
 
 .msg .line { display: flex; align-items: flex-start; gap: 8px; }
@@ -445,7 +450,7 @@ button[aria-disabled='true'] { cursor: default; }
 
 .msg.me .bubble { background: var(--bubble-me); }
 
-.msg .meta { display: flex; gap: 10px; font-family: var(--label); font-size: 9px; color: var(--text-dim); }
+.msg .meta { display: flex; gap: 12px; align-items: center; font-family: var(--label); font-size: 10px; font-weight: 500; color: var(--text-dim); }
 .msg.me .meta { justify-content: flex-end; }
 .msg .meta .reply { color: var(--accent-ink); }
 
@@ -645,8 +650,9 @@ button[aria-disabled='true'] { cursor: default; }
   padding-top: 14px;
   border-top: 1px solid var(--line);
   font-family: var(--label);
-  font-size: 9px;
-  letter-spacing: 0.2em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   color: var(--text-dim);
 }/* 补：底栏的绿点是行内元素，得自己对齐；消息里的头像比顶栏的小一号。 */
 .statusbar .dot { vertical-align: middle; margin-right: 2px; }
