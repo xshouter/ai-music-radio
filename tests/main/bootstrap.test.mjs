@@ -5,10 +5,11 @@
 // 所以这一层能在纯 Node 下测：这正是"唯一组装点"这条边界的红利。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startRadio } from '../../main/bootstrap.ts';
+import { DEMO_SONG_FILE, DEMO_WAV_FILE } from '../../core/demo.ts';
 
 const tmp = (name) => mkdtempSync(join(tmpdir(), 'edgerunner-' + name + '-'));
 
@@ -51,4 +52,23 @@ test('bootstrap：一台电台起得来 —— 同源 UI 要得到，数据面�
   } finally {
     await started.close();
   }
+});
+test('bootstrap：首次体验的素材 —— 歌进曲库一次，之后不踩他自己换的那份（ADR-0033）', async () => {
+  const dataDir = tmp('data');
+  const localDir = tmp('music');
+  const uiDir = tmp('ui');
+  const demoDir = tmp('demo');
+  mkdirSync(uiDir, { recursive: true });
+  writeFileSync(join(demoDir, DEMO_SONG_FILE), 'demo-song-bytes');
+  writeFileSync(join(demoDir, DEMO_WAV_FILE), 'demo-voice-bytes');
+
+  const started = await startRadio({ dataDir, localDir, uiDir, ttsDir: tmp('piper'), demoDir, warn: () => {} });
+  await started.close();
+  assert.equal(readFileSync(join(localDir, DEMO_SONG_FILE), 'utf8'), 'demo-song-bytes', '首次开机拷进曲库');
+
+  // 他自己换了那一首：第二次开机不许把它踩掉。
+  writeFileSync(join(localDir, DEMO_SONG_FILE), 'his own copy');
+  const again = await startRadio({ dataDir, localDir, uiDir, ttsDir: tmp('piper'), demoDir, warn: () => {} });
+  await again.close();
+  assert.equal(readFileSync(join(localDir, DEMO_SONG_FILE), 'utf8'), 'his own copy');
 });

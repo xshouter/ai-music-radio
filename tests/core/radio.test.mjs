@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import nodeHttp from 'node:http';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -12,6 +12,7 @@ import { createRadio } from '../../core/radio.ts';
 import { createRadioServer } from '../../core/server.ts';
 import { SqliteStore } from '../../core/state/sqlite-store.ts';
 import { mp3DurationMs } from '../../core/tts.ts';
+import { DEMO_LINE, DEMO_SONG_FILE } from '../../core/demo.ts';
 
 const AT = new Date('2026-10-20T21:00:00.000Z');
 const clock = { now: () => AT };
@@ -39,6 +40,28 @@ const frame = (bitrateIndex, rateIndex) => {
 const mp3 = (count) => Buffer.concat(Array.from({ length: count }, () => frame(9, 0)));
 const AUDIO = mp3(10);
 const AUDIO_MS = mp3DurationMs(AUDIO);
+
+// 首次体验那份口播的形状：真的 RIFF/WAVE —— wavDurationMs 认得出，词时间戳才算得出来。
+const wavBytes = (ms = 2000) => {
+  const byteRate = 44100;
+  const chunk = (id, body) => {
+    const head = Buffer.alloc(8);
+    head.write(id, 0, 'latin1');
+    head.writeUInt32LE(body.length, 4);
+    return Buffer.concat([head, body]);
+  };
+  const fmt = Buffer.alloc(16);
+  fmt.writeUInt32LE(22050, 4);
+  fmt.writeUInt32LE(byteRate, 8);
+  fmt.writeUInt16LE(2, 12);
+  fmt.writeUInt16LE(16, 14);
+  const riff = Buffer.alloc(12);
+  riff.write('RIFF', 0, 'latin1');
+  riff.write('WAVE', 8, 'latin1');
+  const body = Buffer.concat([riff, chunk('fmt ', fmt), chunk('data', Buffer.alloc(Math.round((byteRate * ms) / 1000)))]);
+  body.writeUInt32LE(body.length - 8, 4);
+  return body;
+};
 
 const json = (body) => ({ status: 200, text: async () => JSON.stringify(body), bytes: async () => new Uint8Array() });
 const notFound = () => ({ status: 404, text: async () => '{"code":404}', bytes: async () => new Uint8Array() });
@@ -129,6 +152,7 @@ const setup = async (options = {}) => {
     '/v1/tts': () => ({ status: 200, text: async () => '', bytes: async () => AUDIO }),
   });
 
+  const cacheDir = mkdtempSync(join(tmpdir(), 'edgerunner-cache-'));
   const radio = createRadio({
     store,
     clock,
@@ -139,12 +163,13 @@ const setup = async (options = {}) => {
     env: { weather: async () => null, calendar: async () => [] },
     neteaseBaseUrl: 'http://music.test',
     localDir,
-    cacheDir: mkdtempSync(join(tmpdir(), 'edgerunner-cache-')),
+    cacheDir,
     // 装配点要一个 ttsDir。上面的 tts.provider=fish 决定了它不会被用到。
     ttsDir: mkdtempSync(join(tmpdir(), 'edgerunner-ttsdir-')),
+    ...(options.demo === undefined ? {} : { demo: options.demo }),
     fetch,
   });
-  return { radio, store, calls, learned };
+  return { radio, store, calls, learned, cacheDir };
 };
 
 const waitFor = async (predicate, ms = 3000) => {
@@ -500,4 +525,63 @@ test('快照只在还没解决时带错误：好着的时候静默，好起来�
   down = false;
   await flaky.radio.chat('try again');
   assert.deepEqual(subscribe(flaky.radio).filter((event) => event.type === 'error'), [], '这一轮成了，旧横幅就不该再弹');
+});
+// —— 首次体验（ADR-0033）：没填 key 的人开机该听见一台在转的电台 ——
+
+test('没 key 开机 = 首次体验：随包那一首 + 冻住的口播，嗓子不跟设置走', async () => {
+  const demoDir = mkdtempSync(join(tmpdir(), 'edgerunner-demo-'));
+  const wav = wavBytes(2000);
+  writeFileSync(join(demoDir, 'line.wav'), wav);
+  const { radio, calls, cacheDir } = await setup({
+    llmKey: false,
+    localFile: DEMO_SONG_FILE,
+    demo: { file: DEMO_SONG_FILE, wav: join(demoDir, 'line.wav') },
+  });
+  const events = subscribe(radio);
+  await radio.boot();
+
+  // 1. 像一台真的电台：队列里就是那一首、now 是它（不做欢迎页，也不加第二个界面）
+  assert.deepEqual(radio.queue().map((ref) => ref.id), ['local:' + DEMO_SONG_FILE]);
+  assert.equal(radio.now().track.title, 'Sign of the Times');
+  assert.equal(radio.now().track.artist, 'Harry Styles', '名字走本地源那套「Artist - Title」的解析');
+
+  // 2. 口播一条 intro，词时间戳来自那份音频（退化成「一个覆盖全句的词」就不算数）
+  await waitFor(() => events.some((event) => event.type === 'say'));
+  const say = events.find((event) => event.type === 'say').payload;
+  assert.equal(say.kind, 'intro');
+  assert.equal(say.line, DEMO_LINE);
+  assert.ok(say.words.length > 3, '词时间戳按音频时长摊开');
+
+  // 3. 嗓子是**文件**：设置里选的明明是 fish，缓存里落的却是那份 wav 的字节
+  const cached = readdirSync(cacheDir).filter((name) => name.endsWith('.wav'));
+  assert.equal(cached.length, 1);
+  assert.deepEqual(readFileSync(join(cacheDir, cached[0])), wav);
+  assert.equal(say.audioUrl, '/tts/' + cached[0]);
+
+  // 4. 引导横幅：NO_LLM_KEY（界面把它画成「解锁」入口，不是一条故障）
+  assert.ok(events.some((event) => event.type === 'error' && event.payload.code === 'NO_LLM_KEY'));
+
+  // 5. 一分钱都不花在大脑上
+  assert.equal(calls.filter((call) => call.path === '/v1/chat/completions').length, 0);
+
+  await radio.close();
+});
+
+test('首次体验之后填上 key：开机立刻重跑成真电台', async () => {
+  const demoDir = mkdtempSync(join(tmpdir(), 'edgerunner-demo-'));
+  writeFileSync(join(demoDir, 'line.wav'), wavBytes(1000));
+  const { radio } = await setup({
+    llmKey: false,
+    localFile: DEMO_SONG_FILE,
+    demo: { file: DEMO_SONG_FILE, wav: join(demoDir, 'line.wav') },
+  });
+  await radio.boot();
+  assert.equal(radio.queue()[0].id, 'local:' + DEMO_SONG_FILE, '先是首次体验');
+
+  const settings = await radio.saveSettings({ llm: { apiKey: KEY } });
+  assert.equal(settings.llm.apiKeySet, true);
+  await waitFor(() => radio.queue().length >= 2, 5000);
+  assert.deepEqual(radio.queue().map((ref) => ref.id), ['1001', '1002', '1003'], '填了 key，换成真电台那批');
+
+  await radio.close();
 });
