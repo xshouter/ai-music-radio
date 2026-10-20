@@ -234,7 +234,7 @@ export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleS
         <div className="oa-transcript">
           <div className="oa-scroll" ref={scrollRef}>
             {turns.map((spoken, index) => (
-              <div className="oa-turn" key={spoken.index} data-turn={index}>
+              <div className="oa-turn" key={index} data-turn={index}>
                 <div className="oa-turn-head">
                   <span className="who">EdgeRunner</span> • {mmss(starts[index] ?? 0)}
                 </div>
