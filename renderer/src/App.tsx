@@ -43,6 +43,8 @@ export function App() {
   // 听过哪几条：决定入口写 PLAY 还是 REPLAY。会话内有效，刷新即归零（feed 本来也是会话内的）。
   const [heard, setHeard] = useState<ReadonlySet<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
+  // 开机自动进口播界面只来一次；用户自己开口（或在别处点过歌）之后就不再抢屏幕。
+  const autoOpenRef = useRef(true);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -74,6 +76,16 @@ export function App() {
   };
   const oralEntry = oral === null ? undefined : radio.feed.find((entry) => entry.id === oral.id);
   const oralTurns = oralEntry === undefined ? [] : turnsOf(oralEntry);
+
+  // 开机进台（用户定）：第一句口播一到就打开口播界面。只自动开这一次 ——
+  // 后面几句由 OnAir 自己接上（连续），所以这里只认「第一句」这一下。
+  useEffect(() => {
+    if (!autoOpenRef.current || oral !== null) return;
+    const first = radio.feed.find((entry) => turnsOf(entry).length > 0);
+    if (first === undefined) return;
+    autoOpenRef.current = false;
+    openOral(first.id);
+  }, [oral, radio.feed]);
 
   return (
     <div className="viewport">
@@ -123,7 +135,14 @@ export function App() {
             onOral={openOral}
           />
 
-          <Composer onSay={radio.say} busy={busy} inputRef={inputRef} />
+          <Composer
+            onSay={(text) => {
+              autoOpenRef.current = false;
+              radio.say(text);
+            }}
+            busy={busy}
+            inputRef={inputRef}
+          />
 
           <footer className="statusbar">
             <span>EDGERUNNER FM</span>

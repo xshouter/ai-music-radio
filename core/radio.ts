@@ -304,6 +304,27 @@ export function createRadio(options: RadioOptions): Radio {
     stepLocally();
   };
 
+  /**
+   * 今天还没有日表就排一份。**一天只排一次**：重启复用同一份，不然「今天的歌单」每开一次窗口就换一批。
+   * 排不出来不是错误 —— 大脑还能自己挑歌，只是开场没有「早上定下的那首」可指。
+   */
+  const ensureTodayPlan = async (): Promise<DayPlan | null> => {
+    const date = localDateKey(clock.now());
+    const existing = await store.activePlan(date).catch(() => null);
+    if (existing !== null) return existing;
+    try {
+      const at = clock.now();
+      const d = await providers();
+      const plan = await buildDayPlan({ date, createdAt: at.toISOString(), music: d.music });
+      await store.savePlan(plan);
+      emit({ type: 'plan', payload: plan });
+      return plan;
+    } catch (cause: unknown) {
+      warn('radio: 今天排不出日表 —— ' + (cause instanceof Error ? cause.message : String(cause)));
+      return null;
+    }
+  };
+
   return {
     subscribe(send) {
       subscribers.add(send);
@@ -317,7 +338,9 @@ export function createRadio(options: RadioOptions): Radio {
     },
 
     async boot() {
-      // 一开机我就打碟。
+      // 一开机我就打碟 —— 但先把今天的日表排出来：它是开场的来源（ADR-0024），
+      // 也是这一档唯一能看见「早上定下的那批歌」的地方（第 26 条记下的那个缺口）。
+      await ensureTodayPlan();
       await thinkOrStep('schedule').catch((cause: unknown) => {
         emitError('INTERNAL', cause instanceof Error ? cause.message : String(cause), true);
       });

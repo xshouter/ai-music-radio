@@ -15,16 +15,17 @@
 | `userText` | 只有 `chat` 有；对应 UI 的聊天输入框 |
 | `now` | 由调用方注入（`Clock`），**大脑自己不取当前时间** |
 
-## 工具契约（封闭，四个）
+## 工具契约（封闭，五个）
 
 | 工具 | 入参 | 返回 | 为什么需要它 |
 |---|---|---|---|
 | `recommend_tracks` | `genres?` `mood?` `limit?` | `{tracks: TrackRef[]}` | "按场景要一批歌" |
 | `search_tracks` | `keywords` `limit?` | `{tracks: TrackRef[]}` | 用户点名了歌手/歌名/年代 |
 | `recent_plays` | `limit?` | `{plays: {...}[]}` | **避免重复、避开刚被跳过的歌** |
+| `today_plan` | `limit?` | `{tracks: TrackRef[]}`（当天没有日表时是 `{tracks: [], note}`） | **开场用「今天早上定下的那首」**（ADR-0024） |
 | `emit_show` | `say[]` `play[]` `reason` `segue?` | ——（结束这一轮） | 唯一出口 |
 
-`limit` 越界按 [1, 10]（`recent_plays` 是 [1, 30]）夹住，非法值回默认 —— 与 ADR-0013 同一套"不新增错误码"的处理。
+`limit` 越界按 [1, 10]（`recent_plays` 是 [1, 30]，`today_plan` 是 [1, 12]）夹住，非法值回默认 —— 与 ADR-0013 同一套"不新增错误码"的处理。
 
 ## 定稿校验（硬规则）
 

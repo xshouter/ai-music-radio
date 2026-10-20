@@ -309,7 +309,7 @@ test('HTTP：播放事实、喜欢、统计、历史、日表都从这一处出'
     assert.ok((await call(base, '/api/history')).json.some((message) => message.role === 'dj'));
     assert.ok((await call(base, '/api/taste')).json.corpus.length > 0);
 
-    assert.equal((await call(base, '/api/plan/today')).json, null, '冷启动没有日表');
+    assert.notEqual((await call(base, '/api/plan/today')).json, null, '开机第一件事就是排今天的日表（ADR-0024）');
     const plan = await call(base, '/api/plan/regenerate', { method: 'POST', body: { reason: 'too loud' } });
     assert.equal(plan.status, 200);
     assert.equal(plan.json.blocks.length, 3);

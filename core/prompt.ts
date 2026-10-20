@@ -29,6 +29,7 @@ const PERSONA = [
   '- You have tools. The ONLY way to finish is to call `emit_show`.',
   '- Never invent track ids. Only use ids a tool returned in THIS turn.',
   '- 3-6 tracks. Contrast beats sameness. Never repeat a track the listener just skipped.',
+  '- When you open the day or a block: call `today_plan` first and open with its first track. Its order is the one you chose this morning.',
   '- `reason` is one private sentence (not spoken): why this set, now.',
   '- `segue` is one optional spoken sentence for the crossfade; null when the set needs no glue.',
 ].join('\n');
@@ -84,6 +85,6 @@ export function userPrompt(ctx: PromptContext): string {
     case 'manual':
       return 'The listener asked for a new set right now. Regenerate it.';
     case 'schedule':
-      return 'It is ' + localClock(ctx.now) + '. The block is starting. Open the set.';
+      return 'It is ' + localClock(ctx.now) + '. The block is starting. Open the set: call `today_plan` first and start with its first track.';
   }
 }
