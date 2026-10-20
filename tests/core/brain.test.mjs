@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ToolLoopBrain, TOOLS } from '../../core/brain/index.ts';
+import { localDateKey } from '../../core/prompt.ts';
 import { createOpenAiLlm } from '../../core/providers/llm-openai.ts';
 import { createAnthropicLlm, toAnthropicMessages } from '../../core/providers/llm-anthropic.ts';
 import { HttpError } from '../../core/http.ts';
@@ -61,6 +62,48 @@ function makeBrain({ llm, music, store, env }) {
 
 const emit = (args) => reply([call('c9', 'emit_show', args)]);
 
+test('today_plan：日表以曲目形状回到手里，emit_show 直接用它的 id 开场', async () => {
+  const store = new MemoryStore({ now: () => NOW });
+  await store.savePlan({
+    date: localDateKey(NOW),
+    createdAt: NOW.toISOString(),
+    active: true,
+    blocks: [
+      { start: '07:00', end: '12:00', mood: 'morning', genres: ['acoustic'], tracks: [ref(CATALOG[2])] },
+      { start: '18:00', end: '02:00', mood: 'late-night', genres: ['ambient'], tracks: [ref(CATALOG[2]), ref(CATALOG[4])] },
+    ],
+  });
+  const llm = scripted([
+    reply([call('c1', 'today_plan', {})]),
+    emit({ say: ['Opening with the one I set aside this morning.'], play: ['n1003', 'n1005'], reason: 'today plan' }),
+  ]);
+  const { brain, steps } = makeBrain({ llm, store });
+  const show = await brain.think({ trigger: 'schedule', now: NOW });
+
+  // 时段摊平 + 去重：n1003 出现两次，只该回来一次。
+  const result = JSON.parse(llm.requests[1].messages.at(-1).content);
+  assert.deepEqual(result.tracks.map((t) => t.id), ['n1003', 'n1005'], '摊平三个时段并按顺序去重');
+  assert.equal(result.tracks[0].source, 'plan', 'TrackRef 补上 source 才是完整 Track');
+  assert.deepEqual(steps.map((s) => s.tool), ['today_plan']);
+  assert.deepEqual(show.play.map((t) => t.id), ['n1003', 'n1005'], '工具回来过的 id 才允许进 emit_show');
+  assert.deepEqual(show.play[0], ref(CATALOG[2]));
+  assert.match(llm.requests[0].messages[1].content, /call `today_plan` first/);
+});
+
+test('today_plan：还没排过日表时给空数组和一句话，不是错误', async () => {
+  const llm = scripted([
+    reply([call('c1', 'today_plan', {})]),
+    reply([call('c2', 'recommend_tracks', { limit: 3 })]),
+    emit({ say: ['No plan yet. I will pick.'], play: ['n1001', 'n1002', 'n1003'], reason: 'no plan' }),
+  ]);
+  const { brain, steps } = makeBrain({ llm });
+  await brain.think({ trigger: 'schedule', now: NOW });
+  // 工具结果从 onStep 取：messages 数组是共享引用，断言时已被后面的轮次改写。
+  const result = steps[0].result;
+  assert.deepEqual(result.tracks, []);
+  assert.match(result.note, /No plan for today/);
+});
+
 test('一轮完整推理：先取候选，再定稿；工具结果原样回到模型手里', async () => {
   const llm = scripted([
     reply([call('c1', 'recommend_tracks', { mood: 'low and steady', limit: 4 })]),
@@ -87,7 +130,7 @@ test('一轮完整推理：先取候选，再定稿；工具结果原样回到�
   assert.match(llm.requests[0].messages[0].content, /Nothing fast after 23:00/);
   assert.match(llm.requests[0].messages[1].content, /The block is starting/);
   // 工具集合是封闭的：四个，最后一个必须是定稿的那个。
-  assert.deepEqual(TOOLS.map((t) => t.name), ['recommend_tracks', 'search_tracks', 'recent_plays', 'emit_show']);
+  assert.deepEqual(TOOLS.map((t) => t.name), ['recommend_tracks', 'search_tracks', 'recent_plays', 'today_plan', 'emit_show']);
 });
 
 test('编造的曲目 id 会被驳回，并且驳回理由原样回到模型手里（自愈的唯一入口）', async () => {
