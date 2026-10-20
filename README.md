@@ -29,7 +29,9 @@
 
 去 [Releases](https://github.com/xshouter/edgerunner/releases) 下 `EdgeRunner-x.y.z-portable.exe`，双击就能跑 —— **只有便携版，没有安装包**（ADR-0023）。
 
-**exe 里不含任何凭证。** 第一次打开是"哑"的（没有大脑、没有音乐源）——这一节教你把钥匙填进去。
+**exe 里不含任何凭证。** 第一次打开**不哑**：它会放一首随包的 demo 唱片（Harry Styles — *Sign of the Times*），
+并说一段出厂时录好的口播，界面上是一条 **SET UP** 引导（[ADR-0033](docs/adr/0033-first-run-demo.md)）。
+这一节教你把钥匙填进去 —— 填完立刻换成一台真正属于你的电台。
 
 ## 填上你自己的钥匙
 
@@ -37,7 +39,7 @@
 
 | 要什么 | 从哪来 | 不填会怎样 |
 |---|---|---|
-| **LLM key**（任何 OpenAI 或 Anthropic 兼容的） | 默认指阿里云百炼的 OpenAI 兼容端点（`llm.baseUrl` + `llm.model` 可改，`llm.protocol` 切 openai/anthropic） | 不做口播、不自己排歌；界面会提示 `No brain configured yet` |
+| **LLM key**（任何 OpenAI 或 Anthropic 兼容的） | 默认指阿里云百炼的 OpenAI 兼容端点（`llm.baseUrl` + `llm.model` 可改，`llm.protocol` 切 openai/anthropic） | 不排你自己的节目表：开机放的是随包的 demo 唱片 + 一段出厂口播，界面给一条 `SET UP` 引导 |
 | **口播语音**（Piper，离线，[ADR-0022](docs/adr/0022-tts-piper-offline.md)） | **不用填** —— 本地音色，`npm run fetch:voice` 装一次 | 口播只剩文字，没有声音（`TTS_FAILED` 有兜底文案，不中断） |
 | **网易云 cookie**（ADR-0011） | 浏览器登录 music.163.com 后整条 Cookie 头 | 音乐源退到本地目录 |
 
@@ -91,7 +93,7 @@ $env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & ".\EdgeRunner-x.y.
 | 池子优先：排表拆两段，第一段只给池子、第二段才放开搜索 | ✅ 已合并（PR #59） |
 | 开机进度：窗口先出生，排表在界面里跑，不再黑屏十几秒 | ✅ 已合并（PR #60） |
 | 错误码说真话（源不可达 / key 被拒 / 限流各报各的，开场失败也看得见） | ✅ 已合并（PR #53） |
-| 打开即用：内置音乐源，内核代管启动（不再要第二个进程） | ✅ 已合并（PR #54） |
+| 首次体验：没填 key 的开机也有歌、有口播、有引导（随包 demo 唱片） | ✅ 已合并（PR #61） |
 
 拆解与逐 PR 的推进记录见 `docs/roadmap.md` 与 `docs/journal/`。
 
@@ -170,10 +172,11 @@ gh release edit v0.1.0 --draft=false          # 人看过再放出去
 
 ## 诚实声明
 
-- 与原型作者 mmguo **无关**，不使用其任何代码或素材；仓库内不含音频、歌词、封面素材。
+- 与原型作者 mmguo **无关**，不使用其任何代码或素材；仓库内只随包带一首 demo 唱片与它那段口播（`assets/demo/`，仅个人演示，ADR-0033），不含歌词与封面素材。
 - 音乐播放定位为**个人自用**；取流逻辑全部收在 `MusicSource` 端口后面，换成合法音源只需新增一个实现。
 - 发布出去的 exe **不包含任何凭证**，所有 key 由使用者自己填写。
-- 便携 exe 约 **166 MB** —— 离线 Piper 运行时 + 一把音色模型（`en_GB-alan-medium`，61 MB）随包发，
-  换来的是**开箱就有声音、不要 key**。合上喉咙的钱是明码的：这是包里最大的一块。
+- 便携 exe 约 **169 MB** —— 离线 Piper 运行时 + 一把音色模型（`en_GB-alan-medium`，61 MB）随包发，
+  换来的是**开箱就有声音、不要 key**；再加上随包的 demo 唱片与它那段口播（约 3 MB，ADR-0033）。
+  合上喉咙的钱是明码的：这是包里最大的一块。
 - **已知边界（不藏）**：只做 PC 单端；不做歌词；网易云要一个外部兼容服务（上上节）；
   口播是英文，声音来自**本地 Piper 离线音色**（不要 key、音质一般，[ADR-0022](docs/adr/0022-tts-piper-offline.md)）；TTS 响应没有词级时间戳，逐词高亮是按音频总长均分的（ADR-0017）。
