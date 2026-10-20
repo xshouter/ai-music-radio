@@ -17,7 +17,6 @@ export interface TransportProps {
   volume: number;
   queueShown: boolean;
   liked: boolean;
-  source: 'ai' | 'fav';
   onToggle: () => void;
   onStop: () => void;
   onSkip: () => void;
@@ -25,12 +24,12 @@ export interface TransportProps {
   onVolume: (value: number) => void;
   onToggleQueue: () => void;
   onLike: () => void;
-  onFav: () => void;
 }
 
 /** ③④ 运输条 + 进度。左侧频谱点进口播界面（3.8 接上）。 */
 export function Transport(props: TransportProps) {
   const percent = props.durationMs > 0 ? Math.min(100, (props.positionMs / props.durationMs) * 100) : 0;
+  const live = props.djState === 'speaking' || props.djState === 'thinking';
   const kicker = props.djState === 'speaking' ? 'SPEAKING...' : props.djState === 'thinking' ? 'THINKING...' : 'PLAYING';
 
   return (
@@ -45,7 +44,7 @@ export function Transport(props: TransportProps) {
           <div className="t">
             {props.track ? `${props.track.title}  -  ${props.track.artist}` : 'Waiting for the front desk...'}
           </div>
-          <div className="k">{kicker}</div>
+          <div className={live ? 'k is-live' : 'k'}>{kicker}</div>
         </div>
         <div className="ctls">
           <button className="ctl" type="button" onClick={props.onBack} aria-label="Previous track">
@@ -75,9 +74,6 @@ export function Transport(props: TransportProps) {
           {/* HIDE / LIST 的状态由文案本身表达，所以不给它按下的实心样式 —— 参考里这枚就是描边。 */}
           <button className="pill" type="button" onClick={props.onToggleQueue}>
             {props.queueShown ? 'HIDE' : 'LIST'}
-          </button>
-          <button className="pill" type="button" onClick={props.onFav} aria-pressed={props.source === 'fav'}>
-            FAV
           </button>
         </div>
         <div className="vol">

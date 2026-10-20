@@ -84,7 +84,7 @@ const encodeFrame = (text: string): Buffer => {
   return Buffer.concat([head, data]);
 };
 
-const TTS_PATH = /^\/tts\/([0-9a-f]{40})\.mp3$/;
+const TTS_PATH = /^\/tts\/([0-9a-f]{40})\.(mp3|wav)$/;
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -129,10 +129,10 @@ function serveUi(req: IncomingMessage, res: ServerResponse, uiDir: string, pathn
   return true;
 }
 
-function sendBytes(req: IncomingMessage, res: ServerResponse, audio: Uint8Array): void {
+function sendBytes(req: IncomingMessage, res: ServerResponse, audio: Uint8Array, contentType: string): void {
   const range = req.headers.range;
   if (range === undefined) {
-    res.writeHead(200, { 'content-type': 'audio/mpeg', 'content-length': audio.byteLength, 'accept-ranges': 'bytes' });
+    res.writeHead(200, { 'content-type': contentType, 'content-length': audio.byteLength, 'accept-ranges': 'bytes' });
     res.end(Buffer.from(audio));
     return;
   }
@@ -151,7 +151,7 @@ function sendBytes(req: IncomingMessage, res: ServerResponse, audio: Uint8Array)
   }
   const slice = audio.subarray(start, end + 1);
   res.writeHead(206, {
-    'content-type': 'audio/mpeg',
+    'content-type': contentType,
     'content-length': slice.byteLength,
     'accept-ranges': 'bytes',
     'content-range': `bytes ${start}-${end}/${audio.byteLength}`,
@@ -184,13 +184,14 @@ export function createRadioServer(options: RadioServerOptions): Server {
         return;
       }
       if (method === 'GET' && path.startsWith('/tts/')) {
-        const key = TTS_PATH.exec(path)?.[1];
+        const hit = TTS_PATH.exec(path);
+        const key = hit?.[1];
         const audio = key === undefined ? null : radio.ttsAudio(key);
         if (audio === null) {
           sendError(res, 'INTERNAL', 'No cached speech at this path', 404);
           return;
         }
-        sendBytes(req, res, audio);
+        sendBytes(req, res, audio, hit?.[2] === 'wav' ? 'audio/wav' : 'audio/mpeg');
         return;
       }
 

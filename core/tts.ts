@@ -10,7 +10,8 @@ import type { CancelSignal, TtsProvider } from '../shared/ports.ts';
  * 它不认识 Fish Audio —— 它认的是 TtsProvider 端口（ADR-0008）。换厂商 = 换一个 provider 文件，
  * 这个文件与 UI 一行都不动。
  *
- * 缓存是**内容寻址**的：键 = sha1(providerId + 音色 + 文本)，落 `cache/tts/<hash>.mp3`。
+ * 缓存是**内容寻址**的：键 = sha1(providerId + 音色 + 文本)，落调用方给的缓存目录（main/ 传 `data/cache`）里的 `<hash>.<ext>`。
+ * 后缀跟着 provider 声明的容器走（mp3 / wav），所以换 provider 连文件都不撞。
  * 同一句话 + 同一把嗓子 = 同一份文件，重复口播零远端调用。键里带 providerId，
  * 换 provider 不会串到旧缓存（shared/ports.ts 的 TtsProvider 注释）。
  */
@@ -131,16 +132,46 @@ export function mp3DurationMs(audio: Uint8Array): number {
   return Math.round(ms);
 }
 
+const readAscii = (bytes: Uint8Array, at: number, len: number): string => {
+  let out = '';
+  for (let i = 0; i < len; i += 1) out += String.fromCharCode(bytes[at + i] ?? 0);
+  return out;
+};
+
+/**
+ * WAV（线性 PCM）时长：`data` 块的字节数 ÷ `fmt ` 块的字节率。与 mp3DurationMs 同契约 ——
+ * 认不出来给 0，由调用方退化成「一个覆盖全句的词」。只认 RIFF/WAVE（piper 给的就是这个）。
+ */
+export function wavDurationMs(audio: Uint8Array): number {
+  if (audio.byteLength < 12 || readAscii(audio, 0, 4) !== 'RIFF' || readAscii(audio, 8, 4) !== 'WAVE') return 0;
+  const view = new DataView(audio.buffer, audio.byteOffset, audio.byteLength);
+  let at = 12;
+  let byteRate = 0;
+  while (at + 8 <= audio.byteLength) {
+    const id = readAscii(audio, at, 4);
+    const size = view.getUint32(at + 4, true);
+    const body = at + 8;
+    if (size < 0 || body + size > audio.byteLength) break;
+    if (id === 'fmt ' && size >= 12) byteRate = view.getUint32(body + 8, true);
+    if (id === 'data') return byteRate > 0 ? Math.round((size / byteRate) * 1000) : 0;
+    at = body + size + (size % 2); // RIFF 的块按偶数字节对齐
+  }
+  return 0;
+}
+
 export function createTtsEngine(options: TtsEngineOptions): TtsEngine {
   const provider = options.provider;
   const dir = options.dir;
   const prefix = (options.routePrefix ?? '/tts').replace(/\/+$/, '');
   const retryDelayMs = options.retryDelayMs ?? 400;
+  // 容器格式是引擎级属性（shared/ports.ts 的 TtsProvider.format）：后缀 / 路由 / 时长解析器都跟着它。
+  const ext = provider.format;
+  const durationOf = ext === 'wav' ? wavDurationMs : mp3DurationMs;
 
   const keyOf = (line: string, voice = ''): string =>
     createHash('sha1').update(provider.id + '\u0000' + voice + '\u0000' + line).digest('hex').slice(0, HASH_HEX);
 
-  const urlOf = (key: string): string => prefix + '/' + key + '.mp3';
+  const urlOf = (key: string): string => prefix + '/' + key + '.' + ext;
 
   const synthesize = async (text: string, voice: string, signal?: CancelSignal): Promise<Uint8Array> => {
     let last = '未知错误';
@@ -150,7 +181,7 @@ export function createTtsEngine(options: TtsEngineOptions): TtsEngine {
         const result = await provider.synthesize({
           text,
           voice,
-          format: 'mp3',
+          format: ext,
           ...(signal === undefined ? {} : { signal }),
         });
         if (result.audio.byteLength > 0) return result.audio;
@@ -167,7 +198,7 @@ export function createTtsEngine(options: TtsEngineOptions): TtsEngine {
     urlOf,
     async speak(index, line, voice = '', signal) {
       const key = keyOf(line, voice);
-      const file = join(dir, key + '.mp3');
+      const file = join(dir, key + '.' + ext);
       let audio: Uint8Array;
       if (existsSync(file)) {
         audio = readFileSync(file);
@@ -176,11 +207,11 @@ export function createTtsEngine(options: TtsEngineOptions): TtsEngine {
         mkdirSync(dir, { recursive: true });
         writeFileSync(file, audio);
       }
-      return { index, line, audioUrl: urlOf(key), words: wordsFor(line, mp3DurationMs(audio)) };
+      return { index, line, audioUrl: urlOf(key), words: wordsFor(line, durationOf(audio)) };
     },
     read(key) {
       if (!KEY_RE.test(key)) return null;
-      const file = join(dir, key + '.mp3');
+      const file = join(dir, key + '.' + ext);
       return existsSync(file) ? readFileSync(file) : null;
     },
   };

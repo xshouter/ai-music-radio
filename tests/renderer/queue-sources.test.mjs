@@ -40,5 +40,7 @@ test('3.6 留下的两个死按钮已经接上，不残留占位文案', () => {
   const transport = read('../../renderer/src/components/Transport.tsx');
   assert.ok(!transport.includes('Favorites arrive in 3.7'), 'Transport.tsx 里还有 3.7 的占位文案');
   assert.match(transport, /onClick=\{props\.onLike\}/);
-  assert.match(transport, /onClick=\{props\.onFav\}/);
+  // 来源开关跟着列表走：它从运输条搬到了队列表头（运输条要留呼吸，参考源的运输条只有 4 个键）。
+  const queue = read('../../renderer/src/components/Queue.tsx');
+  assert.match(queue, /onSource\('fav'\)/);
 });

@@ -12,6 +12,7 @@ type Draft = {
   llmKey: string;
   ttsProvider: string;
   ttsVoice: string;
+  ttsBaseUrl: string;
   ttsKey: string;
   musicProvider: string;
   cookie: string;
@@ -24,6 +25,7 @@ const EMPTY: Draft = {
   llmKey: '',
   ttsProvider: '',
   ttsVoice: '',
+  ttsBaseUrl: '',
   ttsKey: '',
   musicProvider: '',
   cookie: '',
@@ -42,6 +44,7 @@ const toInput = (draft: Draft): SettingsInput => ({
   tts: {
     provider: draft.ttsProvider.trim() || undefined,
     voice: draft.ttsVoice.trim() || undefined,
+    baseUrl: draft.ttsBaseUrl.trim() || undefined,
     apiKey: draft.ttsKey.trim() || undefined,
   },
   music: {
@@ -81,6 +84,7 @@ export function Credentials({ onClose }: { onClose: () => void }) {
           protocol: next.llm.protocol,
           ttsProvider: next.tts.provider,
           ttsVoice: next.tts.voice,
+          ttsBaseUrl: next.tts.baseUrl,
           musicProvider: next.music.provider,
         }));
         setNote({ kind: 'plain', text: 'STORED LOCALLY' });
@@ -181,13 +185,22 @@ export function Credentials({ onClose }: { onClose: () => void }) {
             <div className="cred-pair">
               <label className="cred-field">
                 <span className="l">PROVIDER</span>
-                <input value={draft.ttsProvider} onChange={(event) => setField('ttsProvider')(event.target.value)} placeholder="fish" spellCheck={false} />
+                <input value={draft.ttsProvider} onChange={(event) => setField('ttsProvider')(event.target.value)} placeholder="piper" spellCheck={false} />
               </label>
               <label className="cred-field">
                 <span className="l">VOICE</span>
-                <input value={draft.ttsVoice} onChange={(event) => setField('ttsVoice')(event.target.value)} placeholder="reference id" spellCheck={false} />
+                <input value={draft.ttsVoice} onChange={(event) => setField('ttsVoice')(event.target.value)} placeholder="en_US-amy-medium" spellCheck={false} />
               </label>
             </div>
+            <label className="cred-field">
+              <span className="l">BASE URL (fish family only)</span>
+              <input
+                value={draft.ttsBaseUrl}
+                onChange={(event) => setField('ttsBaseUrl')(event.target.value)}
+                placeholder="http://127.0.0.1:8080"
+                spellCheck={false}
+              />
+            </label>
             <label className="cred-field">
               <span className="l">API KEY</span>
               <input

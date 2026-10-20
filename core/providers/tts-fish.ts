@@ -17,12 +17,16 @@ export interface FishTtsOptions {
  * 用 Fish 的默认音色。鉴权是 `Authorization: Bearer <key>`。
  *
  * 它**只**负责一次调用：缓存、重试、词时间戳都在 core/tts.ts。provider 必须是叶子。
+ *
+ * `baseUrl` 可以指两处：Fish Audio 的托管端点，或者自己跑的 fish-speech —— 后者暴露的是
+ * **同一个 `POST /v1/tts`**（上游 tools/server/views.py），所以本地自托管不用改一行代码。
  */
 export function createFishTts(options: FishTtsOptions): TtsProvider {
   const http = options.fetch ?? defaultHttpFetch;
   const base = (options.baseUrl ?? 'https://api.fish.audio').replace(/\/+$/, '');
   return {
     id: options.id ?? 'fish',
+    format: 'mp3' as const,
     async synthesize(req: TtsRequest): Promise<TtsResult> {
       const body = JSON.stringify({
         text: req.text,

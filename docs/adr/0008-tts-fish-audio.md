@@ -1,6 +1,6 @@
 # ADR-0008 · 口播 TTS 用 Fish Audio
 
-- **状态**：已接受
+- **状态**：已被 [ADR-0022](0022-tts-piper-offline.md) 取代 —— 口播默认改走**离线 Piper**；fish 保留为可选 provider（`tts.provider=fish`）
 - **日期**：2026-10-20
 - **关联**：`docs/abstraction-layer.md` 第 3.2 / 6 节、`shared/ports.ts`（`TtsProvider`）、`docs/roadmap.md` 阶段 4.4
 

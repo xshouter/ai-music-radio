@@ -6,7 +6,7 @@
 html, body, #root { height: 100%; margin: 0; }
 
 body {
-  background: var(--outside);
+  background: transparent;
   color: var(--text);
   font-family: var(--body);
   font-size: 15px;
@@ -35,8 +35,8 @@ button[aria-disabled='true'] { cursor: default; }
   z-index: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: 0;
+  padding: 0;
   border-radius: 26px;
   border: 1px solid var(--frame);
   overflow: hidden;
@@ -57,7 +57,11 @@ button[aria-disabled='true'] { cursor: default; }
 
 /* ---------- ① 顶栏 ---------- */
 
-.topbar { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 2px; }
+/* 整条顶栏是拖拽区：无边框窗口只能靠这里移动（里面的按钮自己标回 no-drag）。 */
+.topbar { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 24px var(--pad-x) 20px; -webkit-app-region: drag; }
+
+.topbar button,
+.topbar .seg { -webkit-app-region: no-drag; }
 
 .avatar {
   flex: 0 0 auto;
@@ -90,11 +94,11 @@ button[aria-disabled='true'] { cursor: default; }
 
 .pill {
   font-family: var(--label);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 7px 13px;
+  padding: 3px 11px;
   border-radius: 999px;
   border: 1px solid var(--pill-line);
   color: var(--btn-text);
@@ -104,6 +108,11 @@ button[aria-disabled='true'] { cursor: default; }
 
 /* 按下的胶囊要看得见：FAV 亮着才知道面板里现在是谁的歌（需求 3.7）。 */
 .pill[aria-pressed='true'] { background: var(--pill-active-bg); color: var(--pill-active-fg); border-color: transparent; }
+
+/* 关窗键。无边框窗口没有系统关闭键，所以它必须存在 —— 与胶囊同族，只是收成方形。 */
+.close { width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--pill-line); color: var(--btn-text); display: grid; place-items: center; }
+
+.close:hover { color: var(--text); border-color: var(--text-dim); }
 
 .seg { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 999px; }
 
@@ -124,9 +133,7 @@ button[aria-disabled='true'] { cursor: default; }
 .clock-panel {
   position: relative;
   flex: 0 0 auto;
-  height: 200px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
+  height: 239px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -141,6 +148,8 @@ button[aria-disabled='true'] { cursor: default; }
 /* 点阵在底部渐隐，别切一条硬边。 */
 
 .clock {
+  display: flex;
+  align-items: center;
   font-family: var(--dot);
   /* 权重 600：参考站只加载 Doto 的 400 / 600 两档，900 是我们自己加的 —— 字形会糊成十字块。
      尺寸对齐参考的墨迹（270×80）。 */
@@ -151,6 +160,11 @@ button[aria-disabled='true'] { cursor: default; }
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
+
+/* 时分之间的分隔：两颗圆点。Doto 的 ':' 是一对方块，参考源用的是圆点。 */
+.clock-sep { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 9px; }
+
+.clock-sep i { width: 7px; height: 7px; border-radius: 50%; background: var(--text); }
 
 .clock-day { font-size: 14px; color: var(--text); }
 
@@ -195,28 +209,27 @@ button[aria-disabled='true'] { cursor: default; }
 
 /* ---------- ③④ 运输条 + 进度 ---------- */
 
+/* 参考里运输条是 80px 高（626 卡内 y=313..393），不是我们自己拍的一个数。 */
 .transport {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 11px;
-  padding: 12px 14px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
+  gap: 18px;
+  padding: 16px var(--pad-x) 12px;
   background: var(--panel);
 }
 
 .bar { display: flex; align-items: center; gap: 12px; }
 
 /* 频谱。点它进「口播界面」（3.8 接上；现在只作视觉）。 */
-.spec { flex: 0 0 auto; display: flex; align-items: flex-end; gap: 2px; height: 17px; }
+.spec { flex: 0 0 auto; display: flex; align-items: flex-end; gap: 1px; height: 13px; }
 
 .spec i { width: 2px; border-radius: 1px; background: var(--accent); }
 
 .np { flex: 1 1 auto; min-width: 0; }
 
 .np .t {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -228,10 +241,13 @@ button[aria-disabled='true'] { cursor: default; }
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.12em;
-  color: var(--accent-ink);
+  color: var(--ink-play);
 }
 
-.ctls { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; }
+/* 口播 / 思考时才点亮：参考里的常驻 `PLAYING` 是灰的。 */
+.np .k.is-live { color: var(--accent-ink); }
+
+.ctls { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; }
 
 .ctl {
   width: 28px;
@@ -260,12 +276,31 @@ button[aria-disabled='true'] { cursor: default; }
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.1em;
-  color: var(--btn-text);
+  color: var(--ink-play);
 }
 
-.vol input { width: 52px; accent-color: var(--accent-ink); }
+.vol input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 52px;
+  height: 11px;
+  background: none;
+  cursor: pointer;
+}
 
-.progress { display: flex; align-items: center; gap: 10px; }
+.vol input::-webkit-slider-runnable-track { height: 2px; border-radius: 1px; background: var(--line); }
+
+.vol input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.progress { display: flex; align-items: center; gap: 14px; }
 
 .progress .time {
   font-family: var(--label);
@@ -278,20 +313,19 @@ button[aria-disabled='true'] { cursor: default; }
 
 .progress .time.right { text-align: right; }
 
-.track { position: relative; flex: 1 1 auto; height: 2px; border-radius: 2px; background: var(--line); }
+.track { position: relative; flex: 1 1 auto; height: 3px; border-radius: 2px; background: var(--line); }
 
 .track .fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--text); }
 
 /* ---------- ⑤ QUEUE ---------- */
 
+/* 表头 28px + 5 行 x 30px = 178px，正好是参考里 QUEUE 那一段的高度。 */
 .queue {
   flex: 0 0 auto;
-  max-height: 262px;
+  max-height: 186px;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--panel);
+  background: var(--panel-clock);
   overflow: hidden;
 }
 
@@ -300,13 +334,16 @@ button[aria-disabled='true'] { cursor: default; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--line);
+  padding: 3px var(--pad-x);
   font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
   color: var(--text-dim);
 }
+
+.q-right { display: flex; align-items: center; gap: 10px; }
+
+.q-seg button { font-size: 9px; padding: 3px 9px; letter-spacing: 0.14em; }
 
 .q-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
@@ -315,9 +352,10 @@ button[aria-disabled='true'] { cursor: default; }
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 46px;
-  padding-right: 14px;
-  font-size: 12.5px;
+  height: 30px;
+  padding-left: 0;
+  padding-right: var(--pad-x);
+  font-size: 11.5px;
   color: var(--text);
   cursor: pointer;
 }
@@ -349,8 +387,8 @@ button[aria-disabled='true'] { cursor: default; }
 
 .q-row.is-current { background: var(--row-current); color: var(--accent-ink); }
 .q-row.is-current::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
-.q-row.is-current .i { color: var(--accent-ink); }
-.q-row.is-current .i::before { content: '\25B8 '; }
+.q-row.is-current .i { color: var(--accent-ink); font-size: 0; }
+.q-row.is-current .i::before { content: '\25B8'; font-size: 11px; }
 .q-row.is-current .a { color: var(--accent-ink); }
 
 /* FAV 源：行尾的歌手位置在悬停 / 键盘聚焦时被 ✕ 替换（需求 3.7）。
@@ -397,8 +435,6 @@ button[aria-disabled='true'] { cursor: default; }
   min-height: 140px;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
   background: var(--panel);
   overflow: hidden;
 }
@@ -408,8 +444,7 @@ button[aria-disabled='true'] { cursor: default; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 13px;
-  border-bottom: 1px solid var(--line);
+  padding: 12px var(--pad-x);
 }
 
 .feed-head .name { font-family: var(--label); font-weight: 500; font-size: 15px; color: var(--text); }
@@ -421,7 +456,7 @@ button[aria-disabled='true'] { cursor: default; }
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 16px 14px 18px;
+  padding: 18px var(--pad-x) 20px;
 }
 
 .feed-list::-webkit-scrollbar, .q-list::-webkit-scrollbar { width: 6px; }
@@ -437,11 +472,11 @@ button[aria-disabled='true'] { cursor: default; }
 .msg .line { display: flex; align-items: flex-start; gap: 8px; }
 .msg.me .line { flex-direction: row-reverse; }
 
+/* 参考的气泡只有一层底色，没有描边（扫过 x=75 / y=503 两处边缘，都是平滑过渡，没有亮线）。 */
 .bubble {
   max-width: 78%;
   padding: 11px 14px;
   border-radius: 14px;
-  border: 1px solid var(--line);
   background: var(--bubble);
   font-size: 13.5px;
   line-height: 1.55;
@@ -488,7 +523,7 @@ button[aria-disabled='true'] { cursor: default; }
 
 /* ---------- ⑦ 输入条 ---------- */
 
-.composer { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+.composer { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 2px var(--pad-x) 14px; background: var(--panel); }
 
 .composer .field {
   flex: 1 1 auto;
@@ -528,7 +563,8 @@ button[aria-disabled='true'] { cursor: default; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4px;
+  padding: 0 var(--pad-x) 16px;
+  background: var(--panel);
   font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.2em;

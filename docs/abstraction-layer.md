@@ -50,7 +50,7 @@ core/
   music/   index.ts (链)  netease.ts  local.ts
   state/   sqlite-store.ts  migrations/
   server.ts                                                # HTTP + WS，实现第 5 节契约
-  providers/ llm-openai.ts  llm-anthropic.ts  tts-dashscope.ts  tts-openai.ts
+  providers/ llm-openai.ts  llm-anthropic.ts  tts-piper.ts  tts-fish.ts
 main/     bootstrap.ts (唯一组装点，不认 electron)  main.ts (Electron 外壳)  preload.ts (令牌桥)
 renderer/ views/player views/profile views/settings  api/client.ts
 ```
@@ -98,13 +98,15 @@ export interface LlmProvider { readonly id: string; complete(req: LlmRequest): P
 ```ts
 export interface TtsProvider {
   readonly id: string;
+  /** 容器格式是引擎级属性（ADR-0022）：决定缓存后缀与 `/tts/<key>.<ext>` 路由。 */
+  readonly format: 'mp3' | 'wav';
   synthesize(req: {
-    text: string; voice: string; format: 'mp3'; speed?: number; signal?: AbortSignal;
+    text: string; voice: string; format: 'mp3' | 'wav'; speed?: number; signal?: AbortSignal;
   }): Promise<{ audio: Uint8Array; contentType: string }>;
 }
 ```
 
-缓存不在 provider 里，在 `core/tts.ts`：键 `sha1(text + voice + providerId)`，落 `cache/tts/<hash>.mp3`，命中直接返回文件。**换 provider 不污染旧缓存。**
+缓存不在 provider 里，在 `core/tts.ts`：键 `sha1(text + voice + providerId)`，落缓存目录（`main/` 传 `data/cache`）里的 `<hash>.<mp3|wav>`，命中直接返回文件。**换 provider 不污染旧缓存。**
 
 ### 3.3 MusicSource —— 降级链
 
@@ -223,11 +225,11 @@ export interface TasteDoc {
 }
 export interface SettingsView {                   // 出参与入参分离：key 只回显「是否已配置」
   llm: { baseUrl: string; model: string; protocol: 'openai' | 'anthropic'; apiKeySet: boolean };
-  tts: { provider: string; voice: string; apiKeySet: boolean };
+  tts: { provider: string; voice: string; baseUrl: string; apiKeySet: boolean };
 }
 export interface SettingsInput {
   llm?: { baseUrl?: string; model?: string; protocol?: 'openai' | 'anthropic'; apiKey?: string };
-  tts?: { provider?: string; voice?: string; apiKey?: string };
+  tts?: { provider?: string; baseUrl?: string; voice?: string; apiKey?: string };
 }
 ```
 
@@ -249,7 +251,7 @@ export interface SettingsInput {
 | GET | `/api/plan/today` | — | `DayPlan \| null` |
 | POST | `/api/plan/regenerate` | `{ reason?: string }` | `DayPlan` |
 | GET | `/api/audio/:songId` | `?level=` | 音频流（`206`/`200`，透传 Range） |
-| GET | `/tts/<hash>.mp3` | — | 静态缓存文件 |
+| GET | `/tts/<hash>.<mp3\|wav>` | — | 静态缓存文件（后缀由 provider 的 `format` 定，ADR-0022） |
 | GET | `/api/settings` | — | `SettingsView`（**key 与 cookie 都只回显是否已配置，绝不回显明文**，ADR-0005 / [ADR-0011](adr/0011-music-credential-in-settings.md)） |
 | PUT | `/api/settings` | `Partial<SettingsInput>` | `SettingsView` · `music.cookie` 走这条写入；**写入的值覆盖 env** |
 | POST | `/api/playback` | `{ songId, event: 'started' \| 'ended' \| 'skipped', at }` | `{ ok: true }` · `started` 同时是「切到这首了」（ADR-0010） |
