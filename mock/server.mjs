@@ -360,6 +360,15 @@ async function control(req, res) {
     }
     state.error = body.error ?? null;
   }
+  // {"wipe":true} 清空两本账（ADR-0013），用来**真的**验一遍 Profile 的空态。
+  // 它不在契约里，UI 永远不会调它（和 degraded / error 同一个规矩）。
+  if (body.wipe) {
+    messages.length = 0;
+    plays.length = 0;
+    TASTE.corpus.length = 0;
+    TASTE.recent.length = 0;
+    PLAN.blocks.length = 0;
+  }
   // 状态变化要广播出去：UI 不改一行代码就能显示降级/错误态（验收标准第 3 条）。
   broadcast({ type: 'now', payload: nowPlaying() });
   if (state.error) broadcast({ type: 'error', payload: { code: state.error, ...ERRORS[state.error] } });

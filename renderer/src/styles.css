@@ -17,7 +17,7 @@ body {
 button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
 button[aria-disabled='true'] { cursor: default; }
 
-:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+:focus-visible { outline: 1px solid var(--accent-ink); outline-offset: 1px; }
 
 .viewport { height: 100%; display: grid; place-items: center; }
 
@@ -66,7 +66,7 @@ button[aria-disabled='true'] { cursor: default; }
   border-radius: 50%;
   border: 1px solid var(--line);
   background: var(--accent-deep);
-  color: var(--accent);
+  color: var(--accent-ink);
   display: grid;
   place-items: center;
   font-family: var(--dot);
@@ -165,7 +165,7 @@ button[aria-disabled='true'] { cursor: default; }
   font-family: var(--label);
   font-size: 10px;
   letter-spacing: 0.2em;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .dot {
@@ -224,7 +224,7 @@ button[aria-disabled='true'] { cursor: default; }
   font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .ctls { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; }
@@ -240,9 +240,9 @@ button[aria-disabled='true'] { cursor: default; }
   place-items: center;
 }
 
-.ctl:hover { color: var(--accent); border-color: var(--accent); }
+.ctl:hover { color: var(--accent-ink); border-color: var(--accent-ink); }
 
-.ctl.is-on { color: var(--accent); border-color: var(--accent); }
+.ctl.is-on { color: var(--accent-ink); border-color: var(--accent-ink); }
 
 .ctl:disabled { color: var(--btn-text); border-color: var(--btn-line); }
 
@@ -258,7 +258,7 @@ button[aria-disabled='true'] { cursor: default; }
   color: var(--text-dim);
 }
 
-.vol input { width: 52px; accent-color: var(--accent); }
+.vol input { width: 52px; accent-color: var(--accent-ink); }
 
 .progress { display: flex; align-items: center; gap: 10px; }
 
@@ -339,13 +339,13 @@ button[aria-disabled='true'] { cursor: default; }
   text-overflow: ellipsis;
 }
 
-.q-row:hover .t { color: var(--accent); }
+.q-row:hover .t { color: var(--accent-ink); }
 
-.q-row.is-current { background: var(--row-current); color: var(--accent); }
+.q-row.is-current { background: var(--row-current); color: var(--accent-ink); }
 .q-row.is-current::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
-.q-row.is-current .i { color: var(--accent); }
+.q-row.is-current .i { color: var(--accent-ink); }
 .q-row.is-current .i::before { content: '\25B8 '; }
-.q-row.is-current .a { color: var(--accent); }
+.q-row.is-current .a { color: var(--accent-ink); }
 
 /* FAV 源：行尾的歌手位置在悬停 / 键盘聚焦时被 ✕ 替换（需求 3.7）。
    不复刻成常驻图标 —— 参考的每行右边只有歌手，多一个符号就破了那个干净。 */
@@ -379,7 +379,7 @@ button[aria-disabled='true'] { cursor: default; }
   font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.18em;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .q-head .undo:hover { text-decoration: underline; }
@@ -446,7 +446,7 @@ button[aria-disabled='true'] { cursor: default; }
 
 .msg .meta { display: flex; gap: 10px; font-family: var(--label); font-size: 9px; color: var(--text-dim); }
 .msg.me .meta { justify-content: flex-end; }
-.msg .meta .reply { color: var(--accent); }
+.msg .meta .reply { color: var(--accent-ink); }
 
 /* DJ 消息里的曲目卡：点一下就播（交互决策 3）。
    **短条**，不是整条：宽度跟着内容走（参考图 2），左侧一个标记，右边两行字。 */
@@ -475,10 +475,10 @@ button[aria-disabled='true'] { cursor: default; }
 }
 .card-track .ct .a { font-size: 10.5px; color: var(--text-dim); }
 .card-track:hover { border-color: var(--text-dim); }
-.card-track.is-current { border-color: var(--accent); background: var(--row-current); }
-.card-track.is-current .ct .t { color: var(--accent); }
+.card-track.is-current { border-color: var(--accent-ink); background: var(--row-current); }
+.card-track.is-current .ct .t { color: var(--accent-ink); }
 .card-track .ct .t::before { content: '\25B8 '; color: var(--text-dim); }
-.card-track.is-current .ct .t::before { content: '\2605 '; color: var(--accent); }
+.card-track.is-current .ct .t::before { content: '\2605 '; color: var(--accent-ink); }
 
 /* ---------- ⑦ 输入条 ---------- */
 
@@ -599,7 +599,7 @@ button[aria-disabled='true'] { cursor: default; }
   display: grid;
   place-items: center;
   background: var(--accent-deep);
-  color: var(--accent);
+  color: var(--accent-ink);
   font-family: var(--dot);
   font-size: 24px;
   box-shadow: 0 0 0 1px var(--accent), 0 0 22px rgba(41, 255, 184, 0.28);
@@ -608,7 +608,7 @@ button[aria-disabled='true'] { cursor: default; }
 .dj-face img { width: 100%; height: 100%; object-fit: cover; }
 
 .dj-name { font-family: var(--dot); font-weight: 700; font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--text); }
-.dj-slogan { margin-top: 5px; font-size: 11px; color: var(--accent); }
+.dj-slogan { margin-top: 5px; font-size: 11px; color: var(--accent-ink); }
 
 .dj-sub { margin-top: 18px; font-size: 12px; color: var(--text-dim); }
 .dj-motto { margin-top: 6px; font-size: 12px; line-height: 1.6; color: var(--text-dim); }
@@ -850,7 +850,7 @@ button[aria-disabled='true'] { cursor: default; }
   font-size: 9px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .cred-row { margin-top: 9px; display: grid; gap: 9px; }
@@ -877,19 +877,19 @@ button[aria-disabled='true'] { cursor: default; }
 .cred-field input::placeholder,
 .cred-field textarea::placeholder { color: var(--text-dim); }
 .cred-field input:focus,
-.cred-field textarea:focus { border-color: var(--accent); }
+.cred-field textarea:focus { border-color: var(--accent-ink); }
 
 .cred-field textarea { height: 56px; resize: none; font-size: 11px; line-height: 1.45; }
 
 .cred-seg { width: 100%; }
 .cred-seg button { flex: 1 1 auto; }
 
-.cred-set { font-family: var(--label); font-size: 8.5px; letter-spacing: 0.18em; color: var(--accent); }
+.cred-set { font-family: var(--label); font-size: 8.5px; letter-spacing: 0.18em; color: var(--accent-ink); }
 
 .cred-foot { margin-top: 20px; display: flex; align-items: center; gap: 9px; }
 
 .cred-msg { flex: 1 1 auto; font-family: var(--label); font-size: 9.5px; letter-spacing: 0.16em; color: var(--text-dim); }
-.cred-msg.ok { color: var(--accent); }
+.cred-msg.ok { color: var(--accent-ink); }
 .cred-msg.err { color: var(--danger); }
 
 .cred-btn {
@@ -906,3 +906,116 @@ button[aria-disabled='true'] { cursor: default; }
 .cred-btn:hover { color: var(--text); border-color: var(--text-dim); }
 
 .cred-btn.primary { background: var(--accent); color: #06120d; border-color: transparent; }
+
+/* ---------- ④ Profile（3.11）：DjCard 的下一级 ---------- */
+
+.profile-card {
+  position: relative;
+  width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 22px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  box-shadow: 0 40px 80px -24px rgba(0, 0, 0, 0.6);
+  background-color: var(--card-dj);
+  background-image: radial-gradient(circle, var(--dot-grid) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.profile-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(70% 55% at 18% -4%, var(--glow), transparent 62%);
+}
+
+/* 头部与页脚固定、中间滚动：和 DJ 面板的 feed-list 同一套做法。 */
+.pf-top { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: 14px; }
+.pf-top .dj-name { font-size: 30px; }
+.pf-top .cred-close { margin-left: auto; }
+
+.pf-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-top: 16px; padding-right: 4px; }
+.pf-body::-webkit-scrollbar { width: 6px; }
+.pf-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+.pf-sec { padding-top: 14px; }
+.pf-sec + .pf-sec { margin-top: 12px; border-top: 1px solid var(--line); }
+
+.pf-head {
+  font-family: var(--label);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.pf-sub {
+  margin-top: 14px;
+  font-family: var(--label);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.pf-empty { margin-top: 8px; font-size: 12px; color: var(--text-dim); }
+
+.pf-doc { display: flex; gap: 10px; margin-top: 9px; }
+.pf-doc-name {
+  flex: 0 0 88px;
+  padding-top: 2px;
+  font-family: var(--label);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.pf-doc-text { flex: 1 1 auto; font-size: 12px; line-height: 1.5; color: var(--text); }
+
+.pf-learn { display: flex; gap: 10px; margin-top: 7px; font-size: 12px; color: var(--text-dim); }
+/* 时间戳不用 Doto：点阵字体在 12px 下被抗锯齿糊成虚线（和主界面小标签同一个坑）。 */
+.pf-time { flex: 0 0 auto; font-family: var(--label); font-size: 11px; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; color: var(--text-dim); }
+
+.pf-block { margin-top: 12px; }
+.pf-block-top { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.pf-mood {
+  font-family: var(--label);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+.pf-block .genre { padding: 4px 8px; font-size: 8.5px; }
+.pf-track { display: block; margin-top: 5px; padding-left: 12px; text-align: left; font-size: 12px; color: var(--text-dim); }
+.pf-track:hover { color: var(--accent-ink); }
+
+.pf-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.pf-stats .l { font-family: var(--label); font-size: 9px; letter-spacing: 0.2em; color: var(--text-dim); }
+.pf-stats .v { margin-top: 3px; font-size: 22px; font-weight: 700; color: var(--text); }
+
+.pf-artist { display: flex; justify-content: space-between; gap: 10px; margin-top: 7px; font-size: 12px; color: var(--text-dim); }
+.pf-artist .c { font-variant-numeric: tabular-nums; color: var(--text); }
+
+.pf-msg { display: flex; gap: 9px; margin-top: 7px; font-size: 12px; }
+.pf-role {
+  flex: 0 0 28px;
+  padding-top: 2px;
+  font-family: var(--label);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+.pf-msg .pf-text { flex: 1 1 auto; color: var(--text); }
+
+.pf-foot { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.pf-foot .cred-btn { margin-left: auto; }
+
+/* DjCard 的页脚多了一个入口：Profile 的唯一入口。两级关系：你是谁 → 你听了什么。 */
+.dj-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dj-more { font-family: var(--label); font-size: 9px; letter-spacing: 0.2em; color: var(--accent-ink); }
+.dj-more:hover { text-decoration: underline; }
