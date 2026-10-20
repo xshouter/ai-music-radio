@@ -45,7 +45,7 @@
 | 3.10 | `feat/contracts-profile` | 契约增量 P6：`GET /api/stats` + `GET /api/history`（ADR-0013）+ mock 开始记账 + 断言 | ✅ 已合并（PR #20） |
 | 3.11 | `feat/ui-profile` | Profile：taste 语料、收听统计、口播历史、`plan` 的去处 | ✅ 已合并（PR #21） |
 | 3.12 | `fix/ui-button-ink` | 插队补丁：按钮小字 `--text-dim` → `--btn-text`；15px 以下的 Doto 回 `--label` | ✅ 已合并（PR #22） |
-| 3.13 | `fix/ui-legibility` | 追补：3.12 只换了颜色，9–10px 的标签字仍然太淡 —— 字号 / 字重 / 墨色一起提上来 | ✅ 本 PR |
+| 3.13 | `fix/ui-legibility` | 追补：3.12 只换了颜色，9–10px 的标签字仍然太淡 —— 字号 / 字重 / 墨色一起提上来 | ✅ 已合并（PR #27） |
 
 > 3.10 是**契约增量**（P6），跟 3.3 / 3.4 一个道理：先冻结再加界面；3.11 才是 Profile 本身。
 > 3.1 为什么被推翻：它是一个「能跑起来的电台界面」，不是「和参考分不出来的电台界面」。
@@ -66,7 +66,7 @@
 | 4.3 | `feat/music-chain` | `MusicSourceChain` + 网易云实现 + 本地兜底 | ✅ 已合并（#25） |
 | 4.4 | `feat/tts-pipeline` | `core/tts.ts`：内容寻址缓存 + 词时间戳（ADR-0017）+ Fish Audio 实现 | ✅ 已合并（#26） |
 | 4.5 | `feat/scheduler-and-serving` | `core/radio.ts`（状态机 + provider 组装）+ `core/plan.ts`（日表）+ `core/server.ts`（第 5 节全部契约） | ✅ 已合并（#28） |
-| 4.6 | `feat/taste-repo` | `core/taste.ts`：语料在磁盘的 md、结论只在库（ADR-0004） | ✅ 本 PR |
+| 4.6 | `feat/taste-repo` | `core/taste.ts`：语料在磁盘的 md、结论只在库（ADR-0004） | ✅ 已合并（#30） |
 
 > 4.3 / 4.4 走**自建适配层**：只借鉴公开实现的做法，用本项目自己的端口与抽象重写，**不内联任何第三方代码**。
 > 4.1 顺手定了两件基建：`core/` **不认具体 SQLite 驱动**（结构化接口 + `main/` 注入，见 ADR-0014），
@@ -85,5 +85,5 @@
 
 ## 贯穿全程的两件事
 
-- **契约回归**：同一组契约测试同时打 `mock/` 与 `core/server.ts`，断言两边响应结构一致（抽象层第 7 节）。
+- **契约回归**：mock 一份（`tests/contract/mock.test.mjs`，19 条结构 / 枚举断言）、真 `core/server.ts` 一份（`tests/core/radio.test.mjs`：HTTP + WS + 媒体 + 令牌）—— **同一份契约，两份夹具**（抽象层第 7 节）。
 - **边界检查**：每次 CI 跑 `node tools/check-boundaries.mjs`，`renderer/` 越界即红（铁律 5）。

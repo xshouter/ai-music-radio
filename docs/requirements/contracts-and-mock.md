@@ -15,7 +15,7 @@
 | `shared/domain.ts` | 领域类型：`Track` / `TrackRef` / `Show` / `DayPlan` / `PlayEvent` / `TasteUpdate` … |
 | `shared/api-types.ts` | 第 5 节的请求 / 响应 DTO、`StreamEvent`、错误信封、`NowPlaying` / `TasteDoc` / `SettingsView` / `SettingsInput` |
 | `mock/server.mjs` | 零依赖（Node 内建 `http`）假后端，按第 5 节契约返回固定 fixture |
-| `tests/contract/mock.test.mjs` | 契约测试：对着 mock 断言响应结构。将来**同一组断言**也打真 server |
+| `tests/contract/mock.test.mjs` | 契约测试：对着 mock 断言响应结构（也支持 `RADIO_BASE_URL` 指到真 server）；真 server 那一份在 `tests/core/radio.test.mjs` |
 | `tsconfig.json` + `typescript`（devDependency） | 契约是要被编译的，否则 .ts 只是带装饰的注释 |
 
 ## 范围

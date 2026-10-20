@@ -122,7 +122,7 @@ export interface ResolvedAudio { url: string; level: QualityLevel; expiresAt?: n
 `core/music/index.ts` 实现 `MusicSourceChain implements MusicSource`，按顺序试；任一源返回 `null` 就下一个；全失败返回 `null`。**降级是链的职责，不是调用方的职责。**
 
 > `lyric()` 已去掉：v1 不做歌词（[ADR-0009](adr/0009-drop-lyric.md)）。
-> mock / renderer 里歌词面的清理由「UI 重做」那个 PR 一并完成。
+> mock / renderer 里歌词面的清理已在 PR #15（阶段 3.5）完成。
 
 ### 3.4 ~~OutputTarget~~（已在 v1.1 删除）
 
@@ -306,10 +306,16 @@ type StreamEvent =
 ## 7. 前端先行策略（铁律 3 的落地方式）
 
 1. **第 0 步：冻结第 5 节**。契约进 `shared/api-types.ts`，任何改动都是 ADR 级别的改动。
-2. **第 1 步：写 `mock/`**。一个 ~100 行的 Express，按第 5 节返回固定 fixture（含一个假的 `Show`、一个 3 段日表、10 首歌）。UI 全程对着它开发。
-3. **第 2 步：UI 复刻**。Player 两态（宽窗大钟态 / 窄窗卡片态）、Profile、Settings、歌词同步。对着 mock 跑通所有态——包括上面的**全部降级态**（mock 可以直接切到 degraded、切到 error）。
+2. **第 1 步：写 `mock/`**。一个 ~100 行、零依赖（Node 内建 `http`）的假后端，按第 5 节返回固定 fixture（含一个假的 `Show`、一个 3 段日表、10 首歌）。UI 全程对着它开发。
+3. **第 2 步：UI 复刻**。Player 单态等比缩放（616×876）、DJ 详情弹层、口播全屏态、QUEUE 双来源、凭证弹窗、Profile。
+   对着 mock 跑通所有态 —— 包括上面的**全部降级态**（mock 可以直接切到 degraded、切到 error）。
+   （原文写的是「Player 两态 + 歌词同步」：两态被阶段 3.2 推翻（改成单态等比缩放），歌词由 ADR-0009 砍掉。
+   这条描述属于计划，计划变了它不会自己变 —— 收尾审计时一并改成事实。）
 4. **第 3 步：换真后端**。`core/server.ts` 实现同一个契约，UI 一行不改（只把 base URL 指过去）。
-5. **第 4 步：契约回归**。一组契约测试同时打 mock 和真 server，断言两边响应结构一致。
+5. **第 4 步：契约回归**。`tests/contract/mock.test.mjs` 对 mock 断言响应结构与枚举取值（不认 fixture 内容）；
+   同一份文件也能用 `RADIO_BASE_URL` 指到真 server，但 mock 独有的控制面（`/__mock/control`、`n*` 夹具、内存 WAV）
+   在真 server 上不存在，所以「同一份文件两边都跑」只对**只读端点**成立。真 server 上那批端点的同一份契约，
+   由 `tests/core/radio.test.mjs` 再断言一遍 —— **同一份契约，两份夹具**（v1 的实际做法）。
 
 **收益**：视觉问题在只有 mock 的时候就被发现并定案（铁律 4：自己拍板、对着参考源收敛），不会等到后端写完再返工。
 
@@ -328,7 +334,7 @@ type StreamEvent =
 | `Clock` | `FakeClock` | 调度器时段选择（含跨午夜） |
 | `EnvProvider` | `FakeEnv` | 环境注入了什么 |
 
-外加：**契约测试**（第 7 节第 4 步）、**边界测试**（依赖规则，CI 跑一次静态检查）。
+外加：**契约测试**（第 7 节第 4 步 —— mock 一份、真 server 一份）、**边界测试**（依赖规则，CI 跑 `tools/check-boundaries.mjs` 这一道静态检查）。
 
 ---
 
