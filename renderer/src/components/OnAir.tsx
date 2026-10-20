@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { SpokenLine, TrackRef } from '../../../shared/domain.ts';
 import { Icon } from './Icon.tsx';
@@ -13,77 +13,38 @@ const BARS = 56;
 /**
  * ① 口播全屏态 —— 参考源那张 616×876 卡片的 1:1 复刻。
  * 上方进度条 = 歌曲进度，最下方 = 口播进度（用户定）；✕ 在白色卡片右上角（用户定的位置）。
- * 逐词高亮的时钟是「这一句的 <audio>」本身 —— 真 TTS 接上后这里一行都不用改。
+ * 播放权在 useRadio 的串行管道里（ADR-0029），这里只是它的**视图**：打开不重播、✕ 才停止（用户定）。
+ * lines 是这一场口播说过的所有句子（一首歌一条），当前那一条永远在最后。
+ * 逐词高亮的时钟就是那一条 <audio> 本身 —— 词时间戳由 TTS 给（ADR-0012）。
  * 文字一律正常对比度，不做渐隐（用户定：渐隐的字读不动）。
- * 它是**连续**的：一句接一句往下说，没词了就站着等（后台在生成），只有 ✕ 才回主界面（用户定）。
  */
-export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleSong, onStartSong, onClose }: {
-  turns: SpokenLine[];
+export function OnAir({ lines, track, playing, positionMs, durationMs, oralPlaying, oralMs, onToggleSong, onToggleOral, onSeekOral, onClose }: {
+  lines: SpokenLine[];
   track: TrackRef | null;
   playing: boolean;
   positionMs: number;
   durationMs: number;
+  oralPlaying: boolean;
+  oralMs: number;
   onToggleSong: () => void;
-  onStartSong: () => void;
+  onToggleOral: () => void;
+  onSeekOral: (ms: number) => void;
   onClose: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const seekRef = useRef(0);
-  const [turn, setTurn] = useState(0);
-  const [turnMs, setTurnMs] = useState(0);
-  const [oralPlaying, setOralPlaying] = useState(true);
-  // 词说完了但后台还没生成下一句：站着等，来了自动接上。
-  const [standing, setStanding] = useState(false);
 
-  // 每句的起点 + 口播总长：只由词时间戳推出（mock 的音频长度跟它同源）。
-  const [starts, totalMs] = useMemo(() => {
-    const offsets: number[] = [];
-    let at = 0;
-    for (const line of turns) {
-      offsets.push(at);
-      at += line.words.at(-1)?.endMs ?? 0;
-    }
-    return [offsets, at] as const;
-  }, [turns]);
+  const at = Math.max(0, lines.length - 1);
+  const line: SpokenLine | undefined = lines[at];
+  const totalMs = line?.words.at(-1)?.endMs ?? 0;
+  const cut = line ? line.words.findIndex((word) => oralMs >= word.startMs && oralMs < word.endMs) : -1;
 
-  const line: SpokenLine | undefined = turns[turn] ?? turns[0];
-  const oralMs = (starts[turn] ?? 0) + turnMs;
-
-  // 口播时钟：<audio> 说了算。40ms 才提交一次，免得每帧都重渲染。
+  // 正在说的那一条滚进视野。block:'nearest' —— 不用 smooth，避免自己触发滚动事件。
   useEffect(() => {
-    let frame = 0;
-    const tick = () => {
-      const audio = audioRef.current;
-      if (audio) {
-        setOralPlaying(!audio.paused);
-        const next = audio.currentTime * 1000;
-        setTurnMs((prev) => (Math.abs(next - prev) >= 40 ? next : prev));
-      }
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, []);
+    scrollRef.current?.querySelector(`[data-turn="${at}"]`)?.scrollIntoView({ block: 'nearest' });
+  }, [at, lines.length]);
 
-  // 换句 → 换音频源，接着播。seekRef 只在拖动进度条时非零。
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !line) return;
-    audio.src = line.audioUrl;
-    audio.currentTime = seekRef.current / 1000;
-    seekRef.current = 0;
-    setTurnMs(audio.currentTime * 1000);
-    void audio.play().catch(() => undefined);
-  }, [line]);
-
-  // 正在说的那一句滚进视野。block:'nearest' —— 不用 smooth，避免自己触发滚动事件。
-  useEffect(() => {
-    scrollRef.current?.querySelector(`[data-turn="${turn}"]`)?.scrollIntoView({ block: 'nearest' });
-  }, [turn]);
-
-  // 波形：参考源的做法 —— 程序化柱状，播的时候相位快、停的时候慢慢飘。
+  // 波形：参考源的做法 —— 程序化柱状，说的时候相位快，停着的时候慢慢飘。
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -111,8 +72,7 @@ export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleS
       ctx.clearRect(0, 0, cw, ch);
       const step = 4;
       const count = Math.max(1, Math.floor(cw / step));
-      const audio = audioRef.current;
-      phase += audio && !audio.paused ? 0.06 : 0.008;
+      phase += oralPlaying ? 0.06 : 0.008;
       for (let i = 0; i < count; i += 1) {
         const x = i * step + (cw - count * step) / 2;
         const env = 0.55 + 0.45 * Math.sin((i / count) * Math.PI);
@@ -132,7 +92,7 @@ export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleS
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
     };
-  }, []);
+  }, [oralPlaying]);
 
   const bars = useMemo(
     () =>
@@ -147,47 +107,13 @@ export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleS
   const playedBars = totalMs > 0 ? Math.round((oralMs / totalMs) * BARS) : 0;
   const songPct = durationMs > 0 ? Math.max(0, Math.min(100, (positionMs / durationMs) * 100)) : 0;
 
-  // 一句放完就接下一句；还没有下一句就站着等 —— turns 会随着后台生成变长，这个 effect 把它接上。
-  const speakNext = () => {
-    if (turn + 1 < turns.length) setTurn(turn + 1);
-    else setStanding(true);
-  };
-
-  useEffect(() => {
-    if (standing && turn + 1 < turns.length) {
-      setStanding(false);
-      setTurn(turn + 1);
-    }
-  }, [standing, turn, turns.length]);
-
-  const toggleOral = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (audio.paused) {
-      onStartSong(); // 口播和音乐一起播（用户定）
-      void audio.play().catch(() => undefined);
-    } else audio.pause();
-  };
-
+  // 拖口播进度条只在这一条里跳 —— 一条歌一段口播，没有跨条的进度可言。
   const seek = (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (totalMs <= 0) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-    const at = ratio * totalMs;
-    let index = 0;
-    for (let i = 0; i < starts.length; i += 1) {
-      if ((starts[i] ?? 0) <= at) index = i;
-    }
-    const withinMs = at - (starts[index] ?? 0);
-    const audio = audioRef.current;
-    if (index === turn && audio) audio.currentTime = withinMs / 1000;
-    else {
-      seekRef.current = withinMs;
-      setTurn(index);
-    }
+    onSeekOral(ratio * totalMs);
   };
-
-  const cut = line ? line.words.findIndex((word) => turnMs >= word.startMs && turnMs < word.endMs) : -1;
 
   return (
     <section className="onair" aria-label="On air — the DJ is talking">
@@ -200,7 +126,7 @@ export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleS
             </div>
             <div className="oa-status">
               <i className={oralPlaying ? 'dot' : 'dot off'} />
-              {oralPlaying ? 'Speaking…' : standing ? 'Standing by…' : 'Paused'}
+              {oralPlaying ? 'Speaking…' : 'Standing by…'}
             </div>
           </div>
           <div className="oa-clock">{mmss(oralMs)}</div>
@@ -233,15 +159,15 @@ export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleS
 
         <div className="oa-transcript">
           <div className="oa-scroll" ref={scrollRef}>
-            {turns.map((spoken, index) => (
+            {lines.map((spoken, index) => (
               <div className="oa-turn" key={index} data-turn={index}>
                 <div className="oa-turn-head">
-                  <span className="who">EdgeRunner</span> • {mmss(starts[index] ?? 0)}
+                  <span className="who">EdgeRunner</span> • {mmss(index === at ? oralMs : (spoken.words.at(-1)?.endMs ?? 0))}
                 </div>
                 <div className="oa-turn-body">
                   {spoken.words.map((word, wordIndex) => (
                     <span key={wordIndex}>
-                      <span className={index === turn && wordIndex === cut ? 'oa-word is-current' : 'oa-word'}>
+                      <span className={index === at && wordIndex === cut ? 'oa-word is-current' : 'oa-word'}>
                         {word.text}
                       </span>{' '}
                     </span>
@@ -259,12 +185,10 @@ export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleS
               <i key={index} className={index < playedBars ? 'oa-bar is-played' : 'oa-bar'} style={{ height }} />
             ))}
           </button>
-          <button className="oa-play" type="button" onClick={toggleOral} aria-label={oralPlaying ? 'Pause' : 'Play'}>
+          <button className="oa-play" type="button" onClick={onToggleOral} aria-label={oralPlaying ? 'Pause' : 'Play'}>
             <Icon name={oralPlaying ? 'pause' : 'play'} size={14} />
           </button>
         </div>
-
-        <audio ref={audioRef} onEnded={speakNext} />
       </div>
     </section>
   );

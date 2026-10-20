@@ -39,7 +39,7 @@ export interface TtsEngineOptions {
 
 export interface TtsEngine {
   /** 合一句口播。命中缓存时**不打远端**。失败抛 TtsFailure（已经重试过一次）。 */
-  speak(index: number, line: string, voice?: string, signal?: CancelSignal): Promise<SpokenLine>;
+  speak(index: number, line: string, voice?: string, signal?: CancelSignal): Promise<Omit<SpokenLine, 'kind'>>;
   /** server 的 `GET /tts/<hash>.mp3` 用它取字节；key 不合法或没缓存一律给 null。 */
   read(key: string): Uint8Array | null;
   /** 一句口播缓存键（确定性，供 server 之外的地方复用同一个映射）。 */
