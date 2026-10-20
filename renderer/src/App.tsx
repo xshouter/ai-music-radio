@@ -3,14 +3,13 @@ import { Clock } from './components/Clock.tsx';
 import { Composer } from './components/Composer.tsx';
 import { Credentials } from './components/Credentials.tsx';
 import { DjCard } from './components/DjCard.tsx';
-import { DjFeed } from './components/DjFeed.tsx';
+import { DjFeed, turnsOf } from './components/DjFeed.tsx';
 import { OnAir } from './components/OnAir.tsx';
 import { Profile } from './components/Profile.tsx';
 import { Queue } from './components/Queue.tsx';
 import { TopBar } from './components/TopBar.tsx';
 import { Transport } from './components/Transport.tsx';
 import { useRadio } from './hooks/useRadio.ts';
-import type { SpokenLine } from '../../shared/domain.ts';
 
 export type Theme = 'dark' | 'light';
 
@@ -38,8 +37,11 @@ export function App() {
   const [djOpen, setDjOpen] = useState(false);
   const [credOpen, setCredOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  // 口播全屏态。seq 每开一次 +1：靠 key 重开一份干净的播放状态（口播从头播）。
-  const [oral, setOral] = useState<{ turns: SpokenLine[]; seq: number } | null>(null);
+  // 口播全屏态：只记「哪条消息」，turns 每次从 feed 现取 —— 后台新生成的口播会自动接上（连续）。
+  // seq 每开一次 +1：靠 key 重开一份干净的播放状态（口播从头播）。
+  const [oral, setOral] = useState<{ id: string; seq: number } | null>(null);
+  // 听过哪几条：决定入口写 PLAY 还是 REPLAY。会话内有效，刷新即归零（feed 本来也是会话内的）。
+  const [heard, setHeard] = useState<ReadonlySet<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -64,7 +66,14 @@ export function App() {
   const onLike = () => {
     if (radio.current) radio.favorite(radio.current, !radio.liked);
   };
-  const openOral = (turns: SpokenLine[]) => setOral((prev) => ({ turns, seq: (prev?.seq ?? 0) + 1 }));
+  // 口播入口：点 PLAY / REPLAY 也要把音乐放起来（用户定）。
+  const openOral = (id: string) => {
+    if (!radio.playing) radio.toggle();
+    setHeard((prev) => new Set(prev).add(id));
+    setOral((prev) => ({ id, seq: (prev?.seq ?? 0) + 1 }));
+  };
+  const oralEntry = oral === null ? undefined : radio.feed.find((entry) => entry.id === oral.id);
+  const oralTurns = oralEntry === undefined ? [] : turnsOf(oralEntry);
 
   return (
     <div className="viewport">
@@ -110,8 +119,8 @@ export function App() {
             speaking={radio.now?.djState === 'speaking'}
             currentId={radio.current?.id ?? null}
             onPlay={radio.play}
+            heard={heard}
             onOral={openOral}
-            onReply={() => inputRef.current?.focus()}
           />
 
           <Composer onSay={radio.say} busy={busy} inputRef={inputRef} />
@@ -153,12 +162,15 @@ export function App() {
         {oral && (
           <OnAir
             key={'oral-' + oral.seq}
-            turns={oral.turns}
+            turns={oralTurns}
             track={radio.current}
             playing={radio.playing}
             positionMs={radio.positionMs}
             durationMs={radio.durationMs}
             onToggleSong={radio.toggle}
+            onStartSong={() => {
+              if (!radio.playing) radio.toggle();
+            }}
             onClose={() => setOral(null)}
           />
         )}
