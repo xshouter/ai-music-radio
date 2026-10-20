@@ -14,7 +14,7 @@ export const DEFAULT_PREFS: PrefMap = {
   'llm.protocol': 'openai',
   'llm.apiKey': '',
   'tts.provider': 'piper',
-  'tts.voice': 'en_US-amy-medium',
+  'tts.voice': 'en_US-ryan-high',
   'tts.baseUrl': 'http://127.0.0.1:8080',
   'tts.apiKey': '',
   'music.provider': 'netease',

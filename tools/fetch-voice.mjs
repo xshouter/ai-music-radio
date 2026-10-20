@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 把离线嗓子（piper 运行时 + 语音模型，约 95MB）拉到 vendor/piper/。不进 git —— 它是二进制资产。
+// 把离线嗓子（piper 运行时 + 语音模型，约 140MB）拉到 vendor/piper/。不进 git —— 它是二进制资产。
 //
 // 为什么要绕路：GitHub Release 的资产走 objects.githubusercontent.com，huggingface.co 也一样，
 // 在这台机器上都被 hosts 劫持到 127.0.0.1，直连会**挂死**（不是失败，是永远不返回）。
@@ -7,7 +7,7 @@
 //
 //   node tools/fetch-voice.mjs                 # 缺什么拉什么
 //   node tools/fetch-voice.mjs --force         # 全量重拉
-//   node tools/fetch-voice.mjs --voice=en_US-amy-medium
+//   node tools/fetch-voice.mjs --voice=en_US-ryan-high
 import { execFileSync } from 'node:child_process';
 import { createWriteStream, cpSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, statSync } from 'node:fs';
 import { request } from 'node:https';
@@ -24,7 +24,7 @@ const arg = (name, fallback) => {
   return hit === undefined ? fallback : hit.slice(name.length + 3);
 };
 const force = process.argv.includes('--force');
-const voice = arg('voice', 'en_US-amy-medium');
+const voice = arg('voice', 'en_US-ryan-high');
 const root = join(process.cwd(), 'vendor', 'piper');
 
 const get = (url, out) =>
