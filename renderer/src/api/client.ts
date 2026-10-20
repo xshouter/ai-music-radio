@@ -22,7 +22,9 @@ import type {
 // dev 里留空：走 vite 的 dev proxy（mock 不发 CORS 头，跨源会被浏览器挡掉）。
 // 真后端 / Electron 里由外部注入，例如 VITE_RADIO_BASE_URL=http://127.0.0.1:8799。
 const BASE = import.meta.env.VITE_RADIO_BASE_URL ?? '';
-const TOKEN = import.meta.env.VITE_RADIO_TOKEN ?? '';
+// 打包后没有 VITE_* 环境变量，令牌改由 preload 注入（window.__RADIO__）；
+// base 留空 = 与页面同源 —— 打包时 UI 就是内核发的（ADR-0020），同源是默认值。
+const TOKEN = import.meta.env.VITE_RADIO_TOKEN ?? (window.__RADIO__?.token ?? '');
 
 /** 后端返回的统一错误信封（抽象层第 5 节）。UI 只认 code，不认 HTTP 状态码。 */
 export class ApiFailure extends Error {

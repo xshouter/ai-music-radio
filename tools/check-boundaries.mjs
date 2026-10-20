@@ -31,6 +31,14 @@ const LAYERS = {
     prefixes: ['renderer/'],
     patterns: [],
   },
+  'main': {
+    // 组装点与外壳：可以 import core/ 与 electron；不许 import renderer/ 的**源码**
+    // （它只认 renderer 的构建产物，而且只是把一个目录路径交给内核去发）。
+    desc: '外壳只认 core/ 与构建产物，不认 renderer 源码',
+    modules: [],
+    prefixes: ['renderer/'],
+    patterns: [],
+  },
   'shared': {
     desc: 'shared/ 只有类型，零运行时依赖',
     modules: null,      // null = 禁止一切非 type-only import

@@ -51,7 +51,7 @@ core/
   state/   sqlite-store.ts  migrations/
   server.ts                                                # HTTP + WS，实现第 5 节契约
   providers/ llm-openai.ts  llm-anthropic.ts  tts-dashscope.ts  tts-openai.ts
-main/     bootstrap.ts  window.ts  tray.ts
+main/     bootstrap.ts (唯一组装点，不认 electron)  main.ts (Electron 外壳)  preload.ts (令牌桥)
 renderer/ views/player views/profile views/settings  api/client.ts
 ```
 

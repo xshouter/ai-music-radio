@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "EdgeRunner —— 本地常驻的个人 AI 音乐电台（求职作品集）",
+  "author": "xshouter",
   "type": "module",
+  "main": "electron/main.cjs",
   "workspaces": [
     "renderer"
   ],
@@ -11,14 +13,20 @@
     "mock": "node mock/server.mjs",
     "dev": "npm run dev --workspace @edgerunner/renderer",
     "build": "npm run build --workspace @edgerunner/renderer",
-    "typecheck": "tsc -p tsconfig.json && tsc -p core/tsconfig.json && npm run typecheck --workspace @edgerunner/renderer",
+    "typecheck": "tsc -p tsconfig.json && tsc -p core/tsconfig.json && tsc -p main/tsconfig.json && npm run typecheck --workspace @edgerunner/renderer",
     "test": "node --experimental-strip-types --test",
     "boundaries": "node tools/check-boundaries.mjs",
     "smoke:llm": "node --experimental-strip-types tools/smoke-llm.mjs",
-    "smoke:tts": "node --experimental-strip-types tools/smoke-tts.mjs"
+    "smoke:tts": "node --experimental-strip-types tools/smoke-tts.mjs",
+    "electron:build": "npm run build && node tools/build-electron.mjs",
+    "electron:dev": "npm run electron:build && electron .",
+    "dist": "npm run electron:build && electron-builder"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
     "typescript": "^5.9.2"
   }
 }
