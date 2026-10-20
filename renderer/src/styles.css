@@ -69,7 +69,8 @@ button[aria-disabled='true'] { cursor: default; }
   color: var(--accent-ink);
   display: grid;
   place-items: center;
-  font-family: var(--dot);
+  font-family: var(--label);
+  font-weight: 600;
   font-size: 13px;
   overflow: hidden;
 }
@@ -95,7 +96,7 @@ button[aria-disabled='true'] { cursor: default; }
   padding: 7px 13px;
   border-radius: 999px;
   border: 1px solid var(--pill-line);
-  color: var(--text-dim);
+  color: var(--btn-text);
 }
 
 .pill:hover { color: var(--text); border-color: var(--text-dim); }
@@ -111,7 +112,7 @@ button[aria-disabled='true'] { cursor: default; }
   letter-spacing: 0.1em;
   padding: 4px 10px;
   border-radius: 999px;
-  color: var(--text-dim);
+  color: var(--btn-text);
 }
 
 .seg button[aria-pressed='true'] { background: var(--pill-active-bg); color: var(--pill-active-fg); }
@@ -255,7 +256,7 @@ button[aria-disabled='true'] { cursor: default; }
   font-family: var(--label);
   font-size: 9px;
   letter-spacing: 0.16em;
-  color: var(--text-dim);
+  color: var(--btn-text);
 }
 
 .vol input { width: 52px; accent-color: var(--accent-ink); }
@@ -359,7 +360,7 @@ button[aria-disabled='true'] { cursor: default; }
   display: grid;
   place-items: center;
   font-size: 10px;
-  color: var(--text-dim);
+  color: var(--btn-text);
   /* 用 opacity 藏而不是 display:none：display:none 的元素**不可聚焦**，
      键盘用户就永远够不到这个 ✕，:focus-within 也永远不会成立。 */
   opacity: 0;
@@ -406,7 +407,7 @@ button[aria-disabled='true'] { cursor: default; }
   border-bottom: 1px solid var(--line);
 }
 
-.feed-head .name { font-family: var(--dot); font-size: 15px; color: var(--text); }
+.feed-head .name { font-family: var(--label); font-weight: 500; font-size: 15px; color: var(--text); }
 .feed-head .status { font-family: var(--label); font-size: 9px; letter-spacing: 0.18em; color: var(--text-dim); }
 
 .feed-list {
@@ -499,7 +500,7 @@ button[aria-disabled='true'] { cursor: default; }
 .composer input::placeholder { color: var(--text-dim); }
 .composer input:disabled { color: var(--text-dim); }
 
-.ghost { display: grid; place-items: center; color: var(--text-dim); }
+.ghost { display: grid; place-items: center; color: var(--btn-text); }
 
 .send {
   flex: 0 0 auto;
@@ -549,7 +550,7 @@ button[aria-disabled='true'] { cursor: default; }
 
 .banner .code { font-family: var(--label); font-size: 10px; letter-spacing: 0.16em; color: var(--danger); white-space: nowrap; }
 .banner .text { flex: 1 1 auto; }
-.banner .dismiss { font-family: var(--label); font-size: 9px; letter-spacing: 0.16em; color: var(--text-dim); }
+.banner .dismiss { font-family: var(--label); font-size: 9px; letter-spacing: 0.16em; color: var(--btn-text); }
 .banner .dismiss:hover { color: var(--text); }
 
 .empty { color: var(--text-dim); font-size: 13px; padding: 12px 13px; }
@@ -704,7 +705,8 @@ button[aria-disabled='true'] { cursor: default; }
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: #29ffb8;
   color: #08130f;
-  font-family: var(--dot);
+  font-family: var(--label);
+  font-weight: 600;
   font-size: 13px;
 }
 .oa-status {
@@ -718,7 +720,7 @@ button[aria-disabled='true'] { cursor: default; }
 }
 .oa-status .dot { width: 6px; height: 6px; border-radius: 999px; background: #29ffb8; box-shadow: 0 0 6px rgba(41, 255, 184, 0.6); }
 .oa-status .dot.off { background: #6a6a70; box-shadow: none; }
-.oa-clock { font-family: var(--dot); font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.95); }
+.oa-clock { font-family: var(--label); font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.95); }
 .oa-wave-wrap {
   position: absolute;
   left: 0;
@@ -900,7 +902,7 @@ button[aria-disabled='true'] { cursor: default; }
   padding: 8px 15px;
   border-radius: 999px;
   border: 1px solid var(--pill-line);
-  color: var(--text-dim);
+  color: var(--btn-text);
 }
 
 .cred-btn:hover { color: var(--text); border-color: var(--text-dim); }
