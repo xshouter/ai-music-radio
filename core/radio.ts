@@ -421,6 +421,12 @@ export function createRadio(options: RadioOptions): Radio {
       const ref = await trackRef(songId);
       if (ref === null) throw new RadioFailure('INTERNAL', 'Unknown songId: ' + songId, false);
       await store.setFavorite(ref, action === 'like');
+      // 口味闭环的第一环（ADR-0004）：♡ 是**人的动作**，记成一条结构化的「学到的」。
+      // 学不会不许把动作本身弄失败 —— 喜欢已经落库了，这条只是账外的一笔。
+      const learned = (action === 'like' ? 'Kept ' : 'Dropped ') + ref.title + ' — ' + ref.artist + '.';
+      await taste.appendLearned(learned, {
+        ts: clock.now().toISOString(), text: learned, evidence: { songId: ref.id, action },
+      }).catch(() => {});
     },
 
     async resolveAudio(songId, level) {
