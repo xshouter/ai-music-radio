@@ -1069,3 +1069,65 @@ button[aria-disabled='true'] { cursor: default; }
 .dj-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .dj-more { font-family: var(--label); font-size: 9px; letter-spacing: 0.2em; color: var(--accent-ink); }
 .dj-more:hover { text-decoration: underline; }
+
+/* ---------- ⑥ 开机进度（ADR-0032） ---------- */
+
+/* 一块挡在主界面前面的玻璃：终端风、等宽字、逐行打勾。只负责「正在开机」这一段，
+   第一句口播出声时就淡出（后端发 done，组件停一下再让它走）。
+   层序是排好的：.shell(0) < .banner(30) < .boot(40) < .onair(50) —— 口播卡永远在最上面。 */
+.boot {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 54px 44px 40px;
+  border-radius: 28px;
+  overflow: hidden;
+  background: var(--panel-clock);
+  color: var(--text);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, 'SFMono-Regular', monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  transition: opacity 320ms ease;
+}
+
+.boot.is-leaving { opacity: 0; }
+
+.boot-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--text-dim);
+}
+
+/* auto 上下边距 = 在头与脚之间垂直居中：开机中途只有两行时，它也不会贴顶。 */
+.boot-lines { display: flex; flex-direction: column; gap: 12px; margin: auto 0; }
+
+.boot-line { display: flex; align-items: baseline; gap: 10px; }
+
+.boot-bullet { flex: 0 0 auto; width: 11px; color: var(--text-dim); }
+
+.boot-text { flex: 1 1 auto; color: var(--text); }
+
+.boot-mark { flex: 0 0 auto; color: var(--accent-ink); }
+
+/* 正在跑的那一行：亮起来 + 一个方块光标在闪（终端味就在这一下）。 */
+.boot-line.is-active .boot-text { color: var(--accent-ink); }
+
+.boot-line.is-active .boot-mark {
+  width: 7px;
+  height: 13px;
+  background: var(--accent);
+  animation: boot-caret 1s steps(1, end) infinite;
+}
+
+.boot-foot { margin-top: auto; font-size: 11px; color: var(--text-dim); }
+
+@keyframes boot-caret {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}

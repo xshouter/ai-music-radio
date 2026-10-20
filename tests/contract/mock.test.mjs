@@ -367,6 +367,34 @@ test('WS /stream：连上先给快照（并开口），chat 的口播逐句推�
   assert.ok(events.some((e) => e.type === 'state'), '结束时要回到 idle');
 });
 
+test('WS /stream：开机进度也是契约的一部分（ADR-0032）', async (t) => {
+  const events = [];
+  const { socket, head } = await openWs('/stream');
+  t.after(() => socket.destroy());
+  const read = frameReader((event) => events.push(event));
+  if (head?.length) read(head);
+  socket.on('data', read);
+  await sleep(150);
+
+  // 控制通道放一遍假的开机进度（同 degraded / error：不在契约里，UI 不知道它存在）。
+  await set({ boot: true });
+  // 等它收尾 —— 轮询而不是睡死，fixture 改节奏时这条测试不用跟着改。
+  const progress = () => events.filter((e) => e.type === 'progress');
+  for (let i = 0; i < 60 && (progress().length === 0 || progress().at(-1).payload.phase !== 'done'); i += 1) {
+    await sleep(200);
+  }
+
+  const seen = progress();
+  const STEPS = ['daily-pool', 'recent-plays', 'deep-search', 'draft-plan', 'opening-line'];
+  assert.ok(seen.length >= 2, 'progress 要逐条推（累积的 steps），不是一条发完');
+  seen.forEach((event) => {
+    assert.ok(event.payload.phase === 'running' || event.payload.phase === 'done', 'phase 只有两档');
+    assert.ok(Array.isArray(event.payload.steps) && event.payload.steps.length > 0, 'steps 是累积的非空数组');
+    event.payload.steps.forEach((step) => assert.ok(STEPS.includes(step), `契约外的步骤 id：${step}`));
+  });
+  assert.equal(seen[seen.length - 1].payload.phase, 'done', '最后一条必须收尾，否则界面挂住');
+});
+
 test('PUT /api/settings 只覆盖你给的字段：非法 protocol 被忽略，明文永不回显', async () => {
   await reset();
   const before = (await api('/api/settings')).body;

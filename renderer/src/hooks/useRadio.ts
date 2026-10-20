@@ -2,7 +2,7 @@
 // 组件只读这个 hook —— 数据从哪来、怎么降级，都在这一处（铁律 5）。
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DjMessage, SpokenLine, TrackRef } from '../../../shared/domain.ts';
-import type { NowPlaying, PlanTodayResponse, StreamEvent, TasteDoc } from '../../../shared/api-types.ts';
+import type { BootProgress, NowPlaying, PlanTodayResponse, StreamEvent, TasteDoc } from '../../../shared/api-types.ts';
 import { ApiFailure, audioUrl, chat, getFavorites, getNext, getNow, getPlanToday, getTaste, openStream, reportFeedback, reportPlayback } from '../api/client.ts';
 
 export interface RadioError {
@@ -26,6 +26,8 @@ export interface Radio {
   feed: DjMessage[];
   live: boolean;
   error: RadioError | null;
+  /* 开机的进度（ADR-0032）。null = 这一次开机没在排表（当天已有日表）。 */
+  progress: BootProgress | null;
   playing: boolean;
   volume: number;
   positionMs: number;
@@ -97,6 +99,7 @@ export function useRadio(): Radio {
   const [feed, setFeed] = useState<DjMessage[]>([]);
   const [live, setLive] = useState(false);
   const [error, setError] = useState<RadioError | null>(null);
+  const [progress, setProgress] = useState<BootProgress | null>(null);
   const [playing, setPlaying] = useState(false);
   const [positionMs, setPositionMs] = useState(0);
   const [mediaMs, setMediaMs] = useState(0);
@@ -217,6 +220,9 @@ export function useRadio(): Radio {
           if (line.kind === 'intro' && oralOpenRef.current) setOralLines((prev) => [...prev, line]);
           break;
         }
+        case 'progress':
+          setProgress(event.payload);
+          break;
         case 'error':
           setError(event.payload);
           break;
@@ -413,6 +419,7 @@ export function useRadio(): Radio {
     feed,
     live,
     error,
+    progress,
     playing,
     positionMs,
     durationMs,

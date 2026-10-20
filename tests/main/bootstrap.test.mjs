@@ -22,6 +22,10 @@ test('bootstrap：一台电台起得来 —— 同源 UI 要得到，数据面�
   const started = await startRadio({ dataDir, localDir, uiDir, ttsDir: tmp('piper'), warn: () => {} });
   const base = 'http' + '://127.0.0.1:' + started.port;
 
+  // 开机**不在** startRadio 里（ADR-0032）：它只保证「服务已经在监听」，boot 交给调用方。
+  // 这里不调 boot() —— 这条测试用的是真 provider，开机一跑就要打远端，会变成一条会红的测试。
+  assert.equal(typeof started.boot, 'function');
+
   try {
     // 1. UI 同源：不带令牌也要给（初始文档没法带自定义头，ADR-0020）。
     const page = await fetch(base + '/');
