@@ -7,6 +7,8 @@
 // 用法：
 //   node --experimental-strip-types tools/smoke-plan.mjs --key-file <path>
 //   LLM_API_KEY=... node --experimental-strip-types tools/smoke-plan.mjs
+// 「真数据」模式（CI 里不跑：要 cookie、要能起内置网易云服务）：
+//   node --experimental-strip-types tools/smoke-plan.mjs --live --cookie-file <path> --key-file <path>
 // 可选：--base-url= --model=
 //
 // 规矩：这个脚本**永远不打印 key** —— key 只进 provider，不进任何一行输出。
@@ -15,12 +17,17 @@ import { keyFromText } from './key-file.mjs';
 import { createOpenAiLlm } from '../core/providers/llm-openai.ts';
 import { ToolLoopBrain } from '../core/brain/index.ts';
 import { MemoryStore } from '../core/state/memory-store.ts';
+import { defaultHttpFetch } from '../core/http.ts';
+import { createNeteaseSource } from '../core/music/netease.ts';
+import { startNeteaseService } from '../main/netease-service.ts';
 import { buildDayPlan } from '../core/plan.ts';
 
 const arg = (name, fallback) => {
   const hit = process.argv.slice(2).find((a) => a.startsWith('--' + name + '='));
   return hit === undefined ? fallback : hit.slice(name.length + 3);
 };
+
+const live = process.argv.includes('--live');
 
 const key = process.env.LLM_API_KEY?.trim() || (() => {
   const file = arg('key-file', '');
@@ -41,12 +48,32 @@ const POOL = Array.from({ length: 30 }, (_, i) => ({
   artist: 'Pool Artist ' + ((i % 7) + 1),
   source: 'fake-daily',
 }));
-const music = {
+const fakeMusic = {
   id: 'fake-daily',
   recommend: async (_seed, limit) => POOL.slice(0, limit),
   search: async (keywords, limit) => POOL.filter((t) => t.title.toLowerCase().includes(String(keywords).toLowerCase())).slice(0, limit),
   resolve: async () => null,
 };
+
+/**
+ * --live：把假候选池换成**真的**内置网易云服务。服务由内核自己那份代码拉起
+ * （main/netease-service.ts），所以验的就是「下载即用」那条路上的真数据。
+ * 日推要登录，所以 --live 必须配 --cookie-file。
+ */
+const requests = [];
+let music = fakeMusic;
+let stopMusic = () => {};
+if (live) {
+  const cookieFile = arg('cookie-file', '');
+  const cookie = cookieFile === '' ? '' : readFileSync(cookieFile, 'utf8').trim();
+  if (cookie === '') { console.error('✗ --live 要 --cookie-file=<path>：日推需要登录。'); process.exit(1); }
+  const service = await startNeteaseService({ dir: arg('netease-dir', 'vendor/netease'), warn: (m) => console.log('· ' + m) });
+  if (service === null) { console.error('✗ 内置网易云服务没起来'); process.exit(1); }
+  console.log('· 内置网易云服务 ' + service.baseUrl);
+  stopMusic = () => service.stop();
+  const trace = async (request) => { requests.push(request.url.replace(service.baseUrl, '')); return defaultHttpFetch(request); };
+  music = createNeteaseSource({ baseUrl: service.baseUrl, cookie, fetch: trace });
+}
 
 const store = new MemoryStore({ now: () => now });
 const taste = {
@@ -74,3 +101,8 @@ for (const block of plan.blocks) {
   console.log('\n' + block.start + '-' + block.end + '  ' + block.mood + '  [' + block.genres.join(', ') + ']  ' + block.tracks.length + ' 首');
   for (const track of block.tracks) console.log('    ' + track.id + '  ' + track.title + ' — ' + track.artist);
 }
+if (requests.length > 0) {
+  console.log('\n音乐源请求 ' + requests.length + ' 次：');
+  for (const url of requests) console.log('    ' + url);
+}
+stopMusic();
