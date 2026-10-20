@@ -16,7 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # 24 而不是 22：core/state 用的是 node:sqlite，22 上要 --experimental-sqlite 才开，
+          # 而那是 CI 与本地最容易分叉的一类差异（本地 Node 早就不是 22 了）。
+          node-version: '24'
           cache: npm
 
       # 铁律 5：渲染进程不许碰数据库 / 存储 / node 内建。
