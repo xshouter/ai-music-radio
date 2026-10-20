@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { ToolLoopBrain, TOOLS } from '../../core/brain/index.ts';
 import { createOpenAiLlm } from '../../core/providers/llm-openai.ts';
 import { createAnthropicLlm, toAnthropicMessages } from '../../core/providers/llm-anthropic.ts';
-import { LlmHttpError } from '../../core/providers/http.ts';
+import { HttpError } from '../../core/http.ts';
 import { MemoryStore } from '../../core/state/memory-store.ts';
 
 const CATALOG = [
@@ -160,8 +160,8 @@ test('步数耗尽就抛错，不假装成功（不静默返回一个空 Show）
 
 const capture = (payload, status = 200) => {
   const calls = [];
-  const fetch = async (url, init) => {
-    calls.push({ url, headers: init.headers, body: JSON.parse(init.body) });
+  const fetch = async (request) => {
+    calls.push({ url: request.url, headers: request.headers, body: JSON.parse(request.body) });
     return { status, text: async () => JSON.stringify(payload) };
   };
   return { fetch, calls };
@@ -231,12 +231,12 @@ test('Anthropic 适配器：system 提到顶层、连续的 tool 结果合并成
   assert.deepEqual(response.toolCalls, [call('c9', 'emit_show', { say: ['x'] })]);
 });
 
-test('上游非 2xx 抛 LlmHttpError 并带上状态码（429 与 401 要能分开处理）', async () => {
+test('上游非 2xx 抛 HttpError 并带上状态码（429 与 401 要能分开处理）', async () => {
   const { fetch } = capture({ error: { message: 'rate limited' } }, 429);
   const llm = createOpenAiLlm({ baseUrl: 'https://example.test/v1', apiKey: 'sk-test', fetch });
   await assert.rejects(
     () => llm.complete({ model: 'm', messages: [{ role: 'user', content: 'go' }] }),
-    (error) => error instanceof LlmHttpError && error.status === 429,
+    (error) => error instanceof HttpError && error.status === 429,
   );
 });
 

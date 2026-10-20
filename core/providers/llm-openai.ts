@@ -1,5 +1,5 @@
 import type { LlmMessage, LlmProvider, LlmRequest, LlmResponse, LlmToolCall, LlmToolSpec } from '../../shared/ports.ts';
-import { LlmHttpError, defaultHttpFetch, type HttpFetch } from './http.ts';
+import { HttpError, defaultHttpFetch, isOk, type HttpFetch } from '../http.ts';
 
 export interface OpenAiLlmOptions {
   baseUrl: string;
@@ -79,14 +79,15 @@ export function createOpenAiLlm(options: OpenAiLlmOptions): LlmProvider {
         ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
         ...(req.maxTokens === undefined ? {} : { max_tokens: req.maxTokens }),
       });
-      const response = await http(base + '/chat/completions', {
+      const response = await http({
         method: 'POST',
+        url: base + '/chat/completions',
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + options.apiKey },
         body,
-        signal: req.signal,
+        ...(req.signal === undefined ? {} : { signal: req.signal }),
       });
       const text = await response.text();
-      if (response.status < 200 || response.status > 299) throw new LlmHttpError(response.status, text);
+      if (!isOk(response.status)) throw new HttpError(response.status, text);
       return parseOpenAiResponse(text);
     },
   };
