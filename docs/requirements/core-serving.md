@@ -54,6 +54,14 @@ HTTP + WS 端点。装完之后，`renderer/` 只需要把 base URL 从 mock 换
 - `/tts/<40位hex>.mp3` → 从口播缓存直接给字节，支持 `Range` / `206` / `416`（`<audio>` 会拉 Range）。
 - 这两条**豁免令牌**：`<audio>` 设不了自定义头，也不该被业务错误拦住。
 
+## UI 与 API 同源（ADR-0020）
+
+- `createRadioServer({ uiDir })` 给了目录，`GET /` 就从那里发 UI —— **同一个端口、同一个源**，
+  浏览器的 CORS 规则根本不会被触发。开发期不给（UI 由 vite 发 + dev proxy）。
+- 只发 `uiDir` 以内的文件（`resolve` 规范化之后必须仍在该目录里），只认 `GET/HEAD`，
+  且只豁免**静态路径**的令牌 —— `/api/*` 与 `/tts/*` 照旧一律要令牌。
+- 给了 `uiDir` 之后，非数据面的路径就只有一种含义：要一个静态文件；发不到就 404，不给 401。
+
 ## 设置与凭据
 
 - `PUT /api/settings` 写封闭 key；**空字符串 = 不改**，所以 key / cookie 不可能被一次空提交清掉。
