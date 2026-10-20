@@ -427,3 +427,11 @@ QUEUE 双来源与喜欢列表增删（3.7）。
 Doto 只留 `.wordmark / .clock / .dj-name / .oa-name / .oa-face / .dj-face / .avatar / .oa-clock / .feed-head .name`。
 
 仍未做：`LOGIN` 凭证弹窗（3.9）、Profile（3.10）。
+
+### 补一条（第二轮）：按钮文字仍然看不清 → 根因是颜色，不是字体
+
+第一轮把它判成字体问题（Doto → Space Grotesk）。用户复看后仍然看不清，于是先把「渐隐」证伪：
+遍历全部按钮及其祖先，`mask` / `opacity` / `filter` 一条都没有 —— 那个效果不存在，是观感。
+真正的根因是**对比度**：按钮小字用 `--text-dim`（`#8a8a90`），浅色底上约 3.1:1。
+按钮 / 控件改用 `--btn-text`（深 `#acacac` / 浅 `#565656`，对各自底色 7:1 以上），共 7 处；
+非按钮的层级灰不动。另把 15px 以下的 Doto 一并改回 `--label`（点阵在 15px 以下糊成虚线）。
