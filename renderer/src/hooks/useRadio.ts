@@ -103,6 +103,9 @@ export function useRadio(): Radio {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pending = useRef<{ after: string; tracks: TrackRef[] } | null>(null);
+  // 「现在放的是哪首」和「跳下一首」要给媒体事件用：那两个监听只挂一次，闭包会一直看到旧值。
+  const currentIdRef = useRef<string | null>(null);
+  const skipRef = useRef<() => void>(() => {});
 
   // 面板里那份列表：AI 推荐 或 FAV（需求 3.7 决策 6）。切来源只换展示，不打断正在播的这首。
   const list = source === 'fav' ? favorites : queue;
@@ -125,14 +128,31 @@ export function useRadio(): Radio {
     audioRef.current = audio;
     const onTime = () => setPositionMs(audio.currentTime * 1000);
     const onMeta = () => setMediaMs(Number.isFinite(audio.duration) ? audio.duration * 1000 : 0);
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    // 一首歌**自然放完**：客户端报事实，由后端推进队列（ADR-0010）。这一下才是"自动切下一首"。
+    const onEnded = () => {
+      const id = currentIdRef.current;
+      if (id !== null) void reportPlayback({ songId: id, event: 'ended', at: new Date().toISOString() }).catch(() => undefined);
+    };
+    // 加载失败：试听片段被拒 / 解析不出来。停在一首放不出来的歌上，比跳过它更糟。
+    const onError = () => {
+      if (currentIdRef.current !== null) skipRef.current();
+    };
     audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('loadedmetadata', onMeta);
-    audio.addEventListener('play', () => setPlaying(true));
-    audio.addEventListener('pause', () => setPlaying(false));
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
     return () => {
       audio.pause();
       audio.removeEventListener('timeupdate', onTime);
       audio.removeEventListener('loadedmetadata', onMeta);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
       audioRef.current = null;
     };
   }, []);
@@ -190,6 +210,7 @@ export function useRadio(): Radio {
 
   // 换歌换音源。自动播放可能被浏览器拦，那就让播放按钮说真话。
   useEffect(() => {
+    currentIdRef.current = currentId;
     const audio = audioRef.current;
     if (!audio) return;
     setPositionMs(0);
@@ -261,6 +282,11 @@ export function useRadio(): Radio {
     },
     [current, list],
   );
+
+  // 媒体 error 监听只挂一次：跳歌要经过 ref，直接闭包 move 会一直用到第一次的 list / current。
+  useEffect(() => {
+    skipRef.current = () => move(1);
+  }, [move]);
 
   const say = useCallback((text: string) => {
     const trimmed = text.trim();

@@ -82,6 +82,14 @@ test('网易云 resolve：只试一个档位；拿不到返回 null，不是抛�
   const empty = createNeteaseSource({ baseUrl: NOWHERE, fetch: routes({ '/song/url/v1': { body: { data: [{ url: null }] } } }).fetch });
   assert.equal(await empty.resolve('1001', 'exhigh'), null, '版权拿不到 = null，让链去降级');
 
+  // 试听片段（freeTrialInfo 有值）：url 是有的，但只覆盖前 30 秒。放它过去，
+  // UI 就会把 30 秒当成整曲 —— 进度条瞬间拉满、末尾写死 0:30 / 0:30。
+  const trial = createNeteaseSource({
+    baseUrl: NOWHERE,
+    fetch: routes({ '/song/url/v1': { body: { data: [{ url: 'http://audio/clip.mp3', level: 'standard', freeTrialInfo: { start: 0, end: 30 } }] } } }).fetch,
+  });
+  assert.equal(await trial.resolve('64093', 'lossless'), null, '试听片段也算「拿不到整曲」，交回链');
+
   const broken = createNeteaseSource({ baseUrl: NOWHERE, fetch: routes({ '/song/url/v1': { status: 502, body: { code: 502 } } }).fetch });
   await assert.rejects(() => broken.resolve('1001', 'exhigh'), (error) => error instanceof HttpError && error.status === 502);
 });

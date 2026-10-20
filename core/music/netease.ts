@@ -23,6 +23,13 @@ interface RawSong {
   song?: RawSong;
 }
 
+interface RawAudio {
+  url?: string | null;
+  level?: string;
+  /** 有值 = 这一档只给试听片段（0–`end` 秒），不是整曲。 */
+  freeTrialInfo?: { start?: number; end?: number } | null;
+}
+
 const clamp = (value: number, fallback: number): number =>
   Number.isFinite(value) ? Math.max(1, Math.min(50, Math.trunc(value))) : fallback;
 
@@ -89,7 +96,7 @@ export function createNeteaseSource(options: NeteaseOptions): MusicSource {
     },
 
     async resolve(songId: string, level): Promise<ResolvedAudio | null> {
-      const payload = await getJson<{ data?: { url?: string | null; level?: string }[] }>(
+      const payload = await getJson<{ data?: RawAudio[] }>(
         http,
         base + '/song/url/v1?id=' + encodeURIComponent(songId) + '&level=' + level,
         headers,
@@ -97,6 +104,10 @@ export function createNeteaseSource(options: NeteaseOptions): MusicSource {
       const first = payload.data?.[0];
       // url 为空 = 这一档拿不到（版权 / 需要更高等级账号），交给链去降级 —— 不是错误。
       if (first?.url == null || first.url === '') return null;
+      // freeTrialInfo 有值 = 这一档只给一段试听（实测 0–30 秒），不是整曲。放它过去，
+      // <audio> 会把那 30 秒当成整首歌 —— 进度条瞬间拉满、末尾写死 0:30 / 0:30，全是假话。
+      // 和「url 为空」同一类：交回链去换档位 / 换源，最后一步是本地兜底。
+      if (first.freeTrialInfo != null) return null;
       return { url: first.url, level: first.level === undefined ? level : (first.level as ResolvedAudio['level']) };
     },
   };
