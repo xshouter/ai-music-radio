@@ -6,9 +6,11 @@
 //   node --experimental-strip-types tools/smoke-llm.mjs --key-file <path>
 //   LLM_API_KEY=... node --experimental-strip-types tools/smoke-llm.mjs
 // 可选：--base-url= --model= --protocol=openai|anthropic
+// 从文件里怎么把 key 抽出来（含带点的 key），见 tools/key-file.mjs —— 它有自己的测试。
 //
 // 规矩：这个脚本**永远不打印 key**，任何输出都先过一遍 mask()。
 import { readFileSync } from 'node:fs';
+import { keyFromText } from './key-file.mjs';
 import { createOpenAiLlm } from '../core/providers/llm-openai.ts';
 import { createAnthropicLlm } from '../core/providers/llm-anthropic.ts';
 import { ToolLoopBrain } from '../core/brain/index.ts';
@@ -21,11 +23,11 @@ const arg = (name, fallback) => {
 
 const readKey = () => {
   if (process.env.LLM_API_KEY) return process.env.LLM_API_KEY.trim();
-  const file = arg('key-file', 'C:/Users/jm/Desktop/apikey.txt');
+  // 不给默认路径：这里曾经写死一个作者本机的桌面路径（公开仓库里不该有那个）。
+  const file = arg('key-file', '');
+  if (file === '') return '';
   try {
-    const raw = readFileSync(file, 'utf8').trim();
-    const token = /(sk-[A-Za-z0-9_-]{8,}|[A-Za-z0-9_-]{24,})/.exec(raw);
-    return token === null ? raw : token[0];
+    return keyFromText(readFileSync(file, 'utf8'));
   } catch {
     return '';
   }
