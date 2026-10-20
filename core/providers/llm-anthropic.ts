@@ -1,5 +1,5 @@
 import type { LlmMessage, LlmProvider, LlmRequest, LlmResponse, LlmToolCall, LlmToolSpec } from '../../shared/ports.ts';
-import { LlmHttpError, defaultHttpFetch, type HttpFetch } from './http.ts';
+import { HttpError, defaultHttpFetch, isOk, type HttpFetch } from '../http.ts';
 
 export interface AnthropicLlmOptions {
   baseUrl: string;
@@ -84,18 +84,19 @@ export function createAnthropicLlm(options: AnthropicLlmOptions): LlmProvider {
         ...(toolChoice === undefined ? {} : { tool_choice: toolChoice }),
         ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
       });
-      const response = await http(base + '/v1/messages', {
+      const response = await http({
         method: 'POST',
+        url: base + '/v1/messages',
         headers: {
           'content-type': 'application/json',
           'x-api-key': options.apiKey,
           'anthropic-version': '2023-06-01',
         },
         body,
-        signal: req.signal,
+        ...(req.signal === undefined ? {} : { signal: req.signal }),
       });
       const text = await response.text();
-      if (response.status < 200 || response.status > 299) throw new LlmHttpError(response.status, text);
+      if (!isOk(response.status)) throw new HttpError(response.status, text);
       return parseAnthropicResponse(text);
     },
   };

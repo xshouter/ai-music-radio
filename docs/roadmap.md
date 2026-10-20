@@ -62,7 +62,7 @@
 |---|---|---|---|
 | 4.1 | `feat/core-store` | `core/state/sqlite-store.ts` + 迁移 + `Store` 的内存测试替身 + `core/tsconfig.json` | ✅ 本 PR（#23） |
 | 4.2 | `feat/core-brain` | 自建 tool loop + `LlmProvider` 抽象（OpenAI 兼容 / Anthropic 兼容两个实现） | ✅ 本 PR（#24） |
-| 4.3 | `feat/music-chain` | `MusicSourceChain` + 网易云实现 + 本地兜底 | |
+| 4.3 | `feat/music-chain` | `MusicSourceChain` + 网易云实现 + 本地兜底 | ✅ 本 PR（#25） |
 | 4.4 | `feat/tts-pipeline` | `core/tts.ts` 缓存 + 两个 `TtsProvider` 实现 | |
 | 4.5 | `feat/scheduler-and-serving` | 调度器（`Clock` 注入）+ `core/server.ts` 实现第 5 节的全部契约 | |
 
