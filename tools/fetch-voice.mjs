@@ -7,7 +7,7 @@
 //
 //   node tools/fetch-voice.mjs                 # 缺什么拉什么
 //   node tools/fetch-voice.mjs --force         # 全量重拉
-//   node tools/fetch-voice.mjs --voice=en_US-ryan-high
+//   node tools/fetch-voice.mjs --voice=en_GB-alan-medium
 import { execFileSync } from 'node:child_process';
 import { createWriteStream, cpSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, statSync } from 'node:fs';
 import { request } from 'node:https';
@@ -24,7 +24,7 @@ const arg = (name, fallback) => {
   return hit === undefined ? fallback : hit.slice(name.length + 3);
 };
 const force = process.argv.includes('--force');
-const voice = arg('voice', 'en_US-ryan-high');
+const voice = arg('voice', 'en_GB-alan-medium');
 const root = join(process.cwd(), 'vendor', 'piper');
 
 const get = (url, out) =>
