@@ -6,8 +6,8 @@ const FACE: Record<DjMessage['role'], string> = { dj: 'E', me: 'M', system: '' }
 
 const stamp = (ts: string) => new Date(ts).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' });
 
-/* 口播挂在 meta.turns 上（同样是可选字段）。PLAY / REPLAY 是口播界面的两个入口（用户已定）。 */
-const turnsOf = (entry: DjMessage): SpokenLine[] =>
+/* 口播挂在 meta.turns 上（同样是可选字段）。入口只有一个：没听过写 PLAY，听过写 REPLAY（用户定）。 */
+export const turnsOf = (entry: DjMessage): SpokenLine[] =>
   Array.isArray(entry.meta?.turns) ? (entry.meta.turns as SpokenLine[]) : [];
 
 /* 曲目卡挂在 meta.tracks 上（可选字段，契约没动）。点一下就播（交互决策 3）。 */
@@ -22,15 +22,15 @@ export function DjFeed({
   currentId,
   onPlay,
   onOral,
-  onReply,
+  heard,
 }: {
   feed: DjMessage[];
   live: boolean;
   speaking: boolean;
   currentId: string | null;
   onPlay: (songId: string) => void;
-  onOral: (turns: SpokenLine[]) => void;
-  onReply: () => void;
+  heard: ReadonlySet<string>;
+  onOral: (id: string) => void;
 }) {
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -76,22 +76,10 @@ export function DjFeed({
               </div>
               <div className="meta">
                 <span>{stamp(entry.ts)}</span>
-                {entry.role === 'dj' && (
-                  <>
-                    <button className="reply" type="button" onClick={onReply}>
-                      REPLY
-                    </button>
-                    {turnsOf(entry).length > 0 && (
-                      <>
-                        <button className="reply" type="button" onClick={() => onOral(turnsOf(entry))}>
-                          PLAY
-                        </button>
-                        <button className="reply" type="button" onClick={() => onOral(turnsOf(entry))}>
-                          REPLAY
-                        </button>
-                      </>
-                    )}
-                  </>
+                {entry.role === 'dj' && turnsOf(entry).length > 0 && (
+                  <button className="reply" type="button" onClick={() => onOral(entry.id)}>
+                    {heard.has(entry.id) ? 'REPLAY' : 'PLAY'}
+                  </button>
                 )}
               </div>
               {tracksOf(entry).length > 0 && (
