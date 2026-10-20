@@ -114,6 +114,13 @@ flowchart LR
 
 完整定义（端口签名、数据与 API 契约、降级语义、测试切入点）见 `docs/abstraction-layer.md`。
 
+### 一张能点的图
+
+![EdgeRunner 架构](docs/architecture/edgerunner.png)
+
+同一件事的**图版**：12 个语义节点、13 条关系，含动效、搜索，以及「任意两个节点之间怎么走」的路径追踪。
+源（`candidate.json`，**每个组件都钉着仓库里的行号**）、静态图与重渲染命令见 [`docs/architecture/`](docs/architecture/)。
+
 ## 工程纪律
 
 五条铁律写在 `AGENTS.md`，落地细则与"被违反的样子"在 `docs/engineering-rules.md`：
@@ -132,6 +139,7 @@ flowchart LR
 | 路径 | 是什么 |
 |---|---|
 | `docs/abstraction-layer.md` | 系统的"缝"：分层、端口、契约、降级语义 |
+| `docs/architecture/` | 架构图：可验证的源 + 静态图 + 重渲染命令 |
 | `docs/roadmap.md` | 分阶段、按 PR 拆解的推进计划 |
 | `docs/requirements/` | 每个功能"被要求做什么"（铁律 2 的产出） |
 | `docs/adr/` | 架构决策记录（含模板） |
