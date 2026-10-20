@@ -42,7 +42,8 @@ export async function startRadio(options: BootstrapOptions): Promise<StartedRadi
   // 驱动由这里注入：DatabaseSync 是 node:sqlite 的实现，core/ 只认 SqliteDatabase 这个形状。
   const db = new DatabaseSync(join(options.dataDir, 'edgerunner.sqlite')) as unknown as SqliteDatabase;
   const store = new SqliteStore(db, clock, warn);
-  const taste = createTasteRepo({ dir: join(options.dataDir, 'taste'), store, clock });
+  const tasteDir = join(options.dataDir, 'taste');
+  const taste = createTasteRepo({ dir: tasteDir, store, clock });
   // v1 没有日历 / 天气接入（ADR-0013）：恒空，但不写死在调度器里。
   const env: EnvProvider = { weather: async () => null, calendar: async () => [] };
 
@@ -54,6 +55,7 @@ export async function startRadio(options: BootstrapOptions): Promise<StartedRadi
     neteaseBaseUrl: options.neteaseBaseUrl ?? DEFAULT_NETEASE_BASE_URL,
     localDir: options.localDir,
     cacheDir: join(options.dataDir, 'cache'),
+    tasteDir,
     ttsDir: options.ttsDir,
     warn,
   });

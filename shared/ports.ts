@@ -135,6 +135,11 @@ export interface MusicSource {
   recommend(seed: MusicSeed, limit: number): Promise<Track[]>;
   search(keywords: string, limit: number): Promise<Track[]>;
   resolve(songId: string, level: QualityLevel): Promise<ResolvedAudio | null>;
+  /**
+   * 听众**自己的曲库**（他歌单里的歌）。只给口味分析用（ADR-0025），**不参与播放** ——
+   * 播放走 resolve，队列走 recommend / search。拿不到就回 []，不抛错，与另外三个方法同一套规矩。
+   */
+  library(limit: number): Promise<Track[]>;
   // v1 不做歌词（ADR-0009），所以这里没有 lyric()。第 3.3 节原本有 —— 端口是最终形态，不留一个已知要删的方法。
   // 债已还清：契约 / mock / 测试 / renderer 里的歌词面都已删除（PR #15），端口这边没有尾巴要跟。
 }
