@@ -85,6 +85,18 @@ export interface OkResponse {
   ok: true;
 }
 
+/**
+ * 开机这一段（排表 → 写开场稿 → 合成语音）能出现在进度里的步骤。
+ * **这是 UX 概念，不是工具名**（ADR-0032）：工具改名不该动契约，前端文案也只认这些 id。
+ */
+export type BootStep = 'daily-pool' | 'recent-plays' | 'deep-search' | 'draft-plan' | 'opening-line';
+
+/** 开机的进度载荷（ADR-0032）。steps 是**累积**的：UI 只按它渲染，漏一条也对得上。 */
+export interface BootProgress {
+  phase: 'running' | 'done';
+  steps: BootStep[];
+}
+
 /** WS /stream：单向 server → client。say 逐句推，UI 逐句浮现。 */
 export type StreamEvent =
   | { type: 'now'; payload: NowPlaying }
@@ -92,6 +104,7 @@ export type StreamEvent =
   | { type: 'queue'; payload: TrackRef[] }
   | { type: 'plan'; payload: DayPlan }
   | { type: 'state'; payload: { onAir: boolean; djState: DjState } }
+  | { type: 'progress'; payload: BootProgress }
   | { type: 'error'; payload: { code: string; message: string; retryable: boolean } };
 
 /** 供将来 UI 的 client.ts 与真 server 直接引用的响应别名。 */

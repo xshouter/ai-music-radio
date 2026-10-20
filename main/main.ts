@@ -90,6 +90,11 @@ async function openWindow(): Promise<void> {
   // 等比缩放：窗口怎么拉都是 616:876（需求 3.6 第 1 条）。
   win.setAspectRatio(STAGE.width / STAGE.height);
   await win.loadURL('http://127.0.0.1:' + radio.port + '/');
+  // 窗口先出生，开机在后台跑：那 14–28s 的进度经 WS 推进界面（ADR-0032）。
+  // 不 await：接口要先能响。开机自己的失败由 core 收成一条横幅，不从这里抛。
+  radio.boot().catch((cause: unknown) => {
+    console.error('[radio] 开机失败：' + (cause instanceof Error ? cause.message : String(cause)));
+  });
 }
 
 // 关窗通道（preload 里的 close）。用 sender 反查窗口，避免重复注册监听。
