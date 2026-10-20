@@ -49,12 +49,23 @@ const SHOW = {
   reason: 'quiet set for a late hour',
   segue: null,
 };
+// 排表那一轮交上来的日表：三格全从日推里挑（槽位顺序 = morning / daytime / late-night）。
+const PLAN_CALL = { blocks: [['2001', '2002', '2003'], ['2004', '2005'], ['2006']], reason: 'the daily pool, sorted by hour' };
 
-// 一次 think = 两次补全：先要工具、再定稿。这是真的 tool loop，不是模型自言自语。
+// 放歌那一轮：一次 think = 两次补全（先要工具、再定稿），是真的 tool loop。
+// 排表那一轮另算 —— 它的工具集里有 emit_plan，认那个名字：先叫日推，再交三格日表。
 const llmRoute = (firstArgs, showArgs) => {
   let calls = 0;
+  let planCalls = 0;
   const toolCall = (id, name, args) => ({ id, type: 'function', function: { name, arguments: JSON.stringify(args) } });
-  return () => {
+  return (request) => {
+    if (String(request.body ?? '').includes('"emit_plan"')) {
+      planCalls += 1;
+      const message = planCalls === 1
+        ? { content: null, tool_calls: [toolCall('p1', 'daily_recommend', { limit: 20 })] }
+        : { content: null, tool_calls: [toolCall('p' + planCalls, 'emit_plan', PLAN_CALL)] };
+      return json({ choices: [{ message, finish_reason: 'tool_calls' }] });
+    }
     calls += 1;
     const message = calls % 2 === 1
       ? { content: null, tool_calls: [toolCall('c' + calls, 'recommend_tracks', firstArgs)] }
@@ -76,8 +87,20 @@ const routes = (map) => {
   return { fetch, calls };
 };
 
+// 日推的候选池：排表那一轮从它里面挑（ADR-0030）。刻意与 SONGS 不重样 ——
+// 排出来的日表若等于搜索那三首，这条测试就白测了。
+const DAILY = [
+  song(2001, 'Morning Glass', 'Nao Kite'),
+  song(2002, 'Paper Harbour', 'Vale'),
+  song(2003, 'Iron Garden', 'The Long Way'),
+  song(2004, 'Blue Static', 'Marina Vale'),
+  song(2005, 'Tin Roof', 'Nao Kite'),
+  song(2006, 'Nettle', 'Vale'),
+];
+
 const NETEASE_UP = {
   '/cloudsearch': json({ result: { songs: SONGS } }),
+  '/recommend/songs': json({ data: { dailySongs: DAILY } }),
   '/song/url/v1': json({ data: [{ url: 'http://cdn.example/1001.mp3', level: 'exhigh' }] }),
 };
 
@@ -344,6 +367,19 @@ test('HTTP：播放事实、喜欢、统计、历史、日表都从这一处出'
   }
 });
 
+test('日推先进日表：开机第一条音乐请求是 /recommend/songs，挑出来就是它那批', async () => {
+  const { radio, calls } = await setup();
+  await radio.boot();
+
+  const paths = calls.map((entry) => entry.path);
+  assert.ok(paths.includes('/recommend/songs'), '排表那一轮要真的去要日推');
+  assert.ok(paths.indexOf('/recommend/songs') < paths.indexOf('/cloudsearch'), '日推先于任何搜索：日表不是搜出来的');
+
+  const plan = await radio.planToday();
+  assert.deepEqual(plan.blocks.map((block) => block.tracks.map((track) => track.id)), PLAN_CALL.blocks, '三格就是 emit_plan 交上来的那三格');
+  assert.deepEqual(plan.blocks.map((block) => block.mood), ['morning', 'daytime', 'late-night'], '槽位仍是写死的那三格');
+  assert.ok(!plan.blocks.flatMap((block) => block.tracks).some((track) => ['1001', '1002', '1003'].includes(track.id)), '日表不该是搜索兜底的那一批');
+});
 test('WS：/stream 完成握手，Accept 按 RFC 算出来', async () => {
   const { radio } = await setup();
   await radio.boot();
