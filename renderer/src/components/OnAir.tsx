@@ -15,14 +15,16 @@ const BARS = 56;
  * 上方进度条 = 歌曲进度，最下方 = 口播进度（用户定）；✕ 在白色卡片右上角（用户定的位置）。
  * 逐词高亮的时钟是「这一句的 <audio>」本身 —— 真 TTS 接上后这里一行都不用改。
  * 文字一律正常对比度，不做渐隐（用户定：渐隐的字读不动）。
+ * 它是**连续**的：一句接一句往下说，没词了就站着等（后台在生成），只有 ✕ 才回主界面（用户定）。
  */
-export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleSong, onClose }: {
+export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleSong, onStartSong, onClose }: {
   turns: SpokenLine[];
   track: TrackRef | null;
   playing: boolean;
   positionMs: number;
   durationMs: number;
   onToggleSong: () => void;
+  onStartSong: () => void;
   onClose: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -32,6 +34,8 @@ export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleS
   const [turn, setTurn] = useState(0);
   const [turnMs, setTurnMs] = useState(0);
   const [oralPlaying, setOralPlaying] = useState(true);
+  // 词说完了但后台还没生成下一句：站着等，来了自动接上。
+  const [standing, setStanding] = useState(false);
 
   // 每句的起点 + 口播总长：只由词时间戳推出（mock 的音频长度跟它同源）。
   const [starts, totalMs] = useMemo(() => {
@@ -143,13 +147,26 @@ export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleS
   const playedBars = totalMs > 0 ? Math.round((oralMs / totalMs) * BARS) : 0;
   const songPct = durationMs > 0 ? Math.max(0, Math.min(100, (positionMs / durationMs) * 100)) : 0;
 
-  const speakNext = () => setTurn((prev) => (prev + 1 < turns.length ? prev + 1 : prev));
+  // 一句放完就接下一句；还没有下一句就站着等 —— turns 会随着后台生成变长，这个 effect 把它接上。
+  const speakNext = () => {
+    if (turn + 1 < turns.length) setTurn(turn + 1);
+    else setStanding(true);
+  };
+
+  useEffect(() => {
+    if (standing && turn + 1 < turns.length) {
+      setStanding(false);
+      setTurn(turn + 1);
+    }
+  }, [standing, turn, turns.length]);
 
   const toggleOral = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (audio.paused) void audio.play().catch(() => undefined);
-    else audio.pause();
+    if (audio.paused) {
+      onStartSong(); // 口播和音乐一起播（用户定）
+      void audio.play().catch(() => undefined);
+    } else audio.pause();
   };
 
   const seek = (event: ReactMouseEvent<HTMLButtonElement>) => {
@@ -183,7 +200,7 @@ export function OnAir({ turns, track, playing, positionMs, durationMs, onToggleS
             </div>
             <div className="oa-status">
               <i className={oralPlaying ? 'dot' : 'dot off'} />
-              {oralPlaying ? 'Speaking…' : 'Paused'}
+              {oralPlaying ? 'Speaking…' : standing ? 'Standing by…' : 'Paused'}
             </div>
           </div>
           <div className="oa-clock">{mmss(oralMs)}</div>
