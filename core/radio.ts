@@ -11,8 +11,10 @@ import { createNeteaseSource } from './music/netease.ts';
 import { createLocalSource } from './music/local.ts';
 import { createOpenAiLlm } from './providers/llm-openai.ts';
 import { createAnthropicLlm } from './providers/llm-anthropic.ts';
+import { createFileTts } from './providers/tts-file.ts';
 import { createFishTts } from './providers/tts-fish.ts';
 import { createPiperTts } from './providers/tts-piper.ts';
+import { DEMO_LINE } from './demo.ts';
 import { createTtsEngine, wordsFor, TtsFailure } from './tts.ts';
 import { buildTasteFromLibrary } from './taste.ts';
 import { DEFAULT_PREFS, PREF_KEYS } from './state/prefs.ts';
@@ -70,6 +72,11 @@ export interface RadioOptions {
    * 组装层必须保证它是**纯 ASCII** —— piper 用 fopen 读自己的数据目录，非 ASCII 路径直接崩（实测）。
    */
   ttsDir: string;
+  /**
+   * 首次体验的两件东西（ADR-0033）：随包的那首歌的文件名，和它那段**冻结**口播的音频文件。
+   * 组装层负责把歌拷进 localDir、把 wav 的绝对路径递进来 —— 内核只管讲故事。不给 = 没有首次体验。
+   */
+  demo?: { file: string; wav: string };
   fetch?: HttpFetch;
   warn?: (message: string) => void;
 }
@@ -98,6 +105,11 @@ export interface Radio {
 interface Deps {
   prefs: PrefMap;
   tts: ReturnType<typeof createTtsEngine>;
+  /**
+   * 首次体验那一段口播的嗓子：**读随包的音频文件**，与用户配的供应商无关（ADR-0033）。
+   * 没有 demo 时是 null —— 别的路径碰不到它。
+   */
+  demoTts: ReturnType<typeof createTtsEngine> | null;
   music: ReturnType<typeof createMusicSourceChain>;
   brain: ToolLoopBrain;
   /** 口味画像要用它写一份 md，所以它也在这里（不是给大脑用的那条路）。 */
@@ -137,7 +149,11 @@ const clampLimit = (raw: number | undefined): number => {
   return Math.max(1, Math.min(200, Math.floor(raw)));
 };
 
+/** 找首次体验那首歌时扫曲库的上限。本地目录就一屏的体量，这个数只是别让一次 listing 失控。 */
+const DEMO_SCAN = 200;
+
 export function createRadio(options: RadioOptions): Radio {
+
   const { store, clock, taste, env } = options;
   const http = options.fetch ?? defaultHttpFetch;
   const warn = options.warn ?? (() => {});
@@ -264,6 +280,10 @@ export function createRadio(options: RadioOptions): Radio {
       ? createAnthropicLlm({ baseUrl: prefs['llm.baseUrl'], apiKey: prefs['llm.apiKey'], fetch: http })
       : createOpenAiLlm({ baseUrl: prefs['llm.baseUrl'], apiKey: prefs['llm.apiKey'], fetch: http });
     const tts = createTtsEngine({ provider: ttsProviderFor(prefs, options.ttsDir, http), dir: options.cacheDir });
+    // 首次体验的嗓子不打折：那一段音频是随包文件，用户换成 fish 也照读不误（ADR-0033）。
+    const demoTts = options.demo === undefined
+      ? null
+      : createTtsEngine({ provider: createFileTts({ file: options.demo.wav }), dir: options.cacheDir });
     const music = createMusicSourceChain(
       [
         createNeteaseSource({ baseUrl: options.neteaseBaseUrl, cookie: prefs['music.cookie'], fetch: http }),
@@ -273,7 +293,7 @@ export function createRadio(options: RadioOptions): Radio {
     );
     const brain = new ToolLoopBrain({ llm, music, store, taste, env, model: prefs['llm.model'], onStep: harvest });
 
-    deps = { prefs, tts, music, brain, llm };
+    deps = { prefs, tts, demoTts, music, brain, llm };
     signature = key;
     return deps;
   };
@@ -292,7 +312,8 @@ export function createRadio(options: RadioOptions): Radio {
 
   // —— 口播：逐句合、逐句推。任何一句失败都不许把电台停掉（抽象层第 6 节） ——
   // kind 由调用方给：intro = 对一首歌的介绍（要说出口），talk = 对听众的答话（只落文本）。
-  const speak = async (d: Deps, lines: readonly string[], kind: SpokenLine['kind']): Promise<void> => {
+  // engine 只服务首次体验：那一段口播固定读随包的音频（ADR-0033），别的调用方不传这个参数。
+  const speak = async (d: Deps, lines: readonly string[], kind: SpokenLine['kind'], engine = d.tts): Promise<void> => {
     const voice = d.prefs['tts.voice'];
     onAir = true;
     djState = 'thinking';
@@ -314,12 +335,12 @@ export function createRadio(options: RadioOptions): Radio {
       const line = lines[index] ?? '';
       let spoken: SpokenLine;
       try {
-        spoken = { ...(await d.tts.speak(index, line, voice)), kind };
+        spoken = { ...(await engine.speak(index, line, voice)), kind };
       } catch (cause: unknown) {
         // 文字照给、音频缺席：ADR-0008 说的是"不许把音乐停掉"，而整条口播消失比"有字没声"更糟。
         // 缺口由横幅说明（TTS_FAILED），不假装音频在。词表退化成覆盖全句的一个词（ADR-0012 允许）。
         emitError('TTS_FAILED', cause instanceof TtsFailure ? cause.message : String(cause), true);
-        spoken = { index, line, audioUrl: d.tts.urlOf(d.tts.keyOf(line, voice)), words: wordsFor(line, 0), kind };
+        spoken = { index, line, audioUrl: engine.urlOf(engine.keyOf(line, voice)), words: wordsFor(line, 0), kind };
       }
       // 「说了什么」就是历史。放在这里而不是 think()：被挂起来、还没说出口的那几句不该进历史。
       await store.appendMessage({ id: randomUUID(), ts: clock.now().toISOString(), role: 'dj', text: line }).catch(() => {});
@@ -404,6 +425,30 @@ export function createRadio(options: RadioOptions): Radio {
     // 开场只说第一句；剩下的挂起来，切歌时才轮到它们（ADR-0026）。
     holdIntros(show);
     void speak(d, show.say.slice(0, 1), 'intro').catch(() => {});
+  };
+
+  /**
+   * 首次体验（ADR-0033）：没填 key 的人开机也该听见一台在转的电台 —— 随包的那一首，
+   * 加上出厂时冻下来的那段口播。走的是**和平时一模一样**的那条管道（队列 / now / 口播 / 缓存），
+   * 所以界面上一个新组件都不用加。
+   */
+  const playDemo = async (d: Deps): Promise<void> => {
+    const demo = options.demo;
+    if (demo === undefined || d.demoTts === null) return;
+    // 用曲库这层找它（不是拼 id）：id 怎么编号是本地源自己的事，这里只认文件名。
+    const found = (await d.music.library(DEMO_SCAN).catch(() => [] as Track[]))
+      .find((track) => track.id.endsWith(demo.file));
+    if (found === undefined) {
+      warn('radio: 首次体验的那首歌不在曲库里（' + demo.file + '）—— 只留引导横幅');
+      return;
+    }
+    catalog.set(found.id, found);
+    current = found;
+    startedAt = clock.now().toISOString();
+    queueRefs = [{ id: found.id, title: found.title, artist: found.artist }];
+    emit({ type: 'now', payload: nowPlaying() });
+    emit({ type: 'queue', payload: [...queueRefs] });
+    await speak(d, [DEMO_LINE], 'intro', d.demoTts).catch(() => {});
   };
 
   const advance = async (): Promise<void> => {
@@ -492,6 +537,14 @@ export function createRadio(options: RadioOptions): Radio {
       const mark = sourceFailures;
       try {
         await ensureTodayPlan();
+        const d = await providers();
+        // 没 key = 首次体验（ADR-0033）：随包的一首歌 + 一段冻结的口播，先让人听见一台在转的电台。
+        // 这不是错误路径，是一条**正常**的开机 —— 所以它不走 thinkOrStep 的降级。
+        if (d.prefs['llm.apiKey'] === '') {
+          emitError('NO_LLM_KEY', 'No LLM key configured. Add one to make this station yours.', false);
+          await playDemo(d);
+          return;
+        }
         await thinkOrStep('schedule').catch((cause: unknown) => {
           const failure = nameFailure(cause, sourceFailures > mark);
           emitError(failure.code, failure.message, failure.retryable);
@@ -559,6 +612,13 @@ export function createRadio(options: RadioOptions): Radio {
         if (typeof input.music.cookie === 'string' && input.music.cookie !== '') await store.setPref('music.cookie', input.music.cookie);
       }
       signature = ''; // 下一次 providers() 一定重建
+      // 填上 key 的这一刻，那条「还没有 key」的横幅（首次体验的引导）就过期了；
+      // 而且既然刚才就是在等它，顺手把真电台开起来：排表 → 开场口播（ADR-0033）。
+      // 用 lastError 而不是另设一个状态：它**就是**「这次开机没 key」这件事本身。
+      if (typeof input.llm?.apiKey === 'string' && input.llm.apiKey !== '' && lastError?.code === 'NO_LLM_KEY') {
+        lastError = null;
+        void this.boot().catch(() => {});
+      }
       // cookie 从「没有」变成「有」＝第一次填：后台去读他的歌单（ADR-0025）。
       // 不 await：分析要等音乐源和模型，慢；设置存完就该立刻生效。
       if (!hadCookie && typeof input.music?.cookie === 'string' && input.music.cookie !== '') {
