@@ -1,4 +1,5 @@
 import type { Theme } from '../App.tsx';
+import { Icon } from './Icon.tsx';
 
 const THEMES = ['dark', 'light'] as const;
 
@@ -14,6 +15,12 @@ export function TopBar({
   onDj: () => void;
   onLogin: () => void;
 }) {
+  // 无边框窗口没有系统关闭键，所以这一枚必须存在。关窗走主进程（main/preload.ts 的桥）。
+  const close = () => {
+    if (window.__RADIO__?.close) window.__RADIO__.close();
+    else window.close();
+  };
+
   return (
     <header className="topbar">
       <button className="avatar" type="button" onClick={onDj} aria-label="Open DJ profile">
@@ -31,6 +38,9 @@ export function TopBar({
             </button>
           ))}
         </div>
+        <button className="close" type="button" onClick={close} aria-label="Close EdgeRunner" title="Close">
+          <Icon name="close" size={13} />
+        </button>
       </div>
     </header>
   );

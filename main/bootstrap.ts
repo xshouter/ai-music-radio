@@ -20,6 +20,8 @@ export interface BootstrapOptions {
   localDir: string;
   /** 打包后的 UI 目录（给内核一起发，同源，ADR-0020）。 */
   uiDir: string;
+  /** 本地语音运行时目录（含 piper.exe / espeak-ng-data / <voice>.onnx）。纯 ASCII，见 RadioOptions.ttsDir。 */
+  ttsDir: string;
   /** 覆盖网易云兼容服务地址；默认 localhost:3000。 */
   neteaseBaseUrl?: string;
   warn?: (message: string) => void;
@@ -52,6 +54,7 @@ export async function startRadio(options: BootstrapOptions): Promise<StartedRadi
     neteaseBaseUrl: options.neteaseBaseUrl ?? DEFAULT_NETEASE_BASE_URL,
     localDir: options.localDir,
     cacheDir: join(options.dataDir, 'cache'),
+    ttsDir: options.ttsDir,
     warn,
   });
 

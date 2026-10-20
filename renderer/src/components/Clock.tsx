@@ -17,7 +17,13 @@ export function Clock({ onAir, degraded }: { onAir: boolean; degraded: boolean }
   return (
     <div className="clock-panel">
       <div className="clock">
-        {pad(at.getHours())}:{pad(at.getMinutes())}
+        {pad(at.getHours())}
+        {/* 分隔符不用 Doto 的 ':' —— 点阵字体的冒号是一对方块，参考源是两颗圆点。 */}
+        <span className="clock-sep" aria-hidden="true">
+          <i />
+          <i />
+        </span>
+        {pad(at.getMinutes())}
       </div>
       <div className="clock-day">{WEEKDAYS[at.getDay()]}</div>
       <div className="clock-date">

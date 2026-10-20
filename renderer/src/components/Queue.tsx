@@ -12,6 +12,7 @@ export function Queue({
   currentId,
   onPlay,
   onFavorite,
+  onSource,
 }: {
   queue: TrackRef[];
   favorites: TrackRef[];
@@ -19,6 +20,7 @@ export function Queue({
   currentId: string | null;
   onPlay: (songId: string) => void;
   onFavorite: (track: TrackRef, on: boolean) => void;
+  onSource: (source: 'ai' | 'fav') => void;
 }) {
   const list = source === 'fav' ? favorites : queue;
   const [removed, setRemoved] = useState<TrackRef | null>(null);
@@ -44,6 +46,7 @@ export function Queue({
     <section className="queue">
       <div className="q-head">
         <span>{source === 'fav' ? 'FAVORITES' : 'QUEUE'}</span>
+        <div className="q-right">
         {removed && source === 'fav' ? (
           <button className="undo" type="button" onClick={undo}>
             REMOVED — UNDO
@@ -51,6 +54,12 @@ export function Queue({
         ) : (
           <span>{list.length} TRACKS</span>
         )}
+          {/* 来源开关跟着列表走（需求 3.7）：它说的是「你在看哪一份」，不是播放动作。 */}
+          <div className="seg q-seg">
+            <button type="button" aria-pressed={source === 'ai'} onClick={() => onSource('ai')}>AI</button>
+            <button type="button" aria-pressed={source === 'fav'} onClick={() => onSource('fav')}>FAV</button>
+          </div>
+        </div>
       </div>
       {list.length === 0 ? (
         <p className="empty">

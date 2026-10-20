@@ -7,16 +7,17 @@
 :root {
   color-scheme: dark;
 
-  --outside: #050506;      /* 画布外的底：让 616×876 看起来是一块浮着的屏 */
   --bg: #0b0b0d;
-  --panel: #101013;
-  --panel-clock: #0d0d10;
+  --panel: #17141d;
+  --panel-clock: #050508;
   --frame: #1c1c20;
-  --pill-line: #3b3b43;
-  --line: #232327;
+  --pill-line: #31313a;
+  --line: #2a2a2e;
 
   --text: #dbdbdb;
-  --text-dim: #9c9ca3;
+  --text-dim: #5c5c64;
+  /* 播放态标签（PLAYING / VOL）。深色态跟 --text-dim 同值；浅底上参考用的是一档更深的墨。 */
+  --ink-play: #5c5c64;
 
   --accent: #29ffb8;       /* 深浅两态同值：light 模式采样得 #2ffdb4，是同一个绿 */
   --accent-deep: #0f3a2a;
@@ -25,8 +26,8 @@
   --danger: #ff7a6b;
 
   --btn: #0a0a10;
-  --btn-line: #35353d;
-  --btn-text: #d2d2d2;
+  --btn-line: #2e2e34;
+  --btn-text: #85858c;
   --send: #22222a;
   --send-text: #dbdbdb;
 
@@ -43,6 +44,9 @@
   --scrim: rgba(3, 3, 5, 0.74);
   --card-dj: #0c0c10;
 
+  /* 通栏分区共用的横向留白（参考源各分区的文字左起都在这条线上）。 */
+  --pad-x: 24px;
+
   --radius: 22px;
   --radius-sm: 12px;
 
@@ -58,16 +62,16 @@
 [data-theme='light'] {
   color-scheme: light;
 
-  --outside: #c9c9c7;
-  --bg: #fbfbfa;
+  --bg: #f1f1f1;
   --panel: #ffffff;
-  --panel-clock: #f4f4f3;
+  --panel-clock: #eeeef1;
   --frame: #dcdcda;
-  --pill-line: #c9c9c9;
-  --line: #e6e6e4;
+  --pill-line: #d4d4d4;
+  --line: #e0e0de;
 
   --text: #111114;
-  --text-dim: #6b6b72;
+  --text-dim: #8f8f96;
+  --ink-play: #4a4a4e;
 
   --accent: #29ffb8;
   --accent-deep: #d6f5e8;
@@ -77,8 +81,8 @@
   --danger: #b3261e;
 
   --btn: transparent;
-  --btn-line: #c9c9c9;
-  --btn-text: #3c3c3c;
+  --btn-line: #d4d4d4;
+  --btn-text: #5c5c5c;
   --send: #111114;
   --send-text: #f6f6f2;
 

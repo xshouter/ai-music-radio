@@ -19,7 +19,7 @@ test('bootstrap：一台电台起得来 —— 同源 UI 要得到，数据面�
   mkdirSync(join(uiDir, 'assets'), { recursive: true });
   writeFileSync(join(uiDir, 'index.html'), '<!doctype html><title>EdgeRunner</title>hello');
 
-  const started = await startRadio({ dataDir, localDir, uiDir, warn: () => {} });
+  const started = await startRadio({ dataDir, localDir, uiDir, ttsDir: tmp('piper'), warn: () => {} });
   const base = 'http' + '://127.0.0.1:' + started.port;
 
   try {

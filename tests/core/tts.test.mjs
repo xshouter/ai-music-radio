@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createTtsEngine, mp3DurationMs, wordsFor, TtsFailure } from '../../core/tts.ts';
+import { createTtsEngine, mp3DurationMs, wavDurationMs, wordsFor, TtsFailure } from '../../core/tts.ts';
 
 const BITRATES = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
 const RATES = [44100, 48000, 32000];
@@ -24,10 +24,11 @@ const mp3 = (count, bitrateIndex = 9, rateIndex = 0) =>
 // 128kbps / 44100Hz：每帧 1152/44100*1000 = 26.122ms；10 帧取整 = 261ms。
 const FRAME_MS = (1152 / 44100) * 1000;
 
-const fakeProvider = (audio, failTimes = 0) => {
+const fakeProvider = (audio, failTimes = 0, format = 'mp3') => {
   const requests = [];
   return {
     id: 'fake',
+    format,
     requests,
     async synthesize(req) {
       requests.push(req);
@@ -107,6 +108,48 @@ test('speak：失败重试一次，仍失败给 TTS_FAILED', async () => {
     return true;
   });
   assert.equal(alwaysFailing.requests.length, 2, '重试一次即止，不无限打远端');
+});
+
+// 造一个真的能解析的 RIFF/WAVE：44.1kHz 单声道 16bit -> byteRate = 88200。
+const wav = (seconds) => {
+  const dataSize = Math.round(88200 * seconds);
+  const bytes = new Uint8Array(44 + dataSize);
+  const view = new DataView(bytes.buffer);
+  const ascii = (at, s) => {
+    for (let i = 0; i < s.length; i += 1) bytes[at + i] = s.charCodeAt(i);
+  };
+  ascii(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  ascii(8, 'WAVE');
+  ascii(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, 44100, true);
+  view.setUint32(28, 88200, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, 'data');
+  view.setUint32(40, dataSize, true);
+  return bytes;
+};
+
+test('wavDurationMs：data 字节数 / byteRate，认不出来给 0', () => {
+  assert.equal(wavDurationMs(wav(2)), 2000);
+  assert.equal(wavDurationMs(new Uint8Array(0)), 0);
+  assert.equal(wavDurationMs(new Uint8Array(64)), 0);
+  // 后面挂了一段垃圾：时长仍按 data 块算，不因为尾巴就崩。
+  assert.equal(wavDurationMs(Buffer.concat([Buffer.from(wav(1)), Buffer.alloc(32, 7)])), 1000);
+});
+
+test('speak：provider 说 wav，缓存与路由就都是 .wav，时长走 wav 解析器', async () => {
+  const provider = fakeProvider(wav(2), 0, 'wav');
+  const engine = engineFor(provider);
+  const line = await engine.speak(0, 'Offline voice.', 'en_US-amy-medium');
+  assert.equal(provider.requests[0].format, 'wav');
+  assert.ok(line.audioUrl.endsWith('.wav'), line.audioUrl);
+  assert.equal(engine.read(engine.keyOf('Offline voice.', 'en_US-amy-medium')).byteLength, wav(2).byteLength);
+  assert.equal(line.words[line.words.length - 1].endMs, 2000);
 });
 
 test('speak：远端给空音频也算失败', async () => {

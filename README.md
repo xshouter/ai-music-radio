@@ -27,9 +27,9 @@
 
 ## 下载并运行
 
-去 [Releases](https://github.com/xshouter/edgerunner/releases) 下 `EdgeRunner-x.y.z-setup.exe`，双击安装。
+去 [Releases](https://github.com/xshouter/edgerunner/releases) 下 `EdgeRunner-x.y.z-portable.exe`，双击就能跑 —— **只有便携版，没有安装包**（ADR-0023）。
 
-**安装包里不含任何凭证。** 第一次打开是"哑"的（没有大脑、没有音乐源）——这一节教你把钥匙填进去。
+**exe 里不含任何凭证。** 第一次打开是"哑"的（没有大脑、没有音乐源）——这一节教你把钥匙填进去。
 
 ## 填上你自己的钥匙
 
@@ -38,7 +38,7 @@
 | 要什么 | 从哪来 | 不填会怎样 |
 |---|---|---|
 | **LLM key**（任何 OpenAI 或 Anthropic 兼容的） | 默认指阿里云百炼的 OpenAI 兼容端点（`llm.baseUrl` + `llm.model` 可改，`llm.protocol` 切 openai/anthropic） | 不做口播、不自己排歌；界面会提示 `No brain configured yet` |
-| **TTS key**（Fish Audio，ADR-0008） | [fish.audio](https://fish.audio) | 口播只剩文字，没有声音（`TTS_FAILED` 有兜底文案，不中断） |
+| **口播语音**（Piper，离线，[ADR-0022](docs/adr/0022-tts-piper-offline.md)） | **不用填** —— 本地音色，`npm run fetch:voice` 装一次 | 口播只剩文字，没有声音（`TTS_FAILED` 有兜底文案，不中断） |
 | **网易云 cookie**（ADR-0011） | 浏览器登录 music.163.com 后整条 Cookie 头 | 音乐源退到本地目录 |
 
 **再补一件（音乐源这一环不闭环，说明白）：** 网易云的 web 接口要过一层请求加密，而这层**不在内核里**
@@ -46,7 +46,7 @@
 可以用环境变量 `EDGERUNNER_NETEASE_BASE_URL` 改：
 
 ```powershell
-$env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & "$env:LOCALAPPDATA\Programs\EdgeRunner\EdgeRunner.exe"
+$env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & "D:\EdgeRunner-0.1.0-portable.exe"
 ```
 
 没有它也能用：电台会退到**本地音乐目录**继续工作（界面上出现降级标记）。把 mp3 丢进
@@ -70,8 +70,9 @@ $env:EDGERUNNER_NETEASE_BASE_URL = "http://127.0.0.1:3000"; & "$env:LOCALAPPDATA
 | 契约 + mock | ✅ 已合并（PR #8） |
 | UI 复刻（双主题、口播全屏态、队列/FAV、DJ 详情、LOGIN） | ✅ 已合并（阶段 3） |
 | 真后端（Store / Brain / 音乐降级链 / TTS / 调度器 / 语料） | ✅ 已合并（阶段 4） |
-| Electron 外壳 + 安装包 | ✅ 已合并（阶段 5.1，PR #31） |
-| Release 流水线（打 tag 出安装包；`v0.1.0` 已发布） | ✅ 已合并（PR #32、#34） |
+| Electron 外壳 | ✅ 已合并（阶段 5.1，PR #31） |
+| Release 流水线（打 tag 出便携 exe；`v0.1.0` 已发布） | ✅ 已合并（PR #32、#34） |
+| 语音引擎（离线 Piper）+ 只发便携版 + 应用图标 | ✅ 已合并（阶段 5.4，PR #38） |
 
 拆解与逐 PR 的推进记录见 `docs/roadmap.md` 与 `docs/journal/`。
 
@@ -138,7 +139,7 @@ npm test              # 内核 + 外壳的自检
 npm run build         # 构建界面
 
 npm run electron:dev  # 本机起壳：打主进程 + 开窗（等价于装了 exe 的效果）
-npm run dist          # 出 Windows 安装包 → release/
+npm run dist          # 出便携 exe → release/
 ```
 
 出包只从**绿的**树上切（见 `.github/workflows/release.yml`）：
@@ -154,4 +155,4 @@ gh release edit v0.1.0 --draft=false          # 人看过再放出去
 - 音乐播放定位为**个人自用**；取流逻辑全部收在 `MusicSource` 端口后面，换成合法音源只需新增一个实现。
 - 发布出去的 exe **不包含任何凭证**，所有 key 由使用者自己填写。
 - **已知边界（不藏）**：只做 PC 单端；不做歌词；网易云要一个外部兼容服务（上上节）；
-  口播是英文；TTS 响应没有词级时间戳，逐词高亮是按音频总长均分的（ADR-0017）。
+  口播是英文，声音来自**本地 Piper 离线音色**（不要 key、音质一般，[ADR-0022](docs/adr/0022-tts-piper-offline.md)）；TTS 响应没有词级时间戳，逐词高亮是按音频总长均分的（ADR-0017）。

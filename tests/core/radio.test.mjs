@@ -85,6 +85,10 @@ const setup = async (options = {}) => {
   const store = new SqliteStore(new DatabaseSync(':memory:'), clock);
   await store.setPref('llm.baseUrl', 'http://llm.test/v1');
   await store.setPref('llm.model', 'test-model');
+  // 这些用例要的是「HTTP 上的那个 provider」：假 fetch 只桩了 /v1/tts，所以显式选 fish。
+  // 默认的 piper 要真的 exe 与模型，属于 tools/smoke-tts.mjs 的活。
+  await store.setPref('tts.provider', 'fish');
+  await store.setPref('tts.baseUrl', 'http://tts.test');
   await store.setPref('tts.apiKey', 'fish-test');
   if (options.llmKey !== false) await store.setPref('llm.apiKey', options.llmKey ?? KEY);
 
@@ -112,6 +116,8 @@ const setup = async (options = {}) => {
     neteaseBaseUrl: 'http://music.test',
     localDir,
     cacheDir: mkdtempSync(join(tmpdir(), 'edgerunner-cache-')),
+    // 装配点要一个 ttsDir。上面的 tts.provider=fish 决定了它不会被用到。
+    ttsDir: mkdtempSync(join(tmpdir(), 'edgerunner-ttsdir-')),
     fetch,
   });
   return { radio, store, calls, learned };
