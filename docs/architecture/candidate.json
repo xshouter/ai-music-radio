@@ -1,0 +1,481 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "EdgeRunner 架构",
+    "subtitle": "本地常驻的个人 AI 音乐电台 —— 一台 Windows、一个进程、三条出网的腿",
+    "locale": "zh-CN",
+    "output": ".archify/architecture-edgerunner-20261021-040113/edgerunner.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/xshouter/edgerunner.git",
+      "provider": "github",
+      "revision": "6dfaaab9cbc8603fe269c4dddcb49444cb8eeb6a"
+    }
+  },
+  "components": [
+    {
+      "id": "you",
+      "type": "external",
+      "label": "你",
+      "sublabel": "双击 EdgeRunner.exe",
+      "icon": "person",
+      "pos": [
+        30,
+        300
+      ],
+      "size": [
+        120,
+        60
+      ],
+      "sources": [
+        {
+          "path": "README.md",
+          "line": 30,
+          "end_line": 32
+        }
+      ]
+    },
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "界面",
+      "sublabel": "口播 · 播放器 · 队列",
+      "tag": "只走 HTTP/WS",
+      "pos": [
+        220,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "renderer/src/App.tsx",
+          "line": 19,
+          "end_line": 20
+        },
+        {
+          "path": "renderer/src/api/client.ts",
+          "line": 42,
+          "end_line": 47
+        }
+      ]
+    },
+    {
+      "id": "server",
+      "type": "backend",
+      "label": "本地服务",
+      "sublabel": "HTTP + WebSocket",
+      "tag": "x-radio-token",
+      "pos": [
+        420,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "core/server.ts",
+          "line": 162,
+          "end_line": 166
+        },
+        {
+          "path": "core/server.ts",
+          "line": 186,
+          "end_line": 195
+        },
+        {
+          "path": "core/server.ts",
+          "line": 206,
+          "end_line": 209
+        }
+      ]
+    },
+    {
+      "id": "radio",
+      "type": "backend",
+      "label": "Radio 内核",
+      "sublabel": "编排：队列 · 播放权 · 口播",
+      "pos": [
+        650,
+        300
+      ],
+      "size": [
+        170,
+        70
+      ],
+      "sources": [
+        {
+          "path": "core/radio.ts",
+          "line": 155,
+          "end_line": 158
+        },
+        {
+          "path": "core/radio.ts",
+          "line": 274,
+          "end_line": 298
+        }
+      ]
+    },
+    {
+      "id": "brain",
+      "type": "backend",
+      "label": "Agent 大脑",
+      "sublabel": "工具环 · 排表 · 选歌",
+      "tag": "ToolLoopBrain",
+      "pos": [
+        650,
+        170
+      ],
+      "size": [
+        170,
+        66
+      ],
+      "sources": [
+        {
+          "path": "core/brain/index.ts",
+          "line": 212,
+          "end_line": 216
+        },
+        {
+          "path": "core/brain/index.ts",
+          "line": 159,
+          "end_line": 174
+        }
+      ]
+    },
+    {
+      "id": "llm",
+      "type": "external",
+      "label": "LLM API",
+      "sublabel": "POST /chat/completions",
+      "tag": "百炼 · DeepSeek · 任意兼容",
+      "pos": [
+        650,
+        44
+      ],
+      "size": [
+        170,
+        66
+      ],
+      "sources": [
+        {
+          "path": "core/providers/llm-openai.ts",
+          "line": 82,
+          "end_line": 88
+        },
+        {
+          "path": "core/state/prefs.ts",
+          "line": 12,
+          "end_line": 14
+        }
+      ]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "prefs · 歌单 · 收藏 · 消息",
+      "pos": [
+        650,
+        470
+      ],
+      "size": [
+        170,
+        74
+      ],
+      "sources": [
+        {
+          "path": "main/bootstrap.ts",
+          "line": 50,
+          "end_line": 52
+        },
+        {
+          "path": "core/state/sqlite-store.ts",
+          "line": 74,
+          "end_line": 79
+        }
+      ]
+    },
+    {
+      "id": "music",
+      "type": "backend",
+      "label": "音乐源降级链",
+      "sublabel": "网易云 → 本地 → 随包 demo",
+      "tag": "降级链",
+      "pos": [
+        420,
+        470
+      ],
+      "size": [
+        170,
+        70
+      ],
+      "sources": [
+        {
+          "path": "core/music/index.ts",
+          "line": 29,
+          "end_line": 33
+        },
+        {
+          "path": "core/music/index.ts",
+          "line": 35,
+          "end_line": 48
+        },
+        {
+          "path": "core/music/local.ts",
+          "line": 17,
+          "end_line": 23
+        }
+      ]
+    },
+    {
+      "id": "tts",
+      "type": "backend",
+      "label": "口播合成",
+      "sublabel": "sha1 → <hash>.wav",
+      "tag": "上限 400 个文件",
+      "pos": [
+        870,
+        470
+      ],
+      "size": [
+        170,
+        70
+      ],
+      "sources": [
+        {
+          "path": "core/tts.ts",
+          "line": 190,
+          "end_line": 198
+        },
+        {
+          "path": "core/tts.ts",
+          "line": 228,
+          "end_line": 240
+        }
+      ]
+    },
+    {
+      "id": "netsvc",
+      "type": "backend",
+      "label": "内置网易云服务",
+      "sublabel": "子进程 · 127.0.0.1",
+      "tag": "随包 27 MB",
+      "pos": [
+        420,
+        620
+      ],
+      "size": [
+        170,
+        66
+      ],
+      "sources": [
+        {
+          "path": "main/netease-service.ts",
+          "line": 102,
+          "end_line": 108
+        },
+        {
+          "path": "electron-builder.yml",
+          "line": 18,
+          "end_line": 21
+        }
+      ]
+    },
+    {
+      "id": "piper",
+      "type": "backend",
+      "label": "piper.exe",
+      "sublabel": "en_GB-alan-medium",
+      "tag": "离线 · 零 key",
+      "pos": [
+        870,
+        620
+      ],
+      "size": [
+        170,
+        66
+      ],
+      "sources": [
+        {
+          "path": "core/providers/tts-piper.ts",
+          "line": 44,
+          "end_line": 53
+        },
+        {
+          "path": "main/tts-runtime.ts",
+          "line": 9,
+          "end_line": 15
+        }
+      ]
+    },
+    {
+      "id": "netease",
+      "type": "external",
+      "label": "网易云音乐",
+      "sublabel": "歌单 · 日推 · 音频 URL",
+      "pos": [
+        420,
+        770
+      ],
+      "size": [
+        170,
+        66
+      ],
+      "sources": [
+        {
+          "path": "core/music/netease.ts",
+          "line": 86,
+          "end_line": 90
+        },
+        {
+          "path": "core/music/netease.ts",
+          "line": 131,
+          "end_line": 136
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "你的 Windows 电脑 · 全程本机，没有服务端",
+      "wraps": [
+        "ui",
+        "server",
+        "radio",
+        "brain",
+        "store",
+        "music",
+        "netsvc",
+        "tts",
+        "piper"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "you-use-ui",
+      "from": "you",
+      "to": "ui",
+      "label": "操作"
+    },
+    {
+      "id": "ui-to-server",
+      "from": "ui",
+      "to": "server",
+      "label": "HTTP"
+    },
+    {
+      "id": "server-to-ui",
+      "from": "server",
+      "to": "ui",
+      "label": "WS 事件流",
+      "variant": "dashed"
+    },
+    {
+      "id": "server-to-radio",
+      "from": "server",
+      "to": "radio",
+      "label": "调用"
+    },
+    {
+      "id": "radio-to-server",
+      "from": "radio",
+      "to": "server",
+      "label": "事件",
+      "variant": "dashed"
+    },
+    {
+      "id": "radio-to-brain",
+      "from": "radio",
+      "to": "brain",
+      "label": "工具环"
+    },
+    {
+      "id": "brain-to-llm",
+      "from": "brain",
+      "to": "llm",
+      "label": "POST /chat/completions"
+    },
+    {
+      "id": "radio-to-store",
+      "from": "radio",
+      "to": "store",
+      "label": "prefs · 歌单 · 收藏"
+    },
+    {
+      "id": "radio-to-music",
+      "from": "radio",
+      "to": "music",
+      "label": "取歌"
+    },
+    {
+      "id": "radio-to-tts",
+      "from": "radio",
+      "to": "tts",
+      "label": "口播"
+    },
+    {
+      "id": "music-to-netsvc",
+      "from": "music",
+      "to": "netsvc",
+      "label": "本机 API"
+    },
+    {
+      "id": "netsvc-to-netease",
+      "from": "netsvc",
+      "to": "netease",
+      "label": "music.163.com"
+    },
+    {
+      "id": "tts-to-piper",
+      "from": "tts",
+      "to": "piper",
+      "label": "spawn piper.exe"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "依赖方向",
+      "items": [
+        "renderer 只认 shared/ 的类型",
+        "core 不认识 Electron，也不认识 SQLite 驱动",
+        "具体实现只在 main/bootstrap.ts 被 new —— 唯一组装点"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "出网三条腿",
+      "items": [
+        "LLM：Bearer 鉴权，换厂只改 prefs 里的 baseUrl + model",
+        "音乐：内置兼容服务 → music.163.com",
+        "嗓子：默认离线 piper；换 Fish Audio 同样只改 prefs"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "音频怎么到耳朵",
+      "items": [
+        "口播：界面从 /tts/<key>.wav 取字节，本地回放",
+        "音乐：内核只把直链交给界面，音频不经本地中转",
+        "首次体验那段口播是随包文件，换嗓子也不跟着变"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "两个子进程在 asar 外",
+      "items": [
+        "piper 与内置网易云服务都要被 spawn，塞进 asar 就跑不起来",
+        "piper 的运行时目录必须纯 ASCII，否则静默产出 0 字节",
+        "口播缓存上限 400 个文件，按 mtime 回收"
+      ]
+    }
+  ]
+}

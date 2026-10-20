@@ -48,3 +48,7 @@ vendor/piper/
 
 # 内置的网易云兼容服务（约 27MB）：npm run fetch:netease 拉到本地，不进 git —— 它是第三方代码。
 vendor/netease/
+
+# archify 的工作目录：候选 JSON、验收回执、抓图。
+# 图本身提交在 docs/architecture/（源 + 静态图），这里只是本地工作区。
+.archify/
