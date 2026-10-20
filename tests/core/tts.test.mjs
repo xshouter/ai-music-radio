@@ -2,7 +2,7 @@
 // 全程零联网：喂一个按调用次数行为的假 provider。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createTtsEngine, mp3DurationMs, wavDurationMs, wordsFor, TtsFailure } from '../../core/tts.ts';
@@ -150,6 +150,19 @@ test('speak：provider 说 wav，缓存与路由就都是 .wav，时长走 wav �
   assert.ok(line.audioUrl.endsWith('.wav'), line.audioUrl);
   assert.equal(engine.read(engine.keyOf('Offline voice.', 'en_US-amy-medium')).byteLength, wav(2).byteLength);
   assert.equal(line.words[line.words.length - 1].endMs, 2000);
+});
+
+test('speak：缓存有上限 —— 超过就回收最旧的，绝不删刚写的那份', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'edgerunner-tts-'));
+  const provider = fakeProvider(mp3(2));
+  const engine = createTtsEngine({ provider, dir, retryDelayMs: 0, maxFiles: 2 });
+  for (const line of ['One.', 'Two.', 'Three.']) await engine.speak(0, line);
+
+  const files = readdirSync(dir).filter((name) => name.endsWith('.mp3'));
+  assert.equal(files.length, 2, '超过上限就得回收，缓存不许只增不减');
+  assert.notEqual(engine.read(engine.keyOf('Three.')), null, '刚写的那份不许被回收');
+  await engine.speak(0, 'Three.');
+  assert.equal(provider.requests.length, 3, '留下的那份仍然命中缓存，不重新合成');
 });
 
 test('speak：远端给空音频也算失败', async () => {

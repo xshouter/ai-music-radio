@@ -189,7 +189,7 @@ export function Credentials({ onClose }: { onClose: () => void }) {
               </label>
               <label className="cred-field">
                 <span className="l">VOICE</span>
-                <input value={draft.ttsVoice} onChange={(event) => setField('ttsVoice')(event.target.value)} placeholder="en_US-amy-medium" spellCheck={false} />
+                <input value={draft.ttsVoice} onChange={(event) => setField('ttsVoice')(event.target.value)} placeholder="en_US-ryan-high" spellCheck={false} />
               </label>
             </div>
             <label className="cred-field">

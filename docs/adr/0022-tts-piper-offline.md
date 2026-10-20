@@ -37,3 +37,15 @@ ADR-0008 把口播的语音交给 Fish Audio 的托管 API。真去落地时才�
 - **代价**：**`piper.exe` 只能从纯 ASCII 路径运行** —— espeak-ng 用 `fopen` 读 `espeak-ng-data/phontab`，中文路径下直接崩，而且**静默产出 0 字节**。所以 `main/tts-runtime.ts` 的 `resolveTtsDir` 在安装路径非 ASCII 时，把整份运行时拷到第一个可写的 ASCII 落点（纯函数、不 import electron，冒烟脚本共用同一套规则）。
 - **代价**：音质不如 Fish Audio 的商业模型；`en_US-amy-medium` 是"清楚的女声"，不是"有性格的 DJ"。
 - **重新打开的条件**：能拿到托管 TTS 的 key（或有一台带 GPU 的机器自托管 `fish-speech`）时，把 `tts.provider` 切到 `fish` —— 抽象层不变，只换一个 provider 实现。
+
+## 追记 · 出厂音色换成 `en_US-ryan-high`
+
+**决定不改，换的只是它给的那把嗓子。** 「`en_US-amy-medium` 是清楚的女声」这个评价来自落地当天；
+但那不是这个界面需要的 —— 这个电台要的是**低沉、有磁性、娓娓道来**的男声。
+
+`en_US-ryan-high` 是 piper 语音库（`rhasspy/piper-voices`）里质量最高的男声（vits `high` 档）。
+代价是包体大一截：`en_US-amy-medium` 63 MB → `en_US-ryan-high` 121 MB，便携 exe 因此从 ~169 MB 涨到 ~227 MB。
+这个价钱买的是**产品的嗓子**，不是基础设施 —— 所以付。
+
+换音色始终只是改一个设置项（`tts.voice`），代码一行不动；三处旧默认值只是「出厂值」，
+`node tools/fetch-voice.mjs --voice=<名>` 拉下来就能换。
