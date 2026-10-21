@@ -127,9 +127,17 @@ export function useRadio(): Radio {
   // 「现在放的是哪首」和「跳下一首」要给媒体事件用：那两个监听只挂一次，闭包会一直看到旧值。
   const currentIdRef = useRef<string | null>(null);
   const skipRef = useRef<() => void>(() => {});
+  // 「放不出来就换下一首」要有出口：这两个 ref 记「哪些试过、列表有多长」，
+  // 否则一次「这一批全都解析不出来」会变成一台不停换歌的机器（开发日志第 51 条）。
+  const listRef = useRef<TrackRef[]>([]);
+  const deadRef = useRef(new Set<string>());
 
   // 面板里那份列表：AI 推荐 或 FAV（需求 3.7 决策 6）。切来源只换展示，不打断正在播的这首。
   const list = source === 'fav' ? favorites : queue;
+  // 媒体事件只挂一次，闭包看不到新的 list —— 走 ref（和 currentIdRef / skipRef 同一个理由）。
+  useEffect(() => {
+    listRef.current = list;
+  }, [list]);
 
   // 优先级：本地刚跳过的 → 后端推来的 now → 列表里记住的位置。
   // 降级时后端会把 now 换成别的歌（可能根本不在队列里），这时必须以它为准，
@@ -232,7 +240,11 @@ export function useRadio(): Radio {
     if (!currentId) return;
     // html5: true —— /api/audio 是 302 到远端 CDN，那一家不给 CORS 头，Web Audio 那条路取不到音频。
     const sound = new Howl({ src: [audioUrl(currentId)], html5: true, volume: volumeRef.current });
-    sound.on('play', () => setPlaying(true));
+    sound.on('play', () => {
+      setPlaying(true);
+      // 有一首真的响了 = 这台电台没问题，把「放不出来」的记忆清掉。
+      deadRef.current.clear();
+    });
     sound.on('pause', () => setPlaying(false));
     sound.on('load', () => setMediaMs(Math.round(sound.duration() * 1000)));
     // 一首歌**自然放完**：客户端报事实，由后端推进队列（ADR-0010）。这一下才是"自动切下一首"。
@@ -241,8 +253,23 @@ export function useRadio(): Radio {
       if (id !== null) void reportPlayback({ songId: id, event: 'ended', at: new Date().toISOString() }).catch(() => undefined);
     });
     // 加载失败：试听片段被拒 / 解析不出来。停在一首放不出来的歌上，比跳过它更糟。
+    // 放不出来就换下一首 —— 但**换要有出口**：全队列试过一遍还是没有一首能响，就停手，
+    // 并且把这件事说出来。没有这条出口，一次「这一批全都解析不出来」就是一台不停换歌的
+    // 机器：每个失败都换下一首、绕一圈回到起点，一秒十几次地打音乐源（实测里把日志刷到轮转）。
     sound.on('loaderror', () => {
-      if (currentIdRef.current !== null) skipRef.current();
+      const id = currentIdRef.current;
+      if (id === null) return;
+      deadRef.current.add(id);
+      if (deadRef.current.size >= Math.max(1, listRef.current.length)) {
+        setPlaying(false);
+        setError({
+          code: 'MUSIC_NOT_RESOLVABLE',
+          message: 'None of these tracks will play right now. Pick another one, or add a working music source.',
+          retryable: false,
+        });
+        return;
+      }
+      skipRef.current();
     });
     musicRef.current = sound;
     void sound.play();
@@ -309,6 +336,8 @@ export function useRadio(): Radio {
 
   // 播放权威在客户端（ADR-0010）：切歌就是「我切到这首了」，server 只记账。
   const play = useCallback((songId: string) => {
+    // 用户自己点的这一首：把「放不出来」的记忆清掉，给他一次公平的重试。
+    deadRef.current.clear();
     setLocalPick(songId);
     void reportPlayback({ songId, event: 'started', at: new Date().toISOString() }).catch(() => undefined);
   }, []);
