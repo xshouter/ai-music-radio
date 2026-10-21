@@ -1,6 +1,6 @@
 {
   "name": "edgerunner",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "private": true,
   "description": "EdgeRunner —— 本地常驻的个人 AI 音乐电台（单机、单用户）",
   "author": "xshouter",
