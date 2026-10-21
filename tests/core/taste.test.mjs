@@ -1,4 +1,4 @@
-// 4.6 的自检：语料在磁盘上的形状 —— 人写的 md 只读，系统的结论只进库（ADR-0004）。
+// 4.6 的自检：语料在磁盘上的形状 —— 人写的 md 只读，系统的结论只进库。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
@@ -42,7 +42,7 @@ test('曲风胶囊是数据：写在 genres.txt 里，去重、去空', async ()
   assert.deepEqual((await repo.read()).genres, ['JAZZ-HIPHOP', 'POST-PUNK', 'RAIN NOISE']);
 });
 
-test('appendLearned 只写库：语料是人的地盘，系统永不回写（ADR-0004）', async () => {
+test('appendLearned 只写库：语料是人的地盘，系统永不回写', async () => {
   const repo = createTasteRepo({ dir: dir({ 'likes.md': 'Warm synth.' }), store: store(), clock: CLOCK });
   await repo.appendLearned('Kept Neon Hours — Kite & Ash.', { ts: '', text: '', evidence: { action: 'like' } });
 

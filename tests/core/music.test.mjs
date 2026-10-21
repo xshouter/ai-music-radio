@@ -116,7 +116,7 @@ test('链：一个源抛错就换下一个；全空给空数组，不抛错', as
   assert.equal(empty.id, 'chain');
 });
 
-test('链：全空手而归时，只有真抛过错的源才算「不可达」（ADR-0016 收敛了空结果，但没收敛归因）', async () => {
+test('链：全空手而归时，只有真抛过错的源才算「不可达」', async () => {
   const boom = new HttpError(502, 'service down');
   const broken = source('broken', {
     search: async () => { throw boom; },

@@ -1,4 +1,4 @@
-// 排日表那一格的取舍：排表的人给了就用，没给 / 挂了就自己搜 —— 两个来源怎么合（ADR-0030）。
+// 排日表那一格的取舍：排表的人给了就用，没给 / 挂了就自己搜 —— 两个来源怎么合。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDayPlan } from '../../core/plan.ts';
@@ -82,5 +82,5 @@ test('排表的人填不满也不算坏：一格只给两首也照收，不退�
   const { asked, music } = source();
   const plan = await buildDayPlan({ ...DAY, music, curate: async () => [[ref('a'), ref('b')], [ref('c')], [ref('d'), ref('e'), ref('f')]] });
   assert.deepEqual(plan.blocks.map((block) => block.tracks.map((track) => track.id)), [['a', 'b'], ['c'], ['d', 'e', 'f']]);
-  assert.deepEqual(asked, [], '三格都有人填，一次搜索都不该发生 —— 少给是合法结果（ADR-0031）');
+  assert.deepEqual(asked, [], '三格都有人填，一次搜索都不该发生 —— 少给是合法结果');
 });

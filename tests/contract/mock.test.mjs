@@ -57,7 +57,7 @@ test('GET /api/now 返回 NowPlaying 形状', async () => {
   assert.equal(typeof body.degraded, 'boolean');
 });
 
-test('POST /api/chat 返回 Show；play 一次给一批 3–6 首（ADR-0001）', async () => {
+test('POST /api/chat 返回 Show；play 一次给一批 3–6 首', async () => {
   const { status, body } = await api('/api/chat', { method: 'POST', body: JSON.stringify({ text: 'something quiet' }) });
   assert.equal(status, 200);
   assert.ok(Array.isArray(body.say) && body.say.length > 0);
@@ -76,7 +76,7 @@ test('GET /api/next 返回 TrackRef[]', async () => {
   body.forEach((r, i) => isRef(r, `next[${i}]`));
 });
 
-test('GET /api/taste 返回 4 份语料原文 + 结构化更新（ADR-0004）', async () => {
+test('GET /api/taste 返回 4 份语料原文 + 结构化更新', async () => {
   const { status, body } = await api('/api/taste');
   assert.equal(status, 200);
   assert.equal(body.corpus.length, 4);
@@ -108,8 +108,8 @@ test('GET /api/plan/today 与 POST /api/plan/regenerate 返回 DayPlan（3 段�
   assert.equal(typeof regen.body.active, 'boolean');
 });
 
-// ADR-0009 的删除已落地：这条不是「不测了」，而是把「消失」本身钉住。
-test('歌词端点已经不存在（ADR-0009 的债已还）', async () => {
+// 删除已落地：这条不是「不测了」，而是把「消失」本身钉住。
+test('歌词端点已经不存在（债已还）', async () => {
   const gone = await api('/api/lyric/n1001');
   assert.equal(gone.status, 404, '歌词端点必须真的消失，而不是留一个没人调的出口');
   assert.equal(gone.body.error.code, 'INTERNAL', '封闭枚举里没有 NOT_FOUND，未知路径沿用 INTERNAL');
@@ -143,7 +143,7 @@ test('POST /api/playback 返回 { ok: true }', async () => {
   assert.equal(body.ok, true);
 });
 
-test('GET /api/favorites 返回 TrackRef[]（ADR-0010）', async () => {
+test('GET /api/favorites 返回 TrackRef[]', async () => {
   await reset();
   const { status, body } = await api('/api/favorites');
   assert.equal(status, 200);
@@ -151,7 +151,7 @@ test('GET /api/favorites 返回 TrackRef[]（ADR-0010）', async () => {
   body.forEach((r, i) => isRef(r, `favorites[${i}]`));
 });
 
-test('POST /api/feedback 能加能删，GET 立刻反映，且两个动作都幂等（ADR-0010）', async () => {
+test('POST /api/feedback 能加能删，GET 立刻反映，且两个动作都幂等', async () => {
   await reset();
   const fb = (action) => api('/api/feedback', { method: 'POST', body: JSON.stringify({ songId: 'n1001', action }) });
   const ids = async () => (await api('/api/favorites')).body.map((r) => r.id);
@@ -175,7 +175,7 @@ test('POST /api/feedback 只认封闭枚举里的 action，未知曲目不许静
   assert.equal(ghost.status, 400, '不认识的曲目要报错，不许静默 ok');
 });
 
-test('GET /api/taste 的 genres 是数据不是装饰（ADR-0010）', async () => {
+test('GET /api/taste 的 genres 是数据不是装饰', async () => {
   const { status, body } = await api('/api/taste');
   assert.equal(status, 200);
   assert.ok(Array.isArray(body.genres) && body.genres.length >= 3, 'DJ 详情的曲风胶囊要有数据来源');
@@ -198,7 +198,7 @@ test('/api/settings 只回显「是否已配置」，明文 key 永不回显', a
   assert.ok(!raw.includes(secret), '响应里出现了明文 key');
   assert.ok(!raw.includes('"apiKey"'), '响应里出现了 apiKey 字段');
 
-  // ADR-0011：网易云 cookie 与 apiKey 受同一套禁令保护。
+  // ：网易云 cookie 与 apiKey 受同一套禁令保护。
   const cookie = 'MUSIC_U=should-never-come-back; __csrf=also-secret';
   const putMusic = await api('/api/settings', { method: 'PUT', body: JSON.stringify({ music: { provider: 'netease', cookie } }) });
   assert.equal(putMusic.status, 200);
@@ -330,7 +330,7 @@ test('WS /stream：连上先给快照（并开口），chat 的口播逐句推�
     assert.equal(event.payload.kind, 'intro');
     assert.equal(event.payload.index, index);
     assert.equal(typeof event.payload.line, 'string');
-    // ADR-0012：一句口播自带音频与词级时间戳，否则 UI 没法逐词高亮 / 算口播进度。
+    // ：一句口播自带音频与词级时间戳，否则 UI 没法逐词高亮 / 算口播进度。
     assert.equal(typeof event.payload.audioUrl, 'string');
     assert.ok(event.payload.audioUrl.startsWith('/tts/'), 'audioUrl 走 /tts/');
     assert.ok(Array.isArray(event.payload.words) && event.payload.words.length > 0);
@@ -367,7 +367,7 @@ test('WS /stream：连上先给快照（并开口），chat 的口播逐句推�
   assert.ok(events.some((e) => e.type === 'state'), '结束时要回到 idle');
 });
 
-test('WS /stream：开机进度也是契约的一部分（ADR-0032）', async (t) => {
+test('WS /stream：开机进度也是契约的一部分', async (t) => {
   const events = [];
   const { socket, head } = await openWs('/stream');
   t.after(() => socket.destroy());
@@ -415,7 +415,7 @@ test('PUT /api/settings 只覆盖你给的字段：非法 protocol 被忽略，�
   assert.deepEqual(put.body.tts, before.tts, '没给的块整块不动');
 });
 
-test('GET /api/stats 返回 PlayStats，且真的随 POST /api/playback 变（ADR-0013）', async () => {
+test('GET /api/stats 返回 PlayStats，且真的随 POST /api/playback 变', async () => {
   await reset();
   const before = (await api('/api/stats')).body;
   for (const key of ['played', 'skipped', 'replays']) assert.equal(typeof before[key], 'number', key);
@@ -453,7 +453,7 @@ test('GET /api/history 返回 DjMessage[]，倒序，limit 越界夹住而不报
   assert.equal(after[0].role, 'dj', '最新一条是 DJ 刚说的话');
 });
 
-test('POST /api/models：没有 baseUrl 就 400，给了就回一串非空模型名（ADR-0036）', async () => {
+test('POST /api/models：没有 baseUrl 就 400，给了就回一串非空模型名', async () => {
   await reset();
   const missing = await api('/api/models', { method: 'POST', body: JSON.stringify({}) });
   assert.equal(missing.status, 400, '没有端点就没有目录可读');

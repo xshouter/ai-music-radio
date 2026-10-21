@@ -13,7 +13,7 @@ import { DEMO_SONG_FILE, DEMO_WAV_FILE } from '../../core/demo.ts';
 
 const tmp = (name) => mkdtempSync(join(tmpdir(), 'edgerunner-' + name + '-'));
 
-test('bootstrap：一台电台起得来 —— 同源 UI 要得到，数据面要令牌（阶段 5.1）', async () => {
+test('bootstrap：一台电台起得来 —— 同源 UI 要得到，数据面要令牌', async () => {
   const dataDir = tmp('data');
   const localDir = tmp('music');
   const uiDir = tmp('ui');
@@ -23,12 +23,12 @@ test('bootstrap：一台电台起得来 —— 同源 UI 要得到，数据面�
   const started = await startRadio({ dataDir, localDir, uiDir, ttsDir: tmp('piper'), warn: () => {} });
   const base = 'http' + '://127.0.0.1:' + started.port;
 
-  // 开机**不在** startRadio 里（ADR-0032）：它只保证「服务已经在监听」，boot 交给调用方。
+  // 开机**不在** startRadio 里：它只保证「服务已经在监听」，boot 交给调用方。
   // 这里不调 boot() —— 这条测试用的是真 provider，开机一跑就要打远端，会变成一条会红的测试。
   assert.equal(typeof started.boot, 'function');
 
   try {
-    // 1. UI 同源：不带令牌也要给（初始文档没法带自定义头，ADR-0020）。
+    // 1. UI 同源：不带令牌也要给。
     const page = await fetch(base + '/');
     assert.equal(page.status, 200);
     assert.match(await page.text(), /EdgeRunner/);
@@ -41,19 +41,19 @@ test('bootstrap：一台电台起得来 —— 同源 UI 要得到，数据面�
     assert.equal(now.status, 200);
     assert.ok((await now.json()).track !== undefined);
 
-    // 3. 凭据不进响应：没配置时只回「未配置」，明文永远不回显（ADR-0011）。
+    // 3. 凭据不进响应：没配置时只回「未配置」，明文永远不回显。
     const settings = await (await fetch(base + '/api/settings', { headers: { 'x-radio-token': started.token } })).json();
     assert.equal(settings.llm.apiKeySet, false);
     assert.equal(settings.music.cookieSet, false);
 
-    // 4. 越界路径不给：uiDir 外面的东西一个字节都不出（ADR-0020 的越界检查）。
+    // 4. 越界路径不给：uiDir 外面的东西一个字节都不出（越界检查）。
     const escape = await fetch(base + '/..%2F..%2Fpackage.json');
     assert.equal(escape.status, 404);
   } finally {
     await started.close();
   }
 });
-test('bootstrap：首次体验的素材 —— 歌进曲库一次，之后不踩他自己换的那份（ADR-0033）', async () => {
+test('bootstrap：首次体验的素材 —— 歌进曲库一次，之后不踩他自己换的那份', async () => {
   const dataDir = tmp('data');
   const localDir = tmp('music');
   const uiDir = tmp('ui');

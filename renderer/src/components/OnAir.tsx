@@ -11,11 +11,11 @@ const mmss = (ms: number) => {
 const BARS = 56;
 
 /**
- * ① 口播全屏态 —— 参考源那张 616×876 卡片的 1:1 复刻。
+ * ① 口播全屏态 —— 616×876 的卡片布局。
  * 上方进度条 = 歌曲进度，最下方 = 口播进度（用户定）；✕ 在白色卡片右上角（用户定的位置）。
- * 播放权在 useRadio 的串行管道里（ADR-0029），这里只是它的**视图**：打开不重播、✕ 才停止（用户定）。
+ * 播放权在 useRadio 的串行管道里，这里只是它的**视图**：打开不重播、✕ 才停止（用户定）。
  * lines 是这一场口播说过的所有句子（一首歌一条），当前那一条永远在最后。
- * 逐词高亮的时钟就是那一条 <audio> 本身 —— 词时间戳由 TTS 给（ADR-0012）。
+ * 逐词高亮的时钟就是那一条 <audio> 本身 —— 词时间戳由 TTS 给。
  * 文字一律正常对比度，不做渐隐（用户定：渐隐的字读不动）。
  */
 export function OnAir({ lines, track, playing, positionMs, durationMs, oralPlaying, oralMs, onToggleSong, onToggleOral, onSeekOral, onClose }: {
@@ -44,7 +44,7 @@ export function OnAir({ lines, track, playing, positionMs, durationMs, oralPlayi
     scrollRef.current?.querySelector(`[data-turn="${at}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [at, lines.length]);
 
-  // 波形：参考源的做法 —— 程序化柱状，说的时候相位快，停着的时候慢慢飘。
+  // 波形：程序化柱状，说的时候相位快，停着的时候慢慢飘。
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');

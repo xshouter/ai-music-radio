@@ -213,7 +213,7 @@ export class SqliteStore implements Store {
   }
 }
 
-/** 越界夹住、非法回默认：错误码是封闭枚举，里面没有「参数不合法」这种码（ADR-0013）。 */
+/** 越界夹住、非法回默认：错误码是封闭枚举，里面没有「参数不合法」这种码。 */
 function clampLimit(raw: number, fallback: number): number {
   if (!Number.isFinite(raw)) return fallback;
   return Math.max(1, Math.trunc(raw));

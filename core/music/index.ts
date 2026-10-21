@@ -19,7 +19,7 @@ export const LEVELS: readonly QualityLevel[] = ['lossless', 'exhigh', 'higher', 
 export interface MusicChainOptions {
   /**
    * 每个源都空手而归、且至少有一个源是**抛错**走的 → 喊一声。
-   * 链把"源不在"和"没搜到"都收敛成空结果（ADR-0016 的既定取舍），但用户那边这是两码事：
+   * 链把"源不在"和"没搜到"都收敛成空结果（既定取舍），但用户那边这是两码事：
    * 一个该去起兼容服务 / 换 cookie，一个只是库里没这首。不喊这一声，
    * 用户看到的就是"电台死了，而且一句话都不说"。
    */

@@ -59,7 +59,7 @@ test('wordsFor：总长与音频同源，末词收在真实总长上', () => {
     assert.equal(words[i].startMs, words[i - 1].endMs, '词与词之间不许有缝');
     assert.ok(words[i].endMs > words[i].startMs, '每个词都要占时间');
   }
-  // 时长未知时退化成「一个覆盖全句的词」（ADR-0012 的兜底形状）。
+  // 时长未知时退化成「一个覆盖全句的词」（兜底形状）。
   const degenerate = wordsFor('Short line', 0);
   assert.equal(degenerate.length, 1);
   assert.equal(degenerate[0].startMs, 0);

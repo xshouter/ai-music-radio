@@ -11,7 +11,7 @@ export interface FishTtsOptions {
 }
 
 /**
- * `POST https://api.fish.audio/v1/tts` —— 一次一句，直接回 mp3 字节（ADR-0008）。
+ * `POST https://api.fish.audio/v1/tts` —— 一次一句，直接回 mp3 字节。
  *
  * 音色走 body 的 `reference_id`（Fish 的 voice id）；`tts.voice` 为空就不带这个字段，
  * 用 Fish 的默认音色。鉴权是 `Authorization: Bearer <key>`。

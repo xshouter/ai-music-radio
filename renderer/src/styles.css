@@ -167,7 +167,7 @@ button[aria-disabled='true'] { cursor: default; }
   color: var(--text);
 }
 
-/* 时分之间的分隔：两颗圆点。Doto 的 ':' 是一对方块，参考源用的是圆点。 */
+/* 时分之间的分隔：两颗圆点。Doto 的 ':' 是一对方块，这里用圆点。 */
 .clock-sep { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 9px; }
 
 .clock-sep i { width: 7px; height: 7px; border-radius: 50%; background: var(--text); }
@@ -405,7 +405,7 @@ button[aria-disabled='true'] { cursor: default; }
 .q-row.is-current .a { color: var(--accent-ink); }
 
 /* FAV 源：行尾的歌手位置在悬停 / 键盘聚焦时被 ✕ 替换（需求 3.7）。
-   不复刻成常驻图标 —— 参考的每行右边只有歌手，多一个符号就破了那个干净。 */
+   不做成常驻图标 —— 每行右边只留歌手，多一个符号就破了那个干净。 */
 .q-row .tail { position: relative; flex: 0 0 auto; max-width: 42%; min-width: 30px; display: flex; align-items: center; }
 
 .q-row .tail .a { max-width: 100%; }
@@ -602,7 +602,7 @@ button[aria-disabled='true'] { cursor: default; }
   font-size: 12px;
 }
 
-/* 引导版：不是故障，是「解锁」。所以描边走强调色，没有错误码那个红块（ADR-0033）。 */
+/* 引导版：不是故障，是「解锁」。所以描边走强调色，没有错误码那个红块。 */
 .banner.is-guide { border-color: var(--accent-ink); }
 .banner.is-guide .text { color: var(--text); }
 
@@ -710,7 +710,7 @@ button[aria-disabled='true'] { cursor: default; }
 }/* 补：底栏的绿点是行内元素，得自己对齐；消息里的头像比顶栏的小一号。 */
 .statusbar .dot { vertical-align: middle; margin-right: 2px; }
 .msg .avatar { width: 24px; height: 24px; font-size: 11px; }
-/* —— ① 口播全屏态。数值全部照抄参考源那张 616×876 的卡片（我们的 stage 就是 616×876）。 —— */
+/* —— ① 口播全屏态。数值按 616×876 的卡片定（我们的 stage 就是 616×876）。 —— */
 .onair {
   position: absolute;
   inset: 0;
@@ -1097,7 +1097,7 @@ button[aria-disabled='true'] { cursor: default; }
 .dj-more { font-family: var(--label); font-size: 9px; letter-spacing: 0.2em; color: var(--accent-ink); }
 .dj-more:hover { text-decoration: underline; }
 
-/* ---------- ⑥ 开机进度（ADR-0032） ---------- */
+/* ---------- ⑥ 开机进度 ---------- */
 
 /* 一块挡在主界面前面的玻璃：终端风、等宽字、逐行打勾。只负责「正在开机」这一段，
    第一句口播出声时就淡出（后端发 done，组件停一下再让它走）。

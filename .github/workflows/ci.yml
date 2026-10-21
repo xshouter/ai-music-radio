@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   rules:
-    name: 铁律机械检查
+    name: 边界检查
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
           node-version: '24'
           cache: npm
 
-      # 铁律 5：渲染进程不许碰数据库 / 存储 / node 内建。
+      # 渲染进程不许碰数据库 / 存储 / node 内建。
       # 脚本零依赖，因此代码落地前也能跑；扫不到目录就直接过。
       - name: 依赖边界检查
         run: node tools/check-boundaries.mjs
@@ -37,7 +37,6 @@ jobs:
       - name: 契约测试
         run: npm test
 
-      # dev 绿不等于 build 绿：阶段 3.1 里字体 CSS 只在生产构建（lightningcss 压缩）时才报错。
-      # 见 docs/journal/2026-10-20.md 的困难 8。
+      # dev 绿不等于 build 绿：字体 CSS 只在生产构建（lightningcss 压缩）时才报错。
       - name: 构建渲染进程
         run: npm run build

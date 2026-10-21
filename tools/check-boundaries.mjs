@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// 铁律 5 的机械检查：渲染进程永远不碰数据库 / 存储 / node 内建。
-// 规则来源：docs/abstraction-layer.md 第 2 节的依赖表。
+// 边界机械检查：渲染进程永远不碰数据库 / 存储 / node 内建。
+// 规则：依赖方向单向向下 —— renderer/ 只认 shared/，core/ 不认识 Electron 与具体驱动。
 // 用法：node tools/check-boundaries.mjs  （CI 与本地同一份脚本，零依赖）
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -119,7 +119,7 @@ console.log(`扫描：${scanned.join('、')}`);
 if (violations.length > 0) {
   console.error(`\n✗ 依赖边界检查失败：${violations.length} 处违规\n`);
   for (const violation of violations) console.error(`  ${violation}`);
-  console.error('\n规则见 docs/abstraction-layer.md 第 2 节 与 docs/engineering-rules.md 铁律 5。');
+  console.error('\n规则：renderer/ 不许碰数据库 / 存储 / node: 内建，只通过 HTTP/WS 与后端说话。');
   process.exit(1);
 }
 

@@ -7,7 +7,7 @@ import type { CancelSignal, TtsProvider } from '../shared/ports.ts';
 /**
  * 口播合成（4.4）。这一层只做两件事：**合一句**、**把它存下来**。
  *
- * 它不认识 Fish Audio —— 它认的是 TtsProvider 端口（ADR-0008）。换厂商 = 换一个 provider 文件，
+ * 它不认识 Fish Audio —— 它认的是 TtsProvider 端口。换厂商 = 换一个 provider 文件，
  * 这个文件与 UI 一行都不动。
  *
  * 缓存是**内容寻址**的：键 = sha1(providerId + 音色 + 文本)，落调用方给的缓存目录（main/ 传 `data/cache`）里的 `<hash>.<ext>`。
@@ -83,8 +83,8 @@ const prune = (dir: string, ext: string, keep: number): void => {
  * 逐词时间戳。
  *
  * 音频**总长是真的**（mp3DurationMs 从帧头算出来的），逐词边界**按文本长度比例分配**。
- * 总长与音频同源，所以进度条不会骗人；边界是估算 —— 为什么这么取，见 ADR-0017。
- * 时长未知（<= 0）时退化成「一个覆盖全句的词」（ADR-0012 的兜底形状），UI 自动变成整句高亮。
+ * 总长与音频同源，所以进度条不会骗人；边界是估算 —— 为什么这么取
+ * 时长未知（<= 0）时退化成「一个覆盖全句的词」（兜底形状），UI 自动变成整句高亮。
  */
 export function wordsFor(line: string, durationMs: number): SpokenWord[] {
   const words = line.split(' ').filter((word) => word !== '');

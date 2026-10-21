@@ -110,7 +110,7 @@ const routes = (map) => {
   return { fetch, calls };
 };
 
-// 日推的候选池：排表那一轮从它里面挑（ADR-0030）。刻意与 SONGS 不重样 ——
+// 日推的候选池：排表那一轮从它里面挑。刻意与 SONGS 不重样 ——
 // 排出来的日表若等于搜索那三首，这条测试就白测了。
 const DAILY = [
   song(2001, 'Morning Glass', 'Nao Kite'),
@@ -152,7 +152,7 @@ const setup = async (options = {}) => {
       options.showArgs ?? SHOW,
     ),
     '/v1/tts': () => ({ status: 200, text: async () => '', bytes: async () => AUDIO }),
-    // 模型目录（ADR-0036）：设置界面那个下拉框靠它 —— 给一条重复的，验去重。
+    // 模型目录：设置界面那个下拉框靠它 —— 给一条重复的，验去重。
     '/v1/models': () => json({ data: [{ id: 'qwen3.7-max' }, { id: 'glm-5.2' }, { id: 'qwen3.7-max' }] }),
   });
 
@@ -210,7 +210,7 @@ test('boot 之后：队列与当前曲目就位，开场只说第一句，音频
 
   const says = events.filter((event) => event.type === 'say');
   assert.deepEqual(says.map((event) => event.payload.index), [0]);
-  assert.deepEqual(says.map((event) => event.payload.line), [SHOW.say[0]], '开场只说第一句，其余几首的挂起来等切歌（ADR-0026）');
+  assert.deepEqual(says.map((event) => event.payload.line), [SHOW.say[0]], '开场只说第一句，其余几首的挂起来等切歌');
   for (const event of says) {
     assert.match(event.payload.audioUrl, /^\/tts\/[0-9a-f]{40}\.mp3$/);
     assert.equal(event.payload.words.at(-1).endMs, AUDIO_MS, '末词必须收在音频真实总长上');
@@ -374,7 +374,7 @@ test('HTTP：播放事实、喜欢、统计、历史、日表都从这一处出'
     assert.deepEqual((await call(base, '/api/favorites')).json.map((ref) => ref.id), ['1002']);
     assert.equal((await call(base, '/api/feedback', { method: 'POST', body: { songId: '1002', action: 'unlike' } })).status, 200);
     assert.deepEqual((await call(base, '/api/favorites')).json, []);
-    assert.deepEqual(learned, ['Kept Neon Hours — Kite & Ash.', 'Dropped Neon Hours — Kite & Ash.'], '♡ 是人的动作，记成一条学到的（ADR-0004）');
+    assert.deepEqual(learned, ['Kept Neon Hours — Kite & Ash.', 'Dropped Neon Hours — Kite & Ash.'], '♡ 是人的动作，记成一条学到的');
 
     const stats = (await call(base, '/api/stats')).json;
     assert.equal(stats.played, 1);
@@ -382,7 +382,7 @@ test('HTTP：播放事实、喜欢、统计、历史、日表都从这一处出'
     assert.ok((await call(base, '/api/history')).json.some((message) => message.role === 'dj'));
     assert.ok((await call(base, '/api/taste')).json.corpus.length > 0);
 
-    assert.notEqual((await call(base, '/api/plan/today')).json, null, '开机第一件事就是排今天的日表（ADR-0024）');
+    assert.notEqual((await call(base, '/api/plan/today')).json, null, '开机第一件事就是排今天的日表');
     const plan = await call(base, '/api/plan/regenerate', { method: 'POST', body: { reason: 'too loud' } });
     assert.equal(plan.status, 200);
     assert.equal(plan.json.blocks.length, 3);
@@ -440,7 +440,7 @@ test('WS：/stream 完成握手，Accept 按 RFC 算出来', async () => {
   }
 });
 
-test('切歌时才说下一首：口播是预生成压着的，轮到那首歌才推出去（ADR-0026）', async () => {
+test('切歌时才说下一首：口播是预生成压着的，轮到那首歌才推出去', async () => {
   const { radio } = await setup();
   const events = subscribe(radio);
   await radio.boot();
@@ -534,7 +534,7 @@ test('快照只在还没解决时带错误：好着的时候静默，好起来�
   await flaky.radio.chat('try again');
   assert.deepEqual(subscribe(flaky.radio).filter((event) => event.type === 'error'), [], '这一轮成了，旧横幅就不该再弹');
 });
-// —— 首次体验（ADR-0033）：没填 key 的人开机该听见一台在转的电台 ——
+// —— 首次体验：没填 key 的人开机该听见一台在转的电台 ——
 
 test('没 key 开机 = 首次体验：随包那一首 + 冻住的口播，嗓子不跟设置走', async () => {
   const demoDir = mkdtempSync(join(tmpdir(), 'edgerunner-demo-'));
@@ -594,7 +594,7 @@ test('首次体验之后填上 key：开机立刻重跑成真电台', async () =
   await radio.close();
 });
 
-// —— 「看着配好了、其实没跑」的三处：嗓子回落、切歌口播、口味画像（ADR-0036 / 0037）——
+// —— 「看着配好了、其实没跑」的三处：嗓子回落、切歌口播、口味画像——
 
 test('嗓子回落：选了 fish 却没填 key = 没选，落到 piper —— 远端端点一次都不打', async () => {
   const { radio, calls } = await setup({ ttsApiKey: false });
@@ -635,7 +635,7 @@ test('模型目录：随端点读一次，去重排序；key 缺省借库里那�
   await assert.rejects(() => radio.models({ baseUrl: '' }), (error) => error.code === 'INTERNAL');
 });
 
-test('开机就补口味画像：cookie 早就填过的人，taste.md 也要自己长出来（ADR-0025）', async () => {
+test('开机就补口味画像：cookie 早就填过的人，taste.md 也要自己长出来', async () => {
   const llmChat = (request) => String(request.body ?? '').includes('music librarian')
     ? json({ choices: [{ message: { content: 'Slow and warm, nothing in a hurry.' } }] })
     : llmRoute({ genres: ['ambient'], mood: 'low and steady', limit: 3 }, SHOW)(request);

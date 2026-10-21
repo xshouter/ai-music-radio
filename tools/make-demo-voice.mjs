@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 把首次体验那段口播**合成出来**（ADR-0033）。音频随包发，所以它必须可复现：
+// 把首次体验那段口播**合成出来**。音频随包发，所以它必须可复现：
 //   node --experimental-strip-types tools/make-demo-voice.mjs
 //
 // 它**故意**走 core 自己的那套（createPiperTts + createTtsEngine），而不是直接调 piper.exe：
