@@ -458,6 +458,8 @@ test('LLM 401/403 报 NO_LLM_KEY：key 不被接受，不是"没配 key"，也�
   const denied = await setup({ llmChat: upstream(401, '{"error":"invalid api key"}') });
   await assert.rejects(() => denied.radio.chat('hello'), (error) => {
     assert.equal(error.code, 'NO_LLM_KEY');
+    // 上游那句原话必须跟着走：同样是 401，「key 不对」和「baseUrl 指错了服务」要分得开。
+    assert.match(error.message, /invalid api key/, '上游原话是用户唯一能顺着改的东西');
     assert.equal(error.retryable, false, '换 key 是人做的事，重试没有意义');
     return true;
   });
