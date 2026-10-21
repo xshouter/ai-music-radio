@@ -31,7 +31,7 @@ const EMPTY: Draft = {
 
 const PROTOCOLS: Protocol[] = ['openai', 'anthropic'];
 
-/** 空字符串 = 「不改」：只把用户真填了的字段送出去，后端就不会把已有的 key / cookie 清掉（ADR-0005 / ADR-0011）。 */
+/** 空字符串 = 「不改」：只把用户真填了的字段送出去，后端就不会把已有的 key / cookie 清掉。 */
 const toInput = (draft: Draft): SettingsInput => ({
   llm: {
     baseUrl: draft.baseUrl.trim() || undefined,
@@ -53,7 +53,7 @@ const toInput = (draft: Draft): SettingsInput => ({
 
 /**
  * ④ 凭证弹窗（3.9）。LOGIN 打开。三块：大脑（LLM）/ 嗓子（TTS）/ 音乐源（网易云 cookie）。
- * 明文只从这一头进去，**永不回显** —— 界面上只显示「配没配」（危险字段禁令 / ADR-0005 / ADR-0011）。
+ * 明文只从这一头进去，**永不回显** —— 界面上只显示「配没配」。
  */
 export function Credentials({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<SettingsView | null>(null);

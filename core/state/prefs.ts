@@ -1,9 +1,9 @@
 import type { PrefKey, PrefMap } from '../../shared/ports.ts';
 
 /**
- * 设置项的出厂值。ADR-0005 的「解析失败回默认值」里的默认值就是这里的值。
+ * 设置项的出厂值。「解析失败回默认值」里的默认值就是这里的值。
  *
- * tts 的默认是 piper（ADR-0022）：离线、零 key，装好就出声；voice 就是本地模型名。
+ * tts 的默认是 piper：离线、零 key，装好就出声；voice 就是本地模型名。
  * 想换回 Fish Audio（或自己跑的 fish-speech），把 tts.provider 改成 fish 并填 tts.baseUrl。
  * llm 的默认指向百炼的 OpenAI 兼容端点（怎么填 key 见 README「填上你自己的钥匙」），
  * 但换任何兼容 key 只是改 llm.baseUrl + llm.model，不动代码。
@@ -29,7 +29,7 @@ export function isPrefKey(key: string): key is PrefKey {
 }
 
 /**
- * 一个 key 配一个显式 parse（ADR-0005）：解析失败回默认值并记一条警告，**不抛错** ——
+ * 一个 key 配一个显式 parse：解析失败回默认值并记一条警告，**不抛错** ——
  * 不能因为一个设置项坏了就让电台起不来。
  */
 export function parsePref<K extends PrefKey>(key: K, raw: string | null, warn: (message: string) => void): PrefMap[K] {

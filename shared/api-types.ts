@@ -1,6 +1,6 @@
-// 第 5 节 API 契约：前后端**唯一真相**（ADR-0006：不版本化，靠契约测试保证一致）。
+// 第 5 节 API 契约：前后端**唯一真相**。
 // 这里只有类型；mock/ 与将来的 core/server.ts 必须返回同样的路径与同样的字段名。
-// 改这份文件 = 开 ADR 的级别（铁律 3）。
+// 改这份文件 = 契约变更，前后端一起改。
 import type { DayPlan, DjMessage, DjState, PlayStats, Show, SpokenLine, TasteUpdate, Track, TrackRef } from './domain.ts';
 
 /** GET /api/now。degraded 让 UI 能在 ON AIR 旁显示 DEGRADED 徽标（抽象层第 6 节）。 */
@@ -12,17 +12,17 @@ export interface NowPlaying {
   degraded: boolean;
 }
 
-/** GET /api/taste：人写的语料（只读）+ 系统学到的结构化更新（ADR-0004）。 */
+/** GET /api/taste：人写的语料（只读）+ 系统学到的结构化更新。 */
 export interface TasteDoc {
-  /** DJ 详情弹层里那排曲风胶囊。是**数据**不是装饰：它随语料变（ADR-0010）。 */
+  /** DJ 详情弹层里那排曲风胶囊。是**数据**不是装饰：它随语料变。 */
   genres: string[];
   corpus: { name: string; text: string }[];
   recent: TasteUpdate[];
 }
 
 /**
- * GET /api/settings：出参与入参分离 —— key 只回显「是否已配置」，绝不回显明文（ADR-0005）。
- * music 是第三块：网易云 cookie 与 apiKey 受同一套禁令保护（ADR-0011），所以也只给 cookieSet。
+ * GET /api/settings：出参与入参分离 —— key 只回显「是否已配置」，绝不回显明文。
+ * music 是第三块：网易云 cookie 与 apiKey 受同一套禁令保护，所以也只给 cookieSet。
  */
 export interface SettingsView {
   llm: { baseUrl: string; model: string; protocol: 'openai' | 'anthropic'; apiKeySet: boolean };
@@ -31,8 +31,8 @@ export interface SettingsView {
 }
 
 /**
- * PUT /api/settings。封闭 key，写入时显式校验（ADR-0005）。
- * `music.cookie` 是整条网易云 cookie 头（ADR-0011）：写进去之后永不回显，写进去的值覆盖 env。
+ * PUT /api/settings。封闭 key，写入时显式校验。
+ * `music.cookie` 是整条网易云 cookie 头：写进去之后永不回显，写进去的值覆盖 env。
  */
 export interface SettingsInput {
   llm?: { baseUrl?: string; model?: string; protocol?: 'openai' | 'anthropic'; apiKey?: string };
@@ -42,7 +42,7 @@ export interface SettingsInput {
 
 /**
  * POST /api/models。拿一对「端点 + key」去问那个端点认识哪些模型 —— 设置页那个下拉框的数据源。
- * `apiKey` 是**明文入参**：只在这一趟请求里活着，不回显、不落库（ADR-0005 的禁令一个字没变）。
+ * `apiKey` 是**明文入参**：只在这一趟请求里活着，不回显、不落库（禁令一个字没变）。
  */
 export interface ModelsRequest {
   baseUrl: string;
@@ -75,7 +75,7 @@ export interface PlanRegenerateRequest {
 }
 /**
  * POST /api/playback。
- * `event: 'started'` **同时**是「我切到这首了」的宣告 —— 播放权威在客户端，server 只记账（ADR-0010）。
+ * `event: 'started'` **同时**是「我切到这首了」的宣告 —— 播放权威在客户端，server 只记账。
  * 点队列行、点曲目卡、点下一首走的都是这一条，所以没有单独的「跳播」端点。
  */
 export interface PlaybackReport {
@@ -84,7 +84,7 @@ export interface PlaybackReport {
   at: string;
 }
 
-/** 喜欢的动作是**封闭枚举**：加一个值就是改契约（ADR-0010）。 */
+/** 喜欢的动作是**封闭枚举**：加一个值就是改契约。 */
 export type FavoriteAction = 'like' | 'unlike';
 
 /** POST /api/feedback：喜欢 / 取消喜欢。幂等。与 /api/playback 同构，但语义不同 ——
@@ -99,11 +99,11 @@ export interface OkResponse {
 
 /**
  * 开机这一段（排表 → 写开场稿 → 合成语音）能出现在进度里的步骤。
- * **这是 UX 概念，不是工具名**（ADR-0032）：工具改名不该动契约，前端文案也只认这些 id。
+ * **这是 UX 概念，不是工具名**：工具改名不该动契约，前端文案也只认这些 id。
  */
 export type BootStep = 'daily-pool' | 'recent-plays' | 'deep-search' | 'draft-plan' | 'opening-line';
 
-/** 开机的进度载荷（ADR-0032）。steps 是**累积**的：UI 只按它渲染，漏一条也对得上。 */
+/** 开机的进度载荷。steps 是**累积**的：UI 只按它渲染，漏一条也对得上。 */
 export interface BootProgress {
   phase: 'running' | 'done';
   steps: BootStep[];
@@ -126,7 +126,7 @@ export type FavoritesResponse = TrackRef[];
 export type PlanTodayResponse = DayPlan | null;
 /**
  * GET /api/stats?since=<ISO>。省略 since = 当天 00:00（服务器本地时区）。
- * 形状直接等于 Store.playStats()：ADR-0013 不新增 DTO。
+ * 形状直接等于 Store.playStats()： 不新增 DTO。
  */
 export type StatsResponse = PlayStats;
 /**

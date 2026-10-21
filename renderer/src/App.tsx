@@ -16,7 +16,7 @@ export type Theme = 'dark' | 'light';
 
 const THEME_KEY = 'edgerunner.theme';
 
-/* 设计画布 = 参考源口播卡片的真值（用户定的基准尺寸）。整块等比缩放，布局一行不折。 */
+/* 设计画布 = 口播卡片的基准尺寸。整块等比缩放，布局一行不折。 */
 const STAGE = { width: 616, height: 876 };
 
 const readTheme = (): Theme => (localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark');
@@ -39,7 +39,7 @@ export function App() {
   const [credOpen, setCredOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   // 听过哪几条：决定入口写 PLAY 还是 REPLAY。会话内有效，刷新即归零（feed 本来也是会话内的）。
-  // 口播的播放状态不在这里 —— 它在 useRadio 的管道里（ADR-0029），界面开不开都不改变它。
+  // 口播的播放状态不在这里 —— 它在 useRadio 的管道里，界面开不开都不改变它。
   const [heard, setHeard] = useState<ReadonlySet<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   // 开机自动进口播界面只来一次；用户自己开口（或在别处点过歌）之后就不再抢屏幕。
@@ -162,10 +162,10 @@ export function App() {
           </footer>
         </div>
 
-        {/* 开机进度档在主界面前面；它自己决定什么时候淡出（ADR-0032）。 */}
+        {/* 开机进度档在主界面前面；它自己决定什么时候淡出。 */}
         <BootProgress progress={radio.progress} />
 
-        {/* 没有 key 不是「出了故障」，是「这还不是你的电台」——所以它是一条引导，不是一条警告（ADR-0033）。 */}
+        {/* 没有 key 不是「出了故障」，是「这还不是你的电台」——所以它是一条引导，不是一条警告。 */}
         {radio.error && radio.error.code === 'NO_LLM_KEY' && (
           <div className="banner is-guide" role="status">
             <span className="text">{ERROR_COPY.NO_LLM_KEY}</span>

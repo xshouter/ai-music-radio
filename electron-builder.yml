@@ -16,7 +16,7 @@ extraResources:
   - from: vendor/piper
     to: piper
   # 内置的音乐源（约 27MB）：它和 piper 一样是**要被 spawn 的进程**，所以也放 asar 外面。
-  # 目标只有一个：双击 exe 就能用，用户不必自己去起第二个进程（ADR-0028）。
+  # 目标只有一个：双击 exe 就能用，用户不必自己去起第二个进程。
   - from: vendor/netease
     to: netease
   # 内置服务的 node_modules 必须**单独再搬一次**：electron-builder 对 extraResources 会
@@ -26,13 +26,13 @@ extraResources:
   # 「双击 exe 就能用」在音乐源这一环会静默断掉。落到 netease/node_modules 正是 core 期望的形状。
   - from: vendor/netease/node_modules
     to: netease/node_modules
-  # 首次体验的两件东西（约 3MB）：随包的一首歌 + 它那段冻结的口播（ADR-0033）。
+  # 首次体验的两件东西（约 3MB）：随包的一首歌 + 它那段冻结的口播。
   - from: assets/demo
     to: demo
 win:
   # 应用图标：与界面同源的点阵播放三角（tools/make-icon.mjs 生成，含 7 个尺寸）。
   icon: assets/icon.ico
-  # 只要 portable：打开即用的单文件 exe 是主交付物，v1 不做安装包（ADR-0023）。
+  # 只要 portable：打开即用的单文件 exe 是主交付物，v1 不做安装包。
   target:
     - portable
 # 打开即用：一个 exe，双击就跑，不装任何东西 —— 这是主交付物。

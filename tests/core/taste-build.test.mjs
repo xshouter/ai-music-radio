@@ -32,7 +32,7 @@ test('歌单 → taste.md：模型写什么就落什么，目录里别的 md 一
 
   assert.deepEqual(verdict, { written: true, reason: '', tracks: 2 });
   assert.equal(readFileSync(join(dir, 'taste.md'), 'utf8'), 'Warm synth, late nights, nothing above 100 bpm.\n');
-  assert.equal(readFileSync(join(dir, 'mine.md'), 'utf8'), 'Nothing fast after 23:00.\r\n', '人写的语料一个字节都不许动（ADR-0025）');
+  assert.equal(readFileSync(join(dir, 'mine.md'), 'utf8'), 'Nothing fast after 23:00.\r\n', '人写的语料一个字节都不许动');
   assert.equal(calls[0].model, 'test-model');
   assert.match(calls[0].messages[1].content, /The Long Way — Midnight Drive/, '歌单要原样进 prompt');
 });

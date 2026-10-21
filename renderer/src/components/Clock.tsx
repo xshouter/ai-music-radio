@@ -18,7 +18,7 @@ export function Clock({ onAir, degraded }: { onAir: boolean; degraded: boolean }
     <div className="clock-panel">
       <div className="clock">
         {pad(at.getHours())}
-        {/* 分隔符不用 Doto 的 ':' —— 点阵字体的冒号是一对方块，参考源是两颗圆点。 */}
+        {/* 分隔符不用 Doto 的 ':' —— 点阵字体的冒号是一对方块，这里要两颗圆点。 */}
         <span className="clock-sep" aria-hidden="true">
           <i />
           <i />

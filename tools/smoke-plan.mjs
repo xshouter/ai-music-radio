@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 排表那一轮的真 key 冒烟（ADR-0030）：真模型 + 一份**假的**日推候选池，
+// 排表那一轮的真 key 冒烟：真模型 + 一份**假的**日推候选池，
 // 验证它会先调 daily_recommend 拿候选，再用真的 id 交一份 emit_plan。
 // 走的是 buildDayPlan + curate 那条真实接线 —— 与 core/radio.ts 的接法同一个。
 // CI 里不跑（要 key、要花钱）；这是给人手工验收用的。

@@ -33,11 +33,12 @@ venv/
 data/
 cache/
 
-# Local reference material (frames extracted from the original demo video).
-# Not committed: it is someone else's footage. See docs/references.md.
-docs/reference/
+docs/
+AGENTS.md
+GLOSSARY.md
+.github/pull_request_template.md
 
-# Agent scratch space. Durable records live in docs/requirements, docs/adr, docs/journal.
+# 开发过程文档、素材与草稿：只留本地，不进仓库。
 .scratch/
 # Electron build output (produced by tools/build-electron.mjs) and packaged installers.
 electron/
@@ -50,5 +51,4 @@ vendor/piper/
 vendor/netease/
 
 # archify 的工作目录：候选 JSON、验收回执、抓图。
-# 图本身提交在 docs/architecture/（源 + 静态图），这里只是本地工作区。
 .archify/

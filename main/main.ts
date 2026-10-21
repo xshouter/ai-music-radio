@@ -1,5 +1,5 @@
 // Electron 入口：起内核 → 开一个窗口，把窗口指到内核自己的端口。
-// 窗口里加载的是 http://127.0.0.1:<port>/ —— 与 API 同源（ADR-0020），所以前端不需要任何 CORS 知识。
+// 窗口里加载的是 http://127.0.0.1:<port>/ —— 与 API 同源，所以前端不需要任何 CORS 知识。
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'node:path';
 import { startRadio, type StartedRadio } from './bootstrap.ts';
@@ -20,7 +20,7 @@ const MIN_ZOOM = 0.5;
 let started: StartedRadio | null = null;
 // 内置的音乐源服务。null = 这一轮没代管（给了环境变量用外部的，或者落点里没有它）。
 let netease: NeteaseService | null = null;
-// 现场日志（ADR-0035）：双击之后出了什么事，事后要能读出来。默认空实现 —— boot() 里才换成真文件。
+// 现场日志：双击之后出了什么事，事后要能读出来。默认空实现 —— boot() 里才换成真文件。
 let log: Log = { line: () => {} };
 // 内核的事件顺手记一份：界面上只留最后一条，历史得能回头看。
 const logEvent = (event: StreamEvent): void => {
@@ -65,7 +65,7 @@ async function boot(): Promise<StartedRadio> {
     log = createFileLog(join(userData, 'logs', 'edgerunner.log'));
     log.line('boot', '=== EdgeRunner ' + app.getVersion() + ' · ' + new Date().toISOString() + ' ===');
     log.line('boot', 'packaged=' + String(app.isPackaged) + ' userData=' + userData);
-    // 给了地址就用外部的（开发与复测靠它）；没给就把内置那一份拉起来（ADR-0028）。
+    // 给了地址就用外部的（开发与复测靠它）；没给就把内置那一份拉起来。
     // 拉不起来不是错误：降级链会让电台退到本地源，并把原因挂到界面上。
     const override = process.env.EDGERUNNER_NETEASE_BASE_URL;
     if (override === undefined) {
@@ -135,7 +135,7 @@ async function openWindow(): Promise<void> {
   // 等比缩放：窗口怎么拉都是 616:876（需求 3.6 第 1 条）。
   win.setAspectRatio(STAGE.width / STAGE.height);
   await win.loadURL('http://127.0.0.1:' + radio.port + '/');
-  // 窗口先出生，开机在后台跑：那 14–28s 的进度经 WS 推进界面（ADR-0032）。
+  // 窗口先出生，开机在后台跑：那 14–28s 的进度经 WS 推进界面。
   // 不 await：接口要先能响。开机自己的失败由 core 收成一条横幅，不从这里抛。
   radio.boot().catch((cause: unknown) => {
     console.error('[radio] 开机失败：' + (cause instanceof Error ? cause.message : String(cause)));

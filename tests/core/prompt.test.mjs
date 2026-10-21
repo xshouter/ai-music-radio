@@ -1,4 +1,4 @@
-// 排表提示词的自检：三格是「氛围提示」不是过滤器，第一段一个字都不提搜索（ADR-0031）。
+// 排表提示词的自检：三格是「氛围提示」不是过滤器，第一段一个字都不提搜索。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planPrompt, systemPrompt } from '../../core/prompt.ts';

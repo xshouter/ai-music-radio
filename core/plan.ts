@@ -16,11 +16,11 @@ const BLOCKS: readonly PlanBlockSpec[] = [
   { start: '18:00', end: '02:00', mood: 'late-night', genres: ['ambient', 'synthwave'] },
 ];
 
-/** 每格几首 —— 提示词与搜索兜底共用这一个数（ADR-0031）。 */
+/** 每格几首 —— 提示词与搜索兜底共用这一个数。 */
 export const PLAN_PER_BLOCK = 3;
 
 /**
- * 排表的人（ADR-0030）：给它三个槽位，它回三格的歌；回 null = 这一轮排不出来。
+ * 排表的人：给它三个槽位，它回三格的歌；回 null = 这一轮排不出来。
  * 它是**可选**的 —— 没有它（或者它失败），`buildDayPlan` 就是原来那个「逐格搜索」。
  */
 export type PlanCurator = (blocks: readonly PlanBlockSpec[]) => Promise<TrackRef[][] | null>;

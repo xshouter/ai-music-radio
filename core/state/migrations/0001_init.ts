@@ -31,7 +31,7 @@ CREATE TABLE plays (
 CREATE INDEX idx_plays_ts ON plays (ts DESC);
 CREATE INDEX idx_plays_open ON plays (song_id, ended_at);
 
--- 喜欢列表存 TrackRef 而不是 song_id：v1 没有 songs 表（ADR-0010）。
+-- 喜欢列表存 TrackRef 而不是 song_id：v1 没有 songs 表。
 CREATE TABLE favorites (
   song_id  TEXT PRIMARY KEY,
   title    TEXT NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE favorites (
   added_at TEXT NOT NULL
 );
 
--- 设置项。key 是封闭枚举（ADR-0005）；value 一律是字符串，parse 在读取侧。
+-- 设置项。key 是封闭枚举；value 一律是字符串，parse 在读取侧。
 CREATE TABLE prefs (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -52,7 +52,7 @@ CREATE TABLE plans (
   active     INTEGER NOT NULL DEFAULT 0
 );
 
--- ADR-0004：系统学到的结构化更新，不回写人写的语料。
+-- ：系统学到的结构化更新，不回写人写的语料。
 CREATE TABLE taste_updates (
   id       INTEGER PRIMARY KEY AUTOINCREMENT,
   ts       TEXT NOT NULL,

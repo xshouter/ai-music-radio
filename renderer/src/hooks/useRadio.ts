@@ -1,5 +1,5 @@
 // 电台的全部状态：取数、订阅 WS、播音频、上报播放事实。
-// 组件只读这个 hook —— 数据从哪来、怎么降级，都在这一处（铁律 5）。
+// 组件只读这个 hook —— 数据从哪来、怎么降级，都在这一处。
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Howl } from 'howler';
 import type { DjMessage, SpokenLine, TrackRef } from '../../../shared/domain.ts';
@@ -27,7 +27,7 @@ export interface Radio {
   feed: DjMessage[];
   live: boolean;
   error: RadioError | null;
-  /* 开机的进度（ADR-0032）。null = 这一次开机没在排表（当天已有日表）。 */
+  /* 开机的进度。null = 这一次开机没在排表（当天已有日表）。 */
   progress: BootProgress | null;
   playing: boolean;
   volume: number;
@@ -44,7 +44,7 @@ export interface Radio {
   setSource: (source: QueueSource) => void;
   favorite: (track: TrackRef, on: boolean) => void;
   dismissError: () => void;
-  /* 口播管道（ADR-0029）：播放权在这一处，不在全屏态组件里 —— 切歌能顶掉、暂停能跟着停。 */
+  /* 口播管道：播放权在这一处，不在全屏态组件里 —— 切歌能顶掉、暂停能跟着停。 */
   oralOpen: boolean;
   oralLines: SpokenLine[];
   oralPlaying: boolean;
@@ -116,7 +116,7 @@ export function useRadio(): Radio {
   // 点一次口播入口就 +1：点 REPLAY 是同一个 src，得让那段 effect 知道「再来一遍」。
   const [oralTick, setOralTick] = useState(0);
 
-  // 两条音频管道都是 howler 的 Sound（开源引擎，ADR-0037）：音乐一条、口播一条。
+  // 两条音频管道都是 howler 的 Sound：音乐一条、口播一条。
   const musicRef = useRef<Howl | null>(null);
   const oralRef = useRef<Howl | null>(null);
   // 音量要递给「新建的那一条」用 —— 它不在那段 effect 的依赖里（换音量不该重建整首歌）。
@@ -247,7 +247,7 @@ export function useRadio(): Radio {
     });
     sound.on('pause', () => setPlaying(false));
     sound.on('load', () => setMediaMs(Math.round(sound.duration() * 1000)));
-    // 一首歌**自然放完**：客户端报事实，由后端推进队列（ADR-0010）。这一下才是"自动切下一首"。
+    // 一首歌**自然放完**：客户端报事实，由后端推进队列。这一下才是"自动切下一首"。
     sound.on('end', () => {
       const id = currentIdRef.current;
       if (id !== null) void reportPlayback({ songId: id, event: 'ended', at: new Date().toISOString() }).catch(() => undefined);
@@ -334,7 +334,7 @@ export function useRadio(): Radio {
     setPositionMs(Math.round(seconds * 1000));
   }, []);
 
-  // 播放权威在客户端（ADR-0010）：切歌就是「我切到这首了」，server 只记账。
+  // 播放权威在客户端：切歌就是「我切到这首了」，server 只记账。
   const play = useCallback((songId: string) => {
     // 用户自己点的这一首：把「放不出来」的记忆清掉，给他一次公平的重试。
     deadRef.current.clear();

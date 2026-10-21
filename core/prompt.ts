@@ -100,7 +100,7 @@ export function userPrompt(ctx: PromptContext): string {
 }
 
 /**
- * 排日表那一轮的人设（ADR-0030）。**不是**把 PERSONA 换几个字 —— 那一段讲的是「开口说话」的规矩
+ * 排日表那一轮的人设。**不是**把 PERSONA 换几个字 —— 那一段讲的是「开口说话」的规矩
  * （每首歌一句、语气跟着曲风），排表时一句都不说；套上它只会让模型开始写口播。
  */
 const PLAN_PERSONA = [
@@ -117,7 +117,7 @@ const PLAN_PERSONA = [
 ].join('\n');
 
 /**
- * 每格的「氛围提示」——**不是过滤器**（ADR-0031）。曲风仍然只服务搜索兜底（`core/plan.ts` 的 `BLOCKS`），
+ * 每格的「氛围提示」——**不是过滤器**。曲风仍然只服务搜索兜底（`core/plan.ts` 的 `BLOCKS`），
  * 交给模型的是一句人话的调性。未知 mood 退回那一格自己的曲风，不崩。
  */
 const MOOD_FLAVOUR: Record<string, string> = {
@@ -128,12 +128,12 @@ const MOOD_FLAVOUR: Record<string, string> = {
 
 const moodFlavour = (block: PlanBlockSpec): string => MOOD_FLAVOUR[block.mood] ?? block.genres.join(', ');
 
-/** 排日表的模板变量：三格写成编号清单，`emit_plan` 的 blocks 就按这个顺序数（ADR-0030）。 */
+/** 排日表的模板变量：三格写成编号清单，`emit_plan` 的 blocks 就按这个顺序数。 */
 const blockSlots = (blocks: readonly PlanBlockSpec[]): string[] =>
   blocks.map((block, index) => '  ' + (index + 1) + '. ' + block.start + '-' + block.end + ' ' + block.mood + ': ' + moodFlavour(block));
 
 /**
- * 排表那一轮的提示词（ADR-0030 / 0031）。与 `systemPrompt` 共用「我现在知道什么」，但任务段、
+ * 排表那一轮的提示词。与 `systemPrompt` 共用「我现在知道什么」，但任务段、
  * 终局工具、user 那句话都不一样 —— 所以它是另一个函数，不是 systemPrompt 的一个开关。
  *
  * `search` 是两段式的开关：第一段（false）只给池子，并明说「曲风是氛围提示，不是过滤器」；

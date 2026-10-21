@@ -9,7 +9,7 @@ const proxy = { target: MOCK, changeOrigin: true, ws: true };
 
 export default defineConfig({
   plugins: [react()],
-  // 阶段 5 由 Electron 用 file:// 加载 dist，绝对路径会 404，所以必须是相对路径。
+  // 打包后由 Electron 用 file:// 加载 dist，绝对路径会 404，所以必须是相对路径。
   base: './',
   build: { outDir: 'dist', emptyOutDir: true },
   server: {
