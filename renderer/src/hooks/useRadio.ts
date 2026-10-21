@@ -128,7 +128,7 @@ export function useRadio(): Radio {
   const currentIdRef = useRef<string | null>(null);
   const skipRef = useRef<() => void>(() => {});
   // 「放不出来就换下一首」要有出口：这两个 ref 记「哪些试过、列表有多长」，
-  // 否则一次「这一批全都解析不出来」会变成一台不停换歌的机器（开发日志第 51 条）。
+  // 否则一次「这一批全都解析不出来」会变成一台不停换歌的机器。
   const listRef = useRef<TrackRef[]>([]);
   const deadRef = useRef(new Set<string>());
 
