@@ -72,11 +72,22 @@ export async function startNeteaseService(options: NeteaseServiceOptions): Promi
   const child = (options.spawnService ?? defaultSpawn)(packageDir, port);
 
   let dead = false;
-  child.once('exit', () => { dead = true; });
+  // 跑着跑着死了也要说话：否则「刚才还有歌，现在没了」在现场里查不出来。
+  let startedUp = false;
+  let stopping = false;
   // stderr 要**接住**：只 pipe 不读，子进程迟早被写满的管道卡死。
   // 但平时不往外倒 —— 它正常启动时会打印一行 server running，那不是问题，是噪音。
   let tail = '';
   child.stderr?.on('data', (chunk: Buffer) => { tail = (tail + chunk.toString()).slice(-2000); });
+  // 子进程自己的最后几行是它唯一的证词：为什么没起来、为什么中途死掉，都在这。
+  const tailLines = (): string => {
+    const lines = tail.trim().split('\n').slice(-3).join(' | ');
+    return lines === '' ? '（它没留下话）' : lines;
+  };
+  child.once('exit', (code: number | null) => {
+    dead = true;
+    if (startedUp && !stopping) warn('netease: 兼容服务退出了（code ' + String(code) + '）—— ' + tailLines());
+  });
 
   // 就绪探测和「它已经死了」赛跑：子进程秒退时不该干等到超时。
   const ready = await Promise.race([
@@ -84,15 +95,17 @@ export async function startNeteaseService(options: NeteaseServiceOptions): Promi
     new Promise<boolean>((resolve) => child.once('exit', () => resolve(false))),
   ]);
   if (!ready || dead) {
+    stopping = true;
     child.kill();
     // 说不出来为什么，就等于没查 —— 把子进程自己的最后几行带上。
-    const why = tail.trim().split('\n').slice(-3).join(' | ');
-    warn('netease: 兼容服务没起来' + (why === '' ? '（它没留下话）' : ' —— ' + why));
+    warn('netease: 兼容服务没起来 —— ' + tailLines());
     return null;
   }
+  startedUp = true;
   return {
     baseUrl: 'http' + '://127.0.0.1:' + port,
     stop: () => {
+      stopping = true;
       if (!dead) child.kill();
     },
   };

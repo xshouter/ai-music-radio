@@ -9,6 +9,7 @@ import { createRadioServer } from '../core/server.ts';
 import { SqliteStore, type SqliteDatabase } from '../core/state/sqlite-store.ts';
 import { createTasteRepo } from '../core/taste.ts';
 import { DEMO_SONG_FILE, DEMO_WAV_FILE } from '../core/demo.ts';
+import type { HttpFetch } from '../core/http.ts';
 import type { Clock, EnvProvider } from '../shared/ports.ts';
 
 /** 网易云兼容服务的地址。v1 它由使用者自己准备（ADR-0016）—— 没有它，音乐源只剩本地目录。 */
@@ -27,6 +28,8 @@ export interface BootstrapOptions {
   demoDir?: string;
   /** 覆盖网易云兼容服务地址；默认 localhost:3000。 */
   neteaseBaseUrl?: string;
+  /** 出网那一份实现：main/log.ts 在外面包一层日志再递进来。不给 = core 自己的原生 fetch。 */
+  fetch?: HttpFetch;
   warn?: (message: string) => void;
 }
 
@@ -63,6 +66,7 @@ export async function startRadio(options: BootstrapOptions): Promise<StartedRadi
     taste,
     env,
     neteaseBaseUrl: options.neteaseBaseUrl ?? DEFAULT_NETEASE_BASE_URL,
+    ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     localDir: options.localDir,
     cacheDir: join(options.dataDir, 'cache'),
     tasteDir,
