@@ -132,7 +132,7 @@ v0.1 曾定义 `OutputTarget` 端口（`local` / `lan` / `upnp`），理由是"�
 核对真实需求后：**v1 只做 PC 单端**，既没有第二个客户端，也没有第二个真实播放目标——
 一个实现撑不起一个端口，这恰好踩在第 9 节反例清单的第一条上。
 
-**端口已删除。** PC 端由渲染进程直接播放 `<audio src="/api/audio/:songId">`。
+**端口已删除。** PC 端由渲染进程直接播放 `/api/audio/:songId`（走 HTML5 Audio 那条路：远端 CDN 不给 CORS 头，所以引擎用 Howler 的 `html5: true`，ADR-0037）。
 理由、代价与重新打开的条件见 [ADR-0007](adr/0007-pc-only-single-output.md)。
 
 ### 3.5 Store —— 前端永远拿不到它
@@ -256,6 +256,7 @@ export interface SettingsInput {
 | PUT | `/api/settings` | `Partial<SettingsInput>` | `SettingsView` · `music.cookie` 走这条写入；**写入的值覆盖 env** |
 | POST | `/api/playback` | `{ songId, event: 'started' \| 'ended' \| 'skipped', at }` | `{ ok: true }` · `started` 同时是「切到这首了」（ADR-0010） |
 | POST | `/api/feedback` | `{ songId, action: 'like' \| 'unlike' }` | `{ ok: true }` · 喜欢 / 取消（ADR-0010） |
+| POST | `/api/models` | `{ baseUrl: string, apiKey?: string }` | `{ models: string[] }` · 那个端点认识的模型（详见 [ADR-0036](adr/0036-settings-must-not-lie.md)） |
 | WS | `/stream` | — | 见下 |
 
 > **歌词端点已删除**：`GET /api/lyric/:songId` 与 `Lyric` / `LyricResponse` 已经不在契约里（[ADR-0009](adr/0009-drop-lyric.md)）。

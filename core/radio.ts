@@ -4,7 +4,7 @@ import type { DayPlan, DjMessage, DjState, PlayEvent, QualityLevel, Show, Spoken
 import type {
   BootStep, ErrorCode, FavoriteAction, NowPlaying, PlaybackReport, SettingsInput, SettingsView, StreamEvent, TasteDoc,
 } from '../shared/api-types.ts';
-import { defaultHttpFetch, HttpError, type HttpFetch } from './http.ts';
+import { defaultHttpFetch, getJson, HttpError, type HttpFetch } from './http.ts';
 import { ToolLoopBrain, type ToolStep } from './brain/index.ts';
 import { createMusicSourceChain } from './music/index.ts';
 import { createNeteaseSource } from './music/netease.ts';
@@ -103,6 +103,11 @@ export interface Radio {
   planToday(): Promise<DayPlan | null>;
   regeneratePlan(reason?: string): Promise<DayPlan>;
   settings(): Promise<SettingsView>;
+  /**
+   * 那个端点认识哪些模型（OpenAI 兼容的 `GET {baseUrl}/models`）。设置界面的下拉框靠它 ——
+   * 手打模型名是那一页最容易拼错的一格。`apiKey` 缺省用库里存的那把（明文只用一次，不落任何地方）。
+   */
+  models(input: { baseUrl: string; apiKey?: string }): Promise<string[]>;
   saveSettings(input: SettingsInput): Promise<SettingsView>;
   chat(text: string): Promise<Show>;
   playback(report: PlaybackReport): Promise<void>;
@@ -133,7 +138,9 @@ interface Deps {
  * fish 走 HTTP：`baseUrl` 指托管端点，或指自己跑的 fish-speech（同一个 `POST /v1/tts`）。
  */
 function ttsProviderFor(prefs: PrefMap, ttsDir: string, http: HttpFetch): TtsProvider {
-  if (prefs['tts.provider'] === 'fish') {
+  // fish 走 HTTP，**要一把 key 才算数**：选了 fish 却没填 key 就等于没选。
+  // 这时落到 piper（离线、随包），否则用户看到的是「有字没声」——而他永远等不到远端的那一声。
+  if (prefs['tts.provider'] === 'fish' && prefs['tts.apiKey'] !== '') {
     return createFishTts({ apiKey: prefs['tts.apiKey'], baseUrl: prefs['tts.baseUrl'], fetch: http });
   }
   return createPiperTts({ dir: ttsDir });
@@ -374,6 +381,22 @@ export function createRadio(options: RadioOptions): Radio {
       const line = show.say[i];
       if (ref !== undefined && line !== undefined && line !== '') heldSay.set(ref.id, line);
     }
+    // 挂起来的同时**先把音频合出来**：轮到那首歌时是一次缓存命中，切歌不用等合成。
+    // 尽力而为 —— 这里失败不喊也不落横幅；真说的时候 speak() 还会再试一次，那一次才算失败。
+    void (async () => {
+      const d = await providers();
+      for (const line of heldSay.values()) {
+        await d.tts.speak(0, line, d.prefs['tts.voice']).catch(() => {});
+      }
+    })().catch(() => {});
+  };
+
+  /** 轮到这首歌了：把一直压着的那一句推出去 —— 文本落进 feed，音频跟着响（ADR-0026）。 */
+  const speakHeld = async (id: string): Promise<void> => {
+    const line = heldSay.get(id);
+    if (line === undefined) return;
+    heldSay.delete(id);
+    await speak(await providers(), [line], 'intro').catch(() => {});
   };
 
   const applyShow = (show: Show): void => {
@@ -468,13 +491,10 @@ export function createRadio(options: RadioOptions): Radio {
       return;
     }
     stepLocally();
-    // 切到下一首：把早就写好、一直压着的那一句推出去 —— 文本落进 feed，音频跟着响（ADR-0026）。
+    // 切到下一首：把早就写好、一直压着的那一句推出去（ADR-0026）。
     const arrived = current;
     if (arrived === null) return;
-    const intro = heldSay.get(arrived.id);
-    if (intro === undefined) return;
-    heldSay.delete(arrived.id);
-    void speak(await providers(), [intro], 'intro').catch(() => {});
+    await speakHeld(arrived.id);
   };
 
   /**
@@ -509,7 +529,9 @@ export function createRadio(options: RadioOptions): Radio {
 
   /**
    * 读听众自己的歌单 → 让模型写一份口味画像 → 落到 `taste/<taste.md>`（ADR-0025）。
-   * 只在**第一次填 cookie** 之后跑一次；后台跑，不挡保存设置。
+   *
+   * 「已经有一份就不动」这件事在 `buildTasteFromLibrary` 里（它先看一眼文件名），所以这里
+   * 可以被反复调用：开机一次、每次存设置一次 —— 缺哪一次就在哪一次补上。后台跑，不挡保存设置。
    */
   const learnTaste = async (): Promise<void> => {
     const d = await providers();
@@ -517,9 +539,9 @@ export function createRadio(options: RadioOptions): Radio {
     const verdict = await buildTasteFromLibrary({
       music: d.music, llm: d.llm, model: d.prefs['llm.model'], dir: options.tasteDir,
     });
-    warn(verdict.written
-      ? 'radio: 口味画像已写入 taste.md（读了 ' + verdict.tracks + ' 首）'
-      : 'radio: 口味画像没写 —— ' + verdict.reason);
+    // 「已经有一份」是常态，不是一条要说的消息；只有真写了、或真出了别的事才留话。
+    if (verdict.written) warn('radio: 口味画像已写入 taste.md（读了 ' + verdict.tracks + ' 首）');
+    else if (verdict.reason !== 'taste.md already exists') warn('radio: 口味画像没写 —— ' + verdict.reason);
   };
   return {
     subscribe(send) {
@@ -546,6 +568,9 @@ export function createRadio(options: RadioOptions): Radio {
       bootSteps = [];
       const mark = sourceFailures;
       try {
+        // 还没有口味画像就先补一份（ADR-0025）—— 开机也走这条路：旧触发（cookie 第一次填上）
+        // 对早就填过 cookie 的人永远不成立，于是 taste.md 一直不存在，日表也就没有口味可参考。
+        await learnTaste().catch(() => {});
         await ensureTodayPlan();
         const d = await providers();
         // 没 key = 首次体验（ADR-0033）：随包的一首歌 + 一段冻结的口播，先让人听见一台在转的电台。
@@ -602,9 +627,28 @@ export function createRadio(options: RadioOptions): Radio {
       };
     },
 
+    async models(input) {
+      const base = input.baseUrl.replace(/\/+$/, '');
+      if (base === '') throw new RadioFailure('INTERNAL', 'models needs a baseUrl', false);
+      const stored = (await readPrefs())['llm.apiKey'];
+      const key = input.apiKey === undefined || input.apiKey === '' ? stored : input.apiKey;
+      const headers: Record<string, string> = key === '' ? {} : { authorization: 'Bearer ' + key };
+      const payload = await getJson<{ data?: { id?: unknown }[] }>(http, base + '/models', headers)
+        .catch((cause: unknown) => {
+          if (cause instanceof HttpError) {
+            const code = llmFailureCode(cause.status);
+            throw new RadioFailure(code, describeHttp(cause), code !== 'NO_LLM_KEY');
+          }
+          throw new RadioFailure('INTERNAL', cause instanceof Error ? cause.message : String(cause), true);
+        });
+      const ids = (payload.data ?? [])
+        .map((item) => (item === null || typeof item !== 'object' ? undefined : item.id))
+        .filter((id): id is string => typeof id === 'string' && id !== '');
+      return [...new Set(ids)].sort();
+    },
+
     async saveSettings(input) {
       // 封闭 key，显式校验；**空字符串 = 不改**，所以 key / cookie 不可能被一次空提交清掉（ADR-0005 / ADR-0011）。
-      const hadCookie = (await readPrefs())['music.cookie'] !== '';
       if (input.llm !== undefined) {
         if (typeof input.llm.baseUrl === 'string' && input.llm.baseUrl !== '') await store.setPref('llm.baseUrl', input.llm.baseUrl);
         if (typeof input.llm.model === 'string' && input.llm.model !== '') await store.setPref('llm.model', input.llm.model);
@@ -629,11 +673,9 @@ export function createRadio(options: RadioOptions): Radio {
         lastError = null;
         void this.boot().catch(() => {});
       }
-      // cookie 从「没有」变成「有」＝第一次填：后台去读他的歌单（ADR-0025）。
-      // 不 await：分析要等音乐源和模型，慢；设置存完就该立刻生效。
-      if (!hadCookie && typeof input.music?.cookie === 'string' && input.music.cookie !== '') {
-        void learnTaste().catch(() => {});
-      }
+      // 凑齐「key + cookie」就补一份口味画像（ADR-0025）：不 await —— 分析要等音乐源和模型，慢；
+      // 设置存完就该立刻生效。已有 taste.md 时它读一眼文件名就回来了，重复调用是便宜的。
+      void learnTaste().catch(() => {});
       const answer = await this.settings();
       return answer;
     },
@@ -677,6 +719,9 @@ export function createRadio(options: RadioOptions): Radio {
           current = trackFromRef(ref);
           startedAt = report.at;
           emit({ type: 'now', payload: nowPlaying() });
+          // 点队列 / 点上一首跳过来，也该听见这一首的那一条（一首歌一条口播）：
+          // 原来只有「自然放完」才切口播，手动切歌是哑的。
+          void speakHeld(report.songId);
         }
         return;
       }

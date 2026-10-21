@@ -117,6 +117,7 @@ export function App() {
             onStop={radio.stop}
             onSkip={radio.skip}
             onBack={radio.back}
+            onSeek={radio.seek}
             onVolume={radio.setVolume}
             onToggleQueue={() => setQueueShown((prev) => !prev)}
             onLike={onLike}

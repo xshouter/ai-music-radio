@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { DjState, TrackRef } from '../../../shared/domain.ts';
 import { Icon } from './Icon.tsx';
 
@@ -24,10 +26,35 @@ export interface TransportProps {
   onVolume: (value: number) => void;
   onToggleQueue: () => void;
   onLike: () => void;
+  onSeek: (ms: number) => void;
 }
 
 /** ③④ 运输条 + 进度。左侧频谱点进口播界面（3.8 接上）。 */
 export function Transport(props: TransportProps) {
+  // 点 / 拖进度条 = 跳到那一刻。3px 的条肉眼看着细，命中区由 CSS 的 ::before 上下撑开。
+  const trackRef = useRef<HTMLButtonElement | null>(null);
+  const scrubbing = useRef(false);
+  const seekAt = (clientX: number) => {
+    const el = trackRef.current;
+    if (el === null || props.durationMs <= 0) return;
+    const rect = el.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    props.onSeek(ratio * props.durationMs);
+  };
+  const onDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    scrubbing.current = true;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    seekAt(event.clientX);
+  };
+  const onMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (scrubbing.current) seekAt(event.clientX);
+  };
+  const onUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    scrubbing.current = false;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
   const percent = props.durationMs > 0 ? Math.min(100, (props.positionMs / props.durationMs) * 100) : 0;
   const live = props.djState === 'speaking' || props.djState === 'thinking';
   const kicker = props.djState === 'speaking' ? 'SPEAKING...' : props.djState === 'thinking' ? 'THINKING...' : 'PLAYING';
@@ -92,9 +119,19 @@ export function Transport(props: TransportProps) {
 
       <div className="progress">
         <span className="time">{clock(props.positionMs)}</span>
-        <div className="track">
-          <div className="fill" style={{ width: `${percent}%` }} />
-        </div>
+        <button
+          className="track"
+          type="button"
+          ref={trackRef}
+          onPointerDown={onDown}
+          onPointerMove={onMove}
+          onPointerUp={onUp}
+          onPointerCancel={onUp}
+          disabled={props.durationMs <= 0}
+          aria-label="Seek"
+        >
+          <span className="fill" style={{ width: `${percent}%` }} />
+        </button>
         <span className="time right">{props.durationMs > 0 ? clock(props.durationMs) : '--:--'}</span>
       </div>
     </section>

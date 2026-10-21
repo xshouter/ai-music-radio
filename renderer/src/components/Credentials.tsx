@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { SettingsInput, SettingsView } from '../../../shared/api-types.ts';
-import { ApiFailure, getSettings, putSettings } from '../api/client.ts';
+import { ApiFailure, getModels, getSettings, putSettings } from '../api/client.ts';
 import { Icon } from './Icon.tsx';
 
 type Protocol = 'openai' | 'anthropic';
@@ -11,7 +11,6 @@ type Draft = {
   protocol: Protocol;
   llmKey: string;
   ttsProvider: string;
-  ttsVoice: string;
   ttsBaseUrl: string;
   ttsKey: string;
   musicProvider: string;
@@ -24,7 +23,6 @@ const EMPTY: Draft = {
   protocol: 'openai',
   llmKey: '',
   ttsProvider: '',
-  ttsVoice: '',
   ttsBaseUrl: '',
   ttsKey: '',
   musicProvider: '',
@@ -41,9 +39,9 @@ const toInput = (draft: Draft): SettingsInput => ({
     protocol: draft.protocol,
     apiKey: draft.llmKey.trim() || undefined,
   },
+  // voice 不在这里：界面上没有那一格了（音色就是随包的那一把）。换音色是 tools/fetch-voice.mjs 的事。
   tts: {
     provider: draft.ttsProvider.trim() || undefined,
-    voice: draft.ttsVoice.trim() || undefined,
     baseUrl: draft.ttsBaseUrl.trim() || undefined,
     apiKey: draft.ttsKey.trim() || undefined,
   },
@@ -61,6 +59,8 @@ export function Credentials({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<SettingsView | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [note, setNote] = useState<{ kind: 'plain' | 'ok' | 'err'; text: string }>({ kind: 'plain', text: 'LOADING' });
+  // 那一页模型名：填了端点、手里也有钥匙就去问一次。空列表不是错误 —— 手打照样能用。
+  const [models, setModels] = useState<string[]>([]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -83,7 +83,6 @@ export function Credentials({ onClose }: { onClose: () => void }) {
           model: next.llm.model,
           protocol: next.llm.protocol,
           ttsProvider: next.tts.provider,
-          ttsVoice: next.tts.voice,
           ttsBaseUrl: next.tts.baseUrl,
           musicProvider: next.music.provider,
         }));
@@ -96,6 +95,28 @@ export function Credentials({ onClose }: { onClose: () => void }) {
       alive = false;
     };
   }, []);
+
+  // 端点 + 钥匙齐了就自动问一次模型列表（停手 600ms 才发，边打字边发是白花请求）。
+  // 钥匙优先用**刚打的**那把 —— 用户填完 key 还没来得及保存就该看见下拉框。
+  useEffect(() => {
+    const baseUrl = draft.baseUrl.trim();
+    const apiKey = draft.llmKey.trim();
+    if (baseUrl === '' || (apiKey === '' && !(view?.llm.apiKeySet ?? false))) return;
+    let alive = true;
+    const timer = setTimeout(() => {
+      getModels({ baseUrl, ...(apiKey === '' ? {} : { apiKey }) })
+        .then((answer) => {
+          if (alive) setModels(answer.models);
+        })
+        .catch(() => {
+          if (alive) setModels([]);
+        });
+    }, 600);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [draft.baseUrl, draft.llmKey, view?.llm.apiKeySet]);
 
   const setField = (key: keyof Draft) => (value: string) => setDraft((prev) => ({ ...prev, [key]: value }));
 
@@ -151,7 +172,19 @@ export function Credentials({ onClose }: { onClose: () => void }) {
             <div className="cred-pair">
               <label className="cred-field">
                 <span className="l">MODEL</span>
-                <input value={draft.model} onChange={(event) => setField('model')(event.target.value)} placeholder="qwen-plus" spellCheck={false} />
+                {/* datalist：既是下拉框（列端点认识的模型），也能手打（列表拉不到时不至于卡住）。 */}
+                <input
+                  list="llm-models"
+                  value={draft.model}
+                  onChange={(event) => setField('model')(event.target.value)}
+                  placeholder="qwen-plus"
+                  spellCheck={false}
+                />
+                <datalist id="llm-models">
+                  {models.map((id) => (
+                    <option key={id} value={id} />
+                  ))}
+                </datalist>
               </label>
               <div className="cred-field">
                 <span className="l">PROTOCOL</span>
@@ -179,38 +212,42 @@ export function Credentials({ onClose }: { onClose: () => void }) {
 
         <div className="cred-block">
           <div className="h">
-            THE VOICE · TTS {chip(view?.tts.apiKeySet ?? false)}
+            THE VOICE {chip(view?.tts.apiKeySet ?? false)}
           </div>
           <div className="cred-row">
-            <div className="cred-pair">
-              <label className="cred-field">
-                <span className="l">PROVIDER</span>
-                <input value={draft.ttsProvider} onChange={(event) => setField('ttsProvider')(event.target.value)} placeholder="piper" spellCheck={false} />
-              </label>
-              <label className="cred-field">
-                <span className="l">VOICE</span>
-                <input value={draft.ttsVoice} onChange={(event) => setField('ttsVoice')(event.target.value)} placeholder="en_GB-alan-medium" spellCheck={false} />
-              </label>
-            </div>
             <label className="cred-field">
-              <span className="l">BASE URL (fish family only)</span>
-              <input
-                value={draft.ttsBaseUrl}
-                onChange={(event) => setField('ttsBaseUrl')(event.target.value)}
-                placeholder="http://127.0.0.1:8080"
-                spellCheck={false}
-              />
+              <span className="l">PROVIDER</span>
+              <select value={draft.ttsProvider} onChange={(event) => setField('ttsProvider')(event.target.value)}>
+                <option value="piper">PIPER — ON THIS MACHINE, NO KEY</option>
+                <option value="fish">TTS (HTTP) — NEEDS A KEY</option>
+              </select>
             </label>
-            <label className="cred-field">
-              <span className="l">API KEY</span>
-              <input
-                type="password"
-                value={draft.ttsKey}
-                onChange={(event) => setField('ttsKey')(event.target.value)}
-                placeholder={keyHint(view?.tts.apiKeySet ?? false)}
-                autoComplete="off"
-              />
-            </label>
+            {/* Piper 是随包的那把嗓子，没有可填的东西；只有选了 HTTP 的 TTS 才问端点和钥匙。 */}
+            {draft.ttsProvider === 'fish' ? (
+              <>
+                <label className="cred-field">
+                  <span className="l">BASE URL</span>
+                  <input
+                    value={draft.ttsBaseUrl}
+                    onChange={(event) => setField('ttsBaseUrl')(event.target.value)}
+                    placeholder="http://127.0.0.1:8080"
+                    spellCheck={false}
+                  />
+                </label>
+                <label className="cred-field">
+                  <span className="l">API KEY</span>
+                  <input
+                    type="password"
+                    value={draft.ttsKey}
+                    onChange={(event) => setField('ttsKey')(event.target.value)}
+                    placeholder={keyHint(view?.tts.apiKeySet ?? false)}
+                    autoComplete="off"
+                  />
+                </label>
+              </>
+            ) : (
+              <p className="cred-hint">Piper ships with the app and speaks offline. Nothing to fill in.</p>
+            )}
           </div>
         </div>
 

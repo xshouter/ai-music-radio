@@ -319,7 +319,14 @@ button[aria-disabled='true'] { cursor: default; }
 
 .progress .time.right { text-align: right; }
 
-.track { position: relative; flex: 1 1 auto; height: 3px; border-radius: 2px; background: var(--line); }
+.track {
+  position: relative; flex: 1 1 auto; height: 3px; border-radius: 2px; background: var(--line);
+  padding: 0; border: 0; appearance: none; cursor: pointer;
+}
+/* 3px 的条太细，点不动 —— 伪元素把命中区上下各撑 9px，视觉一点不变。 */
+.track::before { content: ''; position: absolute; left: 0; right: 0; top: -9px; bottom: -9px; }
+.track:disabled { cursor: default; }
+.track:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
 
 .track .fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--text); }
 
@@ -916,7 +923,8 @@ button[aria-disabled='true'] { cursor: default; }
 .cred-field .l { font-family: var(--label); font-size: 9px; letter-spacing: 0.18em; color: var(--text-dim); }
 
 .cred-field input,
-.cred-field textarea {
+.cred-field textarea,
+.cred-field select {
   width: 100%;
   padding: 8px 10px;
   border-radius: 10px;
@@ -931,7 +939,22 @@ button[aria-disabled='true'] { cursor: default; }
 .cred-field input::placeholder,
 .cred-field textarea::placeholder { color: var(--text-dim); }
 .cred-field input:focus,
-.cred-field textarea:focus { border-color: var(--accent-ink); }
+.cred-field textarea:focus,
+.cred-field select:focus { border-color: var(--accent-ink); }
+
+/* 下拉框：沿用输入框那套外壳，自己画一个 caret —— 原生那个在有描边的框里太粗。 */
+.cred-field select {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 26px;
+  background-color: var(--panel);
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%), linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 50%, calc(100% - 11px) 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+
+.cred-hint { margin: 0; font-size: 11px; line-height: 1.45; color: var(--text-dim); }
 
 .cred-field textarea { height: 56px; resize: none; font-size: 11px; line-height: 1.45; }
 

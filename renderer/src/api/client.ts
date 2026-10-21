@@ -7,6 +7,8 @@ import type {
   FavoriteAction,
   FavoritesResponse,
   HistoryResponse,
+  ModelsRequest,
+  ModelsResponse,
   NextResponse,
   NowPlaying,
   OkResponse,
@@ -82,6 +84,10 @@ export const getSettings = () => request<SettingsView>('/api/settings');
 /** PUT /api/settings。省略的字段不改；apiKey / cookie 留空等于「不改」（ADR-0005 / ADR-0011）。 */
 export const putSettings = (input: SettingsInput) =>
   request<SettingsView>('/api/settings', { method: 'PUT', body: JSON.stringify(input) });
+
+/** POST /api/models：拿「端点 + key」问一次那个端点认识哪些模型。明文只在这一趟请求里活着。 */
+export const getModels = (input: ModelsRequest) =>
+  request<ModelsResponse>('/api/models', { method: 'POST', body: JSON.stringify(input) });
 
 export const chat = (text: string) =>
   request<ChatResponse>('/api/chat', { method: 'POST', body: JSON.stringify({ text }) });

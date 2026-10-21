@@ -452,3 +452,15 @@ test('GET /api/history 返回 DjMessage[]，倒序，limit 越界夹住而不报
   assert.ok(after.length > before, 'chat 之后历史要真的变长');
   assert.equal(after[0].role, 'dj', '最新一条是 DJ 刚说的话');
 });
+
+test('POST /api/models：没有 baseUrl 就 400，给了就回一串非空模型名（ADR-0036）', async () => {
+  await reset();
+  const missing = await api('/api/models', { method: 'POST', body: JSON.stringify({}) });
+  assert.equal(missing.status, 400, '没有端点就没有目录可读');
+  assert.equal(missing.body.error.code, 'INTERNAL', '封闭枚举里没有更贴切的码');
+
+  const ok = await api('/api/models', { method: 'POST', body: JSON.stringify({ baseUrl: 'https://example.test/v1' }) });
+  assert.equal(ok.status, 200);
+  assert.ok(Array.isArray(ok.body.models) && ok.body.models.length > 0, 'models 必须是非空数组');
+  ok.body.models.forEach((id) => assert.equal(typeof id, 'string', 'models[] 全是字符串'));
+});

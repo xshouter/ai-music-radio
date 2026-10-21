@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import nodeHttp from 'node:http';
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -135,7 +135,9 @@ const setup = async (options = {}) => {
   // 默认的 piper 要真的 exe 与模型，属于 tools/smoke-tts.mjs 的活。
   await store.setPref('tts.provider', 'fish');
   await store.setPref('tts.baseUrl', 'http://tts.test');
-  await store.setPref('tts.apiKey', 'fish-test');
+  // 想验「选了 fish 却没填 key」的回落，就把这一格空着（那条用例自己会要）。
+  if (options.ttsApiKey !== false) await store.setPref('tts.apiKey', 'fish-test');
+  if (typeof options.cookie === 'string') await store.setPref('music.cookie', options.cookie);
   if (options.llmKey !== false) await store.setPref('llm.apiKey', options.llmKey ?? KEY);
 
   const learned = [];
@@ -150,9 +152,12 @@ const setup = async (options = {}) => {
       options.showArgs ?? SHOW,
     ),
     '/v1/tts': () => ({ status: 200, text: async () => '', bytes: async () => AUDIO }),
+    // 模型目录（ADR-0036）：设置界面那个下拉框靠它 —— 给一条重复的，验去重。
+    '/v1/models': () => json({ data: [{ id: 'qwen3.7-max' }, { id: 'glm-5.2' }, { id: 'qwen3.7-max' }] }),
   });
 
   const cacheDir = mkdtempSync(join(tmpdir(), 'edgerunner-cache-'));
+  const tasteDir = mkdtempSync(join(tmpdir(), 'edgerunner-taste-'));
   const radio = createRadio({
     store,
     clock,
@@ -164,12 +169,13 @@ const setup = async (options = {}) => {
     neteaseBaseUrl: 'http://music.test',
     localDir,
     cacheDir,
+    tasteDir,
     // 装配点要一个 ttsDir。上面的 tts.provider=fish 决定了它不会被用到。
     ttsDir: mkdtempSync(join(tmpdir(), 'edgerunner-ttsdir-')),
     ...(options.demo === undefined ? {} : { demo: options.demo }),
     fetch,
   });
-  return { radio, store, calls, learned, cacheDir };
+  return { radio, store, calls, learned, cacheDir, tasteDir };
 };
 
 const waitFor = async (predicate, ms = 3000) => {
@@ -586,4 +592,67 @@ test('首次体验之后填上 key：开机立刻重跑成真电台', async () =
   assert.deepEqual(radio.queue().map((ref) => ref.id), ['1001', '1002', '1003'], '填了 key，换成真电台那批');
 
   await radio.close();
+});
+
+// —— 「看着配好了、其实没跑」的三处：嗓子回落、切歌口播、口味画像（ADR-0036 / 0037）——
+
+test('嗓子回落：选了 fish 却没填 key = 没选，落到 piper —— 远端端点一次都不打', async () => {
+  const { radio, calls } = await setup({ ttsApiKey: false });
+  const events = subscribe(radio);
+  await radio.boot();
+  await waitFor(() => events.some((event) => event.type === 'say'));
+
+  assert.equal(calls.filter((entry) => entry.path === '/v1/tts').length, 0, 'fish 的端点一次也不该被打');
+  const first = events.find((event) => event.type === 'say');
+  assert.equal(first.payload.line, SHOW.say[0], '文字照给：有字没声，也比整条口播消失好');
+});
+
+test('点队列切歌（started）也要听见这一首的那一条 —— 不是只有「自然放完」才开口播', async () => {
+  const { radio } = await setup();
+  const events = subscribe(radio);
+  await radio.boot();
+  await waitFor(() => events.filter((event) => event.type === 'say').length >= 1);
+
+  await radio.playback({ songId: '1002', event: 'started', at: AT.toISOString() });
+  await waitFor(() => events.filter((event) => event.type === 'say').length >= 2);
+
+  assert.equal(radio.now().track.id, '1002', '切歌先发生');
+  assert.deepEqual(
+    events.filter((event) => event.type === 'say').map((event) => event.payload.line),
+    SHOW.say,
+    '轮到 1002，说的就是一直压着的那一条',
+  );
+});
+
+test('模型目录：随端点读一次，去重排序；key 缺省借库里那把', async () => {
+  const { radio, calls } = await setup();
+  assert.deepEqual(await radio.models({ baseUrl: 'http://llm.test/v1/' }), ['glm-5.2', 'qwen3.7-max'], '尾斜杠不算数，去重后排序');
+  const hits = () => calls.filter((entry) => entry.path === '/v1/models');
+  assert.equal(hits()[0].headers.authorization, 'Bearer ' + KEY, '没另给 key 就借库里那把');
+
+  await radio.models({ baseUrl: 'http://llm.test/v1', apiKey: 'sk-typed' });
+  assert.equal(hits().at(-1).headers.authorization, 'Bearer sk-typed', '现填的 key 优先');
+  await assert.rejects(() => radio.models({ baseUrl: '' }), (error) => error.code === 'INTERNAL');
+});
+
+test('开机就补口味画像：cookie 早就填过的人，taste.md 也要自己长出来（ADR-0025）', async () => {
+  const llmChat = (request) => String(request.body ?? '').includes('music librarian')
+    ? json({ choices: [{ message: { content: 'Slow and warm, nothing in a hurry.' } }] })
+    : llmRoute({ genres: ['ambient'], mood: 'low and steady', limit: 3 }, SHOW)(request);
+  const { radio, calls, tasteDir } = await setup({
+    cookie: 'MUSIC_U=test-cookie',
+    llmChat,
+    netease: {
+      ...NETEASE_UP,
+      '/user/account': json({ profile: { userId: 7 } }),
+      '/user/playlist': json({ playlist: [{ id: 99, trackCount: SONGS.length }] }),
+      '/playlist/track/all': json({ songs: SONGS }),
+    },
+  });
+
+  await radio.boot();
+  await waitFor(() => existsSync(join(tasteDir, 'taste.md')), 5000);
+
+  assert.match(readFileSync(join(tasteDir, 'taste.md'), 'utf8'), /Slow and warm/, '写进去的就是模型写的那段');
+  assert.ok(calls.some((entry) => entry.path === '/user/account'), '画像真的读了曲库，不是凭空编的');
 });
