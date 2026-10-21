@@ -16,6 +16,7 @@ Desktop.ini
 node_modules/
 dist/
 build/
+npm-debug.log*
 
 # Python
 __pycache__/
@@ -26,29 +27,18 @@ venv/
 # Logs
 *.log
 
-# CodeGraph local index (machine-specific, rebuildable)
-.codegraph/
-
-# Local runtime data — keys, DB, TTS cache. Never commit.
+# 本机运行时数据：密钥、SQLite 库、口播缓存
 data/
 cache/
 
-docs/
-AGENTS.md
-GLOSSARY.md
-.github/pull_request_template.md
+# 工具缓存
+.codegraph/
+.archify/
 
-# 开发过程文档、素材与草稿：只留本地，不进仓库。
-.scratch/
-# Electron build output (produced by tools/build-electron.mjs) and packaged installers.
+# Electron 组装产物与安装包
 electron/
 release/
 
-# 离线嗓子的二进制与模型（约 95MB）：npm run fetch:voice 拉到本地，不进 git。
+# 随包的第三方二进制（按需拉取）
 vendor/piper/
-
-# 内置的网易云兼容服务（约 27MB）：npm run fetch:netease 拉到本地，不进 git —— 它是第三方代码。
 vendor/netease/
-
-# archify 的工作目录：候选 JSON、验收回执、抓图。
-.archify/
