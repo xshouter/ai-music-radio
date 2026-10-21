@@ -47,3 +47,20 @@
 - 3000 被别的程序占着 → 照常出声（因为它不用 3000）。
 - 关掉电台 → 任务管理器里不留 `app.js` 孤儿进程。
 - 把 `resources/netease` 删掉再启动 → 不崩，退到本地源 + 横幅。
+
+
+## 6. 打包落点的追记（2026-10-21 · 实测发现的坑）
+
+开头这一版**没有真的进包**：`v0.1.5` 发出去的便携版里 `resources/netease` 只有 `package.json` 与
+`package-lock.json`，没起过服务，界面表现为 `0 TRACKS`。原因是 electron-builder 的 extraResources
+会**无条件丢掉源目录顶层的 `node_modules`**（`app-builder-lib/out/util/filter.js`：`relative === 'node_modules'`
+直接 `return false`，早于用户 `filter` 生效），写 filter 也救不回来。
+
+落地的形状因此是**两条映射**：`vendor/netease → netease`，外加
+`vendor/netease/node_modules → netease/node_modules`；`core/` 期望的
+`<dir>/node_modules/NeteaseCloudMusicApi/app.js` 一个字不改。并加一条 CI 落点自检
+（`.github/workflows/release.yml`），因为这一路的失败是静默的 —— 包能出、CI 全绿、界面正常，只是没有音乐。
+完整推理见 ADR-0034，实测过程见 `docs/journal/2026-10-21.md` 第 48 条。
+
+第 5 节那条验收「把 `resources/netease` 删掉再启动 → 不崩」**依然成立**，而且现在多一条同族的：
+**删掉之后不会静默指到 3000 上假装有源** —— 这个坑记在 roadmap 里，等单独一轮收。
