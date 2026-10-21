@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, resolve, sep } from 'node:path';
-import type { ErrorCode, StreamEvent } from '../shared/api-types.ts';
+import type { ErrorCode, ModelsResponse, StreamEvent } from '../shared/api-types.ts';
 import { RadioFailure, type Radio } from './radio.ts';
 
 /**
@@ -230,6 +230,17 @@ export function createRadioServer(options: RadioServerOptions): Server {
         return sendJson(res, 200, await radio.regeneratePlan(reason));
       }
 
+      // 模型列表：拿用户**刚填进去**的那对 baseUrl + key 去问一次。key 从这一头进来、只用一次，
+      // 不写进任何地方（和 PUT /api/settings 那条禁令一致）。拉不到不是错误 —— 界面照旧能手打。
+      if (method === 'POST' && path === '/api/models') {
+        const body = await readJson(req);
+        if (typeof body.baseUrl !== 'string' || body.baseUrl === '') {
+          return sendError(res, 'INTERNAL', 'models needs a baseUrl', 400);
+        }
+        const apiKey = typeof body.apiKey === 'string' && body.apiKey !== '' ? body.apiKey : undefined;
+        const models = await radio.models({ baseUrl: body.baseUrl, ...(apiKey === undefined ? {} : { apiKey }) });
+        return sendJson(res, 200, { models } satisfies ModelsResponse);
+      }
       if (method === 'GET' && path === '/api/settings') return sendJson(res, 200, await radio.settings());
       if (method === 'PUT' && path === '/api/settings') {
         const body = await readJson(req);

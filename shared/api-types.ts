@@ -40,6 +40,18 @@ export interface SettingsInput {
   music?: { provider?: string; cookie?: string };
 }
 
+/**
+ * POST /api/models。拿一对「端点 + key」去问那个端点认识哪些模型 —— 设置页那个下拉框的数据源。
+ * `apiKey` 是**明文入参**：只在这一趟请求里活着，不回显、不落库（ADR-0005 的禁令一个字没变）。
+ */
+export interface ModelsRequest {
+  baseUrl: string;
+  apiKey?: string;
+}
+export interface ModelsResponse {
+  models: string[];
+}
+
 /** 封闭的错误码枚举（抽象层第 5 节）。 */
 export type ErrorCode =
   | 'NO_LLM_KEY'
