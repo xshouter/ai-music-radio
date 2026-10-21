@@ -6,6 +6,9 @@ import { startRadio, type StartedRadio } from './bootstrap.ts';
 import { resolveTtsDir } from './tts-runtime.ts';
 import { existsSync } from 'node:fs';
 import { neteaseEntry, startNeteaseService, type NeteaseService } from './netease-service.ts';
+import { createFileLog, withLogging, type Log } from './log.ts';
+import { defaultHttpFetch } from '../core/http.ts';
+import type { StreamEvent } from '../shared/api-types.ts';
 
 // 设计画布 616×876：窗口怎么拉，界面都是这一张等比缩放的画布。
 const STAGE = { width: 616, height: 876 };
@@ -17,6 +20,24 @@ const MIN_ZOOM = 0.5;
 let started: StartedRadio | null = null;
 // 内置的音乐源服务。null = 这一轮没代管（给了环境变量用外部的，或者落点里没有它）。
 let netease: NeteaseService | null = null;
+// 现场日志（ADR-0035）：双击之后出了什么事，事后要能读出来。默认空实现 —— boot() 里才换成真文件。
+let log: Log = { line: () => {} };
+// 内核的事件顺手记一份：界面上只留最后一条，历史得能回头看。
+const logEvent = (event: StreamEvent): void => {
+  switch (event.type) {
+    case 'error': log.line('error', event.payload.code + ' ' + event.payload.message); break;
+    case 'progress': log.line('boot', event.payload.phase + ' ' + event.payload.steps.join(',')); break;
+    case 'now': {
+      const track = event.payload.track;
+      log.line('music', 'now ' + (track === null ? '(nothing)' : track.source + ':' + track.id) + (event.payload.degraded ? ' degraded' : '') + ' onAir=' + event.payload.onAir);
+      break;
+    }
+    case 'say': log.line('music', 'say ' + event.payload.kind + ' ' + event.payload.audioUrl + ' · ' + event.payload.line); break;
+    case 'queue': log.line('music', 'queue ' + event.payload.length + ' tracks'); break;
+    case 'plan': log.line('boot', 'plan ' + event.payload.blocks.length + ' blocks'); break;
+    default: break;
+  }
+};
 
 const uiDir = (): string =>
   app.isPackaged ? join(process.resourcesPath, 'ui') : join(app.getAppPath(), 'renderer', 'dist');
@@ -41,6 +62,9 @@ const ttsDir = (): string =>
 async function boot(): Promise<StartedRadio> {
   if (started === null) {
     const userData = app.getPath('userData');
+    log = createFileLog(join(userData, 'logs', 'edgerunner.log'));
+    log.line('boot', '=== EdgeRunner ' + app.getVersion() + ' · ' + new Date().toISOString() + ' ===');
+    log.line('boot', 'packaged=' + String(app.isPackaged) + ' userData=' + userData);
     // 给了地址就用外部的（开发与复测靠它）；没给就把内置那一份拉起来（ADR-0028）。
     // 拉不起来不是错误：降级链会让电台退到本地源，并把原因挂到界面上。
     const override = process.env.EDGERUNNER_NETEASE_BASE_URL;
@@ -49,13 +73,18 @@ async function boot(): Promise<StartedRadio> {
       if (existsSync(neteaseEntry(dir))) {
         netease = await startNeteaseService({
           dir,
-          warn: (message) => console.warn('[netease] ' + message),
+          warn: (message) => {
+            console.warn('[netease] ' + message);
+            log.line('warn', 'netease: ' + message);
+          },
         }).catch((cause: unknown) => {
           console.warn('[netease] 起不来：' + (cause instanceof Error ? cause.message : String(cause)));
+          log.line('warn', 'netease: 起不来：' + (cause instanceof Error ? cause.message : String(cause)));
           return null;
         });
       } else {
         console.warn('[netease] 落点里没有内置服务（' + dir + '）—— 只有本地音乐可用');
+        log.line('warn', 'netease: 落点里没有内置服务（' + dir + '）—— 只有本地音乐可用');
       }
     }
     started = await startRadio({
@@ -65,8 +94,19 @@ async function boot(): Promise<StartedRadio> {
       ttsDir: ttsDir(),
       demoDir: demoDir(),
       neteaseBaseUrl: override ?? netease?.baseUrl,
-      warn: (message) => console.warn('[radio] ' + message),
+      fetch: withLogging(defaultHttpFetch, log),
+      warn: (message) => {
+        console.warn('[radio] ' + message);
+        log.line('warn', 'radio: ' + message);
+      },
     });
+    // 设置摘要（只记 set / 空，绝不记值）：第 48 条那种「它带了哪些设置」的第一现场。
+    started.radio.subscribe(logEvent);
+    await started.radio.settings().then((view) => {
+      log.line('boot', 'llm ' + view.llm.protocol + ' ' + view.llm.model + ' @ ' + view.llm.baseUrl + ' key=' + (view.llm.apiKeySet ? 'set' : 'EMPTY'));
+      log.line('boot', 'tts ' + view.tts.provider + ' ' + view.tts.voice + ' key=' + (view.tts.apiKeySet ? 'set' : 'EMPTY'));
+      log.line('boot', 'music ' + view.music.provider + ' cookie=' + (view.music.cookieSet ? 'set' : 'EMPTY'));
+    }).catch(() => {});
   }
   return started;
 }
@@ -99,6 +139,7 @@ async function openWindow(): Promise<void> {
   // 不 await：接口要先能响。开机自己的失败由 core 收成一条横幅，不从这里抛。
   radio.boot().catch((cause: unknown) => {
     console.error('[radio] 开机失败：' + (cause instanceof Error ? cause.message : String(cause)));
+    log.line('error', 'boot failed: ' + (cause instanceof Error ? cause.message : String(cause)));
   });
 }
 
@@ -131,6 +172,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => app.quit());
 
   app.on('before-quit', () => {
+    log.line('boot', 'quit');
     netease?.stop();
     void started?.close();
   });
