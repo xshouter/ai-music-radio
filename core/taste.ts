@@ -7,7 +7,7 @@ import type { Clock, LlmProvider, MusicSource, Store, TasteRepo } from '../share
 /**
  * 语料仓库（抽象层第 3.6 节的 `TasteRepo`）。
  *
- * 人写的语料是**磁盘上的 md**，系统的结论是**库里的一行**（ADR-0004）：
+ * 人写的语料是**磁盘上的 md**，系统的结论是**库里的一行**：
  * 两边永不互相写。所以这里的 `read()` 一半读文件、一半读库，而 `appendLearned()` 只写库。
  */
 export interface TasteOptions {
@@ -52,7 +52,7 @@ export function createTasteRepo(options: TasteOptions): TasteRepo {
   };
 
   /**
-   * 曲风胶囊是**数据**，不是装饰（ADR-0010）：它写在自己的小文件里，不写死在代码里。
+   * 曲风胶囊是**数据**，不是装饰：它写在自己的小文件里，不写死在代码里。
    * 单独一个 .txt 而不是塞进某份 md —— 否则那行声明会跟着语料原文一起显示在 Profile 里。
    */
   const readGenres = (): string[] => {
@@ -81,7 +81,7 @@ export function createTasteRepo(options: TasteOptions): TasteRepo {
   };
 }
 
-/** 机器生成的那一份语料的文件名，**写死**（ADR-0025）：机器只碰这一个名字，人的语料用别的名字。 */
+/** 机器生成的那一份语料的文件名，**写死**：机器只碰这一个名字，人的语料用别的名字。 */
 export const GENERATED_TASTE_FILE = 'taste.md';
 
 export interface TasteBuildOptions {
@@ -101,7 +101,7 @@ const TASTE_SYSTEM = [
 ].join('\n');
 
 /**
- * 读听众自己的曲库，让模型写一份口味画像，落到 `taste.md`（ADR-0025）。
+ * 读听众自己的曲库，让模型写一份口味画像，落到 `taste.md`。
  *
  * 三条不肯让步的地方：
  * 1. **已经有一份就不覆盖** —— 那可能是人自己改过的。想重来就删掉文件。

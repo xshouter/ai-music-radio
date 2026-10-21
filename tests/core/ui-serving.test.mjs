@@ -1,4 +1,4 @@
-// 5.1 的自检：内核顺手发 UI 这条路（ADR-0020）。
+// 5.1 的自检：内核顺手发 UI 这条路。
 // 重点不是"能不能发文件"，而是"能不能只发该发的那一个目录"。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

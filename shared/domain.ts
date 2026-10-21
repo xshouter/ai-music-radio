@@ -1,4 +1,4 @@
-// 领域类型：系统的「名词」层。纯类型，零运行时依赖（铁律 5 / 抽象层第 2 节）。
+// 领域类型：系统的「名词」层。纯类型，零运行时依赖。
 // 约定：所有时间戳是 ISO 8601 字符串而不是 Date —— 它要跨 HTTP 边界、要落库（抽象层第 4 节）。
 
 /** 音质档位。降级时逐档往下试：lossless → exhigh → higher → standard（抽象层第 6 节）。 */
@@ -32,7 +32,7 @@ export interface ResolvedAudio {
 }
 
 /**
- * 一次推理的产物：一段完整的电台时段（ADR-0001）。
+ * 一次推理的产物：一段完整的电台时段。
  * say 逐句（不是一整段：要一句一句浮现、一句一句合成）；play 一次给一批 3–6 首。
  */
 export interface Show {
@@ -42,7 +42,7 @@ export interface Show {
   segue: string | null;
 }
 
-/** 口播里一个词的时间戳（相对这一句音频的起点，毫秒）。真 TTS 直接给到词级（ADR-0008）。 */
+/** 口播里一个词的时间戳（相对这一句音频的起点，毫秒）。真 TTS 直接给到词级。 */
 export interface SpokenWord {
   text: string;
   startMs: number;
@@ -50,10 +50,10 @@ export interface SpokenWord {
 }
 
 /**
- * 一句口播。逐句推是为了「一句一句浮现 + 一句一句合成」（ADR-0001）；
- * audioUrl 与 words 让 UI 能放这一句、并按词高亮、并算出口播进度（ADR-0012）。
+ * 一句口播。逐句推是为了「一句一句浮现 + 一句一句合成」；
+ * audioUrl 与 words 让 UI 能放这一句、并按词高亮、并算出口播进度。
  *
- * kind 是**来源**（ADR-0029）：intro = 对一首歌的介绍（进 feed、进全屏口播、有 PLAY / REPLAY 入口）；
+ * kind 是**来源**：intro = 对一首歌的介绍（进 feed、进全屏口播、有 PLAY / REPLAY 入口）；
  * talk = 对听众的答话（只有文字：不合成、没入口、不进全屏口播）。UI 在 `withSay` 那一处分岔。
  */
 export interface SpokenLine {
@@ -108,7 +108,7 @@ export interface PlayStats {
   topArtists: { artist: string; count: number }[];
 }
 
-/** 系统学到的一条口味更新（ADR-0004：结构化，不回写人写的语料）。 */
+/** 系统学到的一条口味更新。 */
 export interface TasteUpdate {
   ts: string;
   text: string;

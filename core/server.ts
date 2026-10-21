@@ -9,7 +9,7 @@ import { RadioFailure, type Radio } from './radio.ts';
  * HTTP + WS 的翻译层（4.5 的 serving 部分）。**它不持有状态** —— 状态全在 core/radio.ts。
  *
  * 两条纪律：
- * - 只绑 127.0.0.1（ADR-0007：单端，只服务本机），并且要 `x-radio-token`
+ * - 只绑 127.0.0.1，并且要 `x-radio-token`
  *   （挡住浏览器里别的页面误打这个端口）。
  * - 媒体路径豁免鉴权与错误注入：`<audio>` 既不设自定义头，也不该被业务错误拦住（契约第 5 节）。
  */
@@ -17,7 +17,7 @@ import { RadioFailure, type Radio } from './radio.ts';
 export interface RadioServerOptions {
   radio: Radio;
   /** 与本机渲染进程共享的一次性令牌；空字符串 = 不校验（只该在开发里这么用）。 */
-  /** 打包后的 UI 目录。给了它，UI 由内核一起发 —— 与 API 同源（ADR-0020）。开发期不给。 */
+  /** 打包后的 UI 目录。给了它，UI 由内核一起发 —— 与 API 同源。开发期不给。 */
   uiDir?: string;
   token?: string;
   warn?: (message: string) => void;
@@ -98,7 +98,7 @@ const MIME: Record<string, string> = {
 };
 
 /**
- * 打包后的 UI 与 API 同源（ADR-0020）。只发 uiDir 以内的静态文件、只认 GET/HEAD。
+ * 打包后的 UI 与 API 同源。只发 uiDir 以内的静态文件、只认 GET/HEAD。
  *
  * 故意的取舍：初始文档没法带自定义头，所以这条路径**豁免令牌** —— 令牌护的是数据面
  * （/api/* 与 /tts/*），不是"能不能看到我们自己的界面"。

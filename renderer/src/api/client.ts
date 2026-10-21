@@ -1,5 +1,5 @@
-// 与后端说话的唯一出口（铁律 5：前端只走 HTTP / WS）。
-// base URL 与 token 只在这里注入一处 —— 切真后端只改这一个值（ADR-0006）。
+// 与后端说话的唯一出口：前端只走 HTTP / WS。
+// base URL 与 token 只在这里注入一处 —— 切真后端只改这一个值。
 import type {
   ApiError,
   ChatResponse,
@@ -25,7 +25,7 @@ import type {
 // 真后端 / Electron 里由外部注入，例如 VITE_RADIO_BASE_URL=http://127.0.0.1:8799。
 const BASE = import.meta.env.VITE_RADIO_BASE_URL ?? '';
 // 打包后没有 VITE_* 环境变量，令牌改由 preload 注入（window.__RADIO__）；
-// base 留空 = 与页面同源 —— 打包时 UI 就是内核发的（ADR-0020），同源是默认值。
+// base 留空 = 与页面同源 —— 打包时 UI 就是内核发的，同源是默认值。
 const TOKEN = import.meta.env.VITE_RADIO_TOKEN ?? (window.__RADIO__?.token ?? '');
 
 /** 后端返回的统一错误信封（抽象层第 5 节）。UI 只认 code，不认 HTTP 状态码。 */
@@ -72,16 +72,16 @@ export const getNext = () => request<NextResponse>('/api/next');
 export const getTaste = () => request<TasteDoc>('/api/taste');
 export const getPlanToday = () => request<PlanTodayResponse>('/api/plan/today');
 
-/** GET /api/stats。省略 since = 今天 00:00（ADR-0013）。 */
+/** GET /api/stats。省略 since = 今天 00:00。 */
 export const getStats = (since?: string) =>
   request<StatsResponse>(since ? `/api/stats?since=${encodeURIComponent(since)}` : '/api/stats');
 
-/** GET /api/history。ADR-0013：后端保证倒序，limit 越界由后端夹住。 */
+/** GET /api/history。：后端保证倒序，limit 越界由后端夹住。 */
 export const getHistory = (limit?: number) =>
   request<HistoryResponse>(limit === undefined ? '/api/history' : `/api/history?limit=${limit}`);
 export const getSettings = () => request<SettingsView>('/api/settings');
 
-/** PUT /api/settings。省略的字段不改；apiKey / cookie 留空等于「不改」（ADR-0005 / ADR-0011）。 */
+/** PUT /api/settings。省略的字段不改；apiKey / cookie 留空等于「不改」。 */
 export const putSettings = (input: SettingsInput) =>
   request<SettingsView>('/api/settings', { method: 'PUT', body: JSON.stringify(input) });
 
@@ -100,7 +100,7 @@ export const reportPlayback = (report: PlaybackReport) =>
 
 export const getFavorites = () => request<FavoritesResponse>('/api/favorites');
 
-/** POST /api/feedback：口味意图（喜欢 / 取消喜欢）。幂等，和「播放事实」是两条线（ADR-0010）。 */
+/** POST /api/feedback：口味意图（喜欢 / 取消喜欢）。幂等，和「播放事实」是两条线。 */
 export const reportFeedback = (songId: string, action: FavoriteAction) =>
   request<OkResponse>('/api/feedback', { method: 'POST', body: JSON.stringify({ songId, action }) });
 

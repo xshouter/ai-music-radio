@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { BootProgress as BootReport } from '../../../shared/api-types.ts';
 
 /*
- * 开机这一段（排表 → 写开场稿 → 合成语音）的进度界面（ADR-0032）。
+ * 开机这一段（排表 → 写开场稿 → 合成语音）的进度界面。
  *
  * 终端风：深底、等宽字、逐行打勾。它不是"另一个页面"，是**挡在主界面前面的一块玻璃** ——
  * 第一句口播出声时就淡出，把屏幕交还给口播卡。

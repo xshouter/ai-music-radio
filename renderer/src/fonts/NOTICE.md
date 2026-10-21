@@ -25,7 +25,7 @@
 - 许可证：SIL Open Font License 1.1（见 `space-grotesk-OFL.txt`）
 - 子集：latin（`unicode-range` 见 `fonts.css`）
 - 下载地址：https://cdn.jsdelivr.net/npm/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2
-- 用途：**小标签专用**。参考源站点的小字用 Space Grotesk（大写 + 宽字距），Doto 只用在 wordmark 与大钟；
+- 用途：**小标签专用**。小字用 Space Grotesk（大写 + 宽字距），Doto 只用在 wordmark 与大钟；
   照抄这个分工 —— Doto 是点阵字体，9-10px 下会被抗锯齿糊成虚线，读不清。
 
 ## 版权行（来自各自的 OFL.txt）

@@ -5,7 +5,7 @@ import { defaultHttpFetch, getJson, type HttpFetch } from '../http.ts';
 export interface NeteaseOptions {
   /** 一个 NeteaseCloudMusicApi **兼容**的地址，例如 http://127.0.0.1:3000。 */
   baseUrl: string;
-  /** 整条网易云 cookie 头。只进不出：这里不发日志、不放进错误消息、不回显（ADR-0011）。 */
+  /** 整条网易云 cookie 头。只进不出：这里不发日志、不放进错误消息、不回显。 */
   cookie?: string;
   fetch?: HttpFetch;
   id?: string;
@@ -50,7 +50,7 @@ const toTrack = (raw: RawSong, id: string): Track => {
 };
 
 /**
- * 网易云音乐源。**只借鉴公开实现的做法，不内联任何第三方代码**（roadmap 阶段 4 的约定）。
+ * 网易云音乐源。**只借鉴公开实现的做法，不内联任何第三方代码**。
  *
  * 三处取舍：
  * 1. 加密那层（weapi/eapi）不住在这里 —— 它由一个兼容服务承担，本项目只做客户端。
@@ -97,7 +97,7 @@ export function createNeteaseSource(options: NeteaseOptions): MusicSource {
 
     /**
      * 听众自己的曲库：cookie → 我是谁（/user/account）→ 我的歌单（/user/playlist）→ 歌单里的歌。
-     * 没有 cookie、或者这一环拿不到 → 回 []（ADR-0025 的冷启动常态），不抛错。
+     * 没有 cookie、或者这一环拿不到 → 回 []（冷启动常态），不抛错。
      * 歌单按曲目数从多到少取 —— 先取他真正会听的那几张。
      */
     async library(limit: number): Promise<Track[]> {

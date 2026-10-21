@@ -136,20 +136,20 @@ export interface MusicSource {
   search(keywords: string, limit: number): Promise<Track[]>;
   resolve(songId: string, level: QualityLevel): Promise<ResolvedAudio | null>;
   /**
-   * 听众**自己的曲库**（他歌单里的歌）。只给口味分析用（ADR-0025），**不参与播放** ——
+   * 听众**自己的曲库**（他歌单里的歌）。只给口味分析用，**不参与播放** ——
    * 播放走 resolve，队列走 recommend / search。拿不到就回 []，不抛错，与另外三个方法同一套规矩。
    */
   library(limit: number): Promise<Track[]>;
-  // v1 不做歌词（ADR-0009），所以这里没有 lyric()。第 3.3 节原本有 —— 端口是最终形态，不留一个已知要删的方法。
-  // 债已还清：契约 / mock / 测试 / renderer 里的歌词面都已删除（PR #15），端口这边没有尾巴要跟。
+  // v1 不做歌词，所以这里没有 lyric()。第 3.3 节原本有 —— 端口是最终形态，不留一个已知要删的方法。
+  // 歌词面已从契约 / mock / 测试 / renderer 里删干净，端口这边没有尾巴要跟。
 }
 
-// ── 3.4 Prefs —— 封闭 key 映射（ADR-0005）────────────────────────────────
+// ── 3.4 Prefs —— 封闭 key 映射────────────────────────────────
 
 /**
- * 设置项的 key 集合是**封闭**的：加一个设置项 = 改契约（ADR-0005）。
+ * 设置项的 key 集合是**封闭**的：加一个设置项 = 改契约。
  * 每个值都与 shared/api-types.ts 的 SettingsView / SettingsInput 一一对应 ——
- * `apiKey` 与 `music.cookie` 也住在这里，但只进不出：回显规则见 ADR-0005 / ADR-0011。
+ * `apiKey` 与 `music.cookie` 也住在这里，但只进不出：回显规则见  / 。
  */
 export type PrefKey =
   | 'llm.baseUrl'
@@ -188,7 +188,7 @@ export interface Store {
   savePlan(p: DayPlan): Promise<void>;
   activePlan(date: string): Promise<DayPlan | null>;
   /**
-   * 喜欢列表（ADR-0010）。存 TrackRef 而不是 songId：v1 没有 songs 表，
+   * 喜欢列表。存 TrackRef 而不是 songId：v1 没有 songs 表，
    * 而喜欢列表这个 UI 需要曲名与歌手。
    */
   favorites(): Promise<TrackRef[]>;

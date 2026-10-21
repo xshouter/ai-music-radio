@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// EdgeRunner 假后端（阶段 2）。按 shared/api-types.ts 的第 5 节契约返回**固定 fixture**。
+// EdgeRunner 假后端。按 shared/api-types.ts 的第 5 节契约返回**固定 fixture**。
 // 零依赖：只用 Node 内建的 http / crypto / url（Express 会引入一个依赖，且不必要）。
 //
 //   node mock/server.mjs                      # 127.0.0.1:8765
@@ -14,7 +14,7 @@
 //   冷启动也可用环境变量：MOCK_DEGRADED=1 / MOCK_ERROR=NO_LLM_KEY
 //
 // 不校验 x-radio-token：校验是**真 server** 的事（契约第 5 节）；mock 保持宽松，方便直接 curl。
-// fixture 里没有 coverUrl：仓库不放任何素材（docs/references.md）。UI 想要封面，到阶段 3 再定。
+// fixture 里没有 coverUrl：仓库不带任何封面素材，封面留到以后再说。
 
 import { createServer as createHttpServer } from 'node:http';
 import { createHash } from 'node:crypto';
@@ -41,7 +41,7 @@ const ref = ({ id, title, artist }) => ({ id, title, artist });
 const byId = (id) => TRACKS.find((t) => t.id === id);
 
 // 口播 = 对当前这首歌的简短分析（需求：口播内容是一段简短的歌曲分析）。
-// 词级时间戳与音频长度同源：mock 的静音 WAV 就按词时间戳的长度生成（ADR-0012）。
+// 词级时间戳与音频长度同源：mock 的静音 WAV 就按词时间戳的长度生成。
 const TTS_SECONDS = new Map();
 function speech(index, line) {
   let at = 0;
@@ -83,7 +83,7 @@ const PLAN = {
 };
 
 const TASTE = {
-  // DJ 详情弹层里的曲风胶囊（ADR-0010）。它是数据，UI 不许写死。
+  // DJ 详情弹层里的曲风胶囊。它是数据，UI 不许写死。
   genres: ['JAZZ-HIPHOP', 'NEO-CLASSICAL', '90S 华语', 'HIP-HOP', 'BEDROOM-POP', 'J-ROCK', 'RAIN NOISE', 'POST-PUNK'],
   corpus: [
     { name: 'likes.md', text: 'Warm synth, quiet vocals, nothing that peaks. Long songs are welcome.' },
@@ -116,9 +116,9 @@ const ERRORS = {
 // apiKey 永远只进不出：这里存的是「配没配」，不是 key 本身。
 const settings = {
   llm: { baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', protocol: 'openai', apiKeySet: false },
-  // tts.provider 的出厂值是 piper（ADR-0022）；voice 留空 = 用音色库默认音色。
+  // tts.provider 的出厂值是 piper；voice 留空 = 用音色库默认音色。
   tts: { provider: 'piper', voice: '', apiKeySet: false },
-  // 第三块（ADR-0011）：cookie 的值一次都不存进内存，只存「配没配」。
+  // 第三块：cookie 的值一次都不存进内存，只存「配没配」。
   music: { provider: 'netease', cookieSet: false },
 };
 
@@ -127,11 +127,11 @@ const MOCK_MODELS = ['qwen-plus', 'qwen3.7-max', 'deepseek-v4.1-flash', 'glm-5.2
 
 const refs = (tracks) => tracks.map(ref);
 
-// 喜欢列表（ADR-0010）。存 TrackRef 而不是 songId：v1 没有 songs 表。
+// 喜欢列表。存 TrackRef 而不是 songId：v1 没有 songs 表。
 let favorites = refs([byId('n1003'), byId('n1006'), byId('n1008')]);
 const FAVORITE_ACTIONS = ['like', 'unlike'];
 
-// —— ADR-0013：Profile 要的两本账。此前 POST /api/playback 是空实现（没有任何出口读它），
+// —— ：Profile 要的两本账。此前 POST /api/playback 是空实现（没有任何出口读它），
 // 现在统计要读，所以 mock 必须真的记账 —— 否则 Profile 上的数字永远是 0，那一版界面等于没验。
 let messageSeq = 0;
 const nextId = () => `m${++messageSeq}`;
@@ -186,7 +186,7 @@ function stats(sinceRaw) {
   };
 }
 
-// 越界夹住、非法回默认：错误码是封闭枚举，里面没有「参数不合法」这种码（ADR-0013）。
+// 越界夹住、非法回默认：错误码是封闭枚举，里面没有「参数不合法」这种码。
 function historyPage(limitRaw) {
   const n = limitRaw === null || limitRaw === '' ? NaN : Number(limitRaw);
   const limit = Number.isFinite(n) ? Math.max(1, Math.min(200, Math.trunc(n))) : 50;
@@ -311,7 +311,7 @@ function encodeFrame(text) {
 const push = (socket, event) => socket.write(encodeFrame(JSON.stringify(event)));
 const broadcast = (event) => { for (const socket of sockets) push(socket, event); };
 
-// 假的开机进度（ADR-0032）。steps 每次都给**累积**的那一份 —— 契约就是这么定的，
+// 假的开机进度。steps 每次都给**累积**的那一份 —— 契约就是这么定的，
 // 于是「晚连上的客户端补一条就对齐」在 mock 上也是真的。
 const BOOT_STEPS = ['daily-pool', 'recent-plays', 'draft-plan', 'opening-line'];
 
@@ -381,7 +381,7 @@ async function control(req, res) {
     }
     state.error = body.error ?? null;
   }
-  // {"wipe":true} 清空两本账（ADR-0013），用来**真的**验一遍 Profile 的空态。
+  // {"wipe":true} 清空两本账，用来**真的**验一遍 Profile 的空态。
   // 它不在契约里，UI 永远不会调它（和 degraded / error 同一个规矩）。
   if (body.wipe) {
     messages.length = 0;
@@ -413,7 +413,7 @@ async function handle(req, res) {
   if (method === 'GET' && path === '/api/now') return sendJson(res, 200, nowPlaying());
   if (method === 'GET' && path === '/api/next') return sendJson(res, 200, currentQueue());
   if (method === 'GET' && path === '/api/taste') return sendJson(res, 200, TASTE);
-  // ADR-0013 的两个只读端点：省略 since = 今天 00:00；limit 越界夹住。
+  // 两个只读端点：省略 since = 今天 00:00；limit 越界夹住。
   if (method === 'GET' && path === '/api/stats') return sendJson(res, 200, stats(url.searchParams.get('since')));
   if (method === 'GET' && path === '/api/history') return sendJson(res, 200, historyPage(url.searchParams.get('limit')));
   if (method === 'GET' && path === '/api/plan/today') return sendJson(res, 200, PLAN);
@@ -463,7 +463,7 @@ async function handle(req, res) {
     // key 只记「配没配」，值直接丢掉，绝不回显（危险字段禁令）。
     if (body.llm?.apiKey) next.llm.apiKeySet = true;
     if (body.tts?.apiKey) next.tts.apiKeySet = true;
-    // cookie 的值直接丢掉，一个字节都不留（危险字段禁令 / ADR-0011）。
+    // cookie 的值直接丢掉，一个字节都不留。
     if (body.music?.cookie) next.music.cookieSet = true;
     Object.assign(settings.llm, next.llm);
     Object.assign(settings.tts, next.tts);
@@ -477,7 +477,7 @@ async function handle(req, res) {
     }
     const result = show();
     // 对听众的答话不是口播（用户定）：整段一条 dj 消息 + 一条 kind:'talk'。talk 没有音频、没有词表，
-    // 于是 UI 不给它入口、也不进全屏口播。历史照记（ADR-0013）。
+    // 于是 UI 不给它入口、也不进全屏口播。历史照记。
     const reply = result.say.join(' ');
     messages.push({ id: nextId(), ts: new Date().toISOString(), role: 'dj', text: reply });
     broadcast({ type: 'say', payload: { kind: 'talk', index: 0, line: reply, audioUrl: '', words: [] } });

@@ -111,7 +111,7 @@ test('快照本身是对的：重播 / 跳过 / 喜欢的顺序与幂等', async
   assert.deepEqual(snapshot.taste.map((u) => u.text), ['Replays The Long Way.', 'Prefers ambient after 23:00.']);
 });
 
-test('设置项坏在库里也不许把电台拦下来：回默认值 + 记一条警告（ADR-0005）', async () => {
+test('设置项坏在库里也不许把电台拦下来：回默认值 + 记一条警告', async () => {
   const db = new DatabaseSync(':memory:');
   const warnings = [];
   const store = new SqliteStore(db, fakeClock(T(0)), (message) => warnings.push(message));

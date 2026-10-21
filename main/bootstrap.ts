@@ -1,4 +1,4 @@
-// 唯一组装点（ADR-0014）：core/ 不认识具体 SQLite 驱动、不认识 Electron，
+// 唯一组装点：core/ 不认识具体 SQLite 驱动、不认识 Electron，
 // 谁来把它们接起来？只有这里。换驱动 / 换 Electron 版本，只动这一个文件。
 import { randomBytes } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -12,7 +12,7 @@ import { DEMO_SONG_FILE, DEMO_WAV_FILE } from '../core/demo.ts';
 import type { HttpFetch } from '../core/http.ts';
 import type { Clock, EnvProvider } from '../shared/ports.ts';
 
-/** 网易云兼容服务的地址。v1 它由使用者自己准备（ADR-0016）—— 没有它，音乐源只剩本地目录。 */
+/** 网易云兼容服务的地址。v1 它由使用者自己准备—— 没有它，音乐源只剩本地目录。 */
 const DEFAULT_NETEASE_BASE_URL = 'http://127.0.0.1:3000';
 
 export interface BootstrapOptions {
@@ -20,7 +20,7 @@ export interface BootstrapOptions {
   dataDir: string;
   /** 本地音乐兜底目录。 */
   localDir: string;
-  /** 打包后的 UI 目录（给内核一起发，同源，ADR-0020）。 */
+  /** 打包后的 UI 目录。 */
   uiDir: string;
   /** 本地语音运行时目录（含 piper.exe / espeak-ng-data / <voice>.onnx）。纯 ASCII，见 RadioOptions.ttsDir。 */
   ttsDir: string;
@@ -38,7 +38,7 @@ export interface StartedRadio {
   port: number;
   token: string;
   /**
-   * 开机（排表 → 开场）。**故意不在这里 await**（ADR-0032）：窗口必须先出生，
+   * 开机（排表 → 开场）。**故意不在这里 await**：窗口必须先出生，
    * 否则当天第一次开机那 14–28s 屏幕上什么都没有 —— 连进度界面都无从谈起。
    */
   boot(): Promise<void>;
@@ -55,7 +55,7 @@ export async function startRadio(options: BootstrapOptions): Promise<StartedRadi
   const store = new SqliteStore(db, clock, warn);
   const tasteDir = join(options.dataDir, 'taste');
   const taste = createTasteRepo({ dir: tasteDir, store, clock });
-  // v1 没有日历 / 天气接入（ADR-0013）：恒空，但不写死在调度器里。
+  // v1 没有日历 / 天气接入：恒空，但不写死在调度器里。
   const env: EnvProvider = { weather: async () => null, calendar: async () => [] };
 
   const demo = demoAssets(options.demoDir, options.localDir);
@@ -78,7 +78,7 @@ export async function startRadio(options: BootstrapOptions): Promise<StartedRadi
   const token = randomBytes(24).toString('hex');
   const server = createRadioServer({ radio, uiDir: options.uiDir, token, warn });
 
-  // 随机端口 + 只绑 127.0.0.1（ADR-0007：单端，只服务本机）。端口 0 让内核自己挑空的。
+  // 随机端口 + 只绑 127.0.0.1。端口 0 让内核自己挑空的。
   const port = await new Promise<number>((resolve, reject) => {
     server.once('error', reject);
     server.listen(0, '127.0.0.1', () => {
@@ -103,7 +103,7 @@ export async function startRadio(options: BootstrapOptions): Promise<StartedRadi
   };
 }
 /**
- * 首次体验的素材（ADR-0033）：随包的一首歌 + 它那段冻结的口播。
+ * 首次体验的素材：随包的一首歌 + 它那段冻结的口播。
  * 歌在首次开机拷进他的曲库（**已存在就不动** —— 他可能自己换过那一首，别把他换的那份踩掉）；
  * 素材缺了返回 undefined：那就当没有这回事，界面回落到原来的「红横幅 + 空电台」。
  */

@@ -43,11 +43,11 @@ const EMIT = 'emit_show';
 const EMIT_PLAN = 'emit_plan';
 const MIN_TRACKS = 3;
 const MAX_TRACKS = 6;
-/** 每首歌一句（ADR-0026），所以行数上限跟着曲目上限走。 */
+/** 每首歌一句，所以行数上限跟着曲目上限走。 */
 const MAX_LINES = 6;
 
 /**
- * 工具集合是**封闭**的（ADR-0015）：模型在这一轮里能做的事就这四件。
+ * 工具集合是**封闭**的：模型在这一轮里能做的事就这四件。
  * 加一个工具＝改这里 + 补一条测试，而不是让模型去"想"还能干什么。
  */
 export const TOOLS: readonly LlmToolSpec[] = [
@@ -151,7 +151,7 @@ const EMIT_PLAN_SPEC: LlmToolSpec = {
 };
 
 /**
- * 排日表那一轮的工具集拆成两段（ADR-0031）：
+ * 排日表那一轮的工具集拆成两段：
  * - 第一段 `POOL_TOOLS` **没有** `search_tracks` —— 模型只能用池子填三格，池子优先是默认。
  * - 第二段 `SEARCH_TOOLS` 只补那几格没填满的，格子重新编号，搜索是例外。
  * 两段的终局都是 `emit_plan`；播歌那一轮的 `TOOLS` 一个字没动。
@@ -202,7 +202,7 @@ const parseJson = (text: string): unknown | null => {
 };
 
 /**
- * 自建 tool loop（ADR-0015）。它只做三件事：
+ * 自建 tool loop。它只做三件事：
  * 拉着模型往前走、把工具结果原样交回、并且**在模型自己说"完了"之前不接受任何结论**。
  *
  * 为什么不用厂商的 function-calling 编排：两边的 `tools` / `tool_calls` / `tool_use` 写法完全不同，
@@ -234,9 +234,9 @@ export class ToolLoopBrain implements Brain {
   }
 
   /**
-   * 排今天的日表（ADR-0030 / 0031）。**同一个工具环**，分两段：
+   * 排今天的日表。**同一个工具环**，分两段：
    * 第一段只有池子（日推 + 播放史），代码数出没填满的格；第二段只对那几格放开搜索。
-   * 抛错 = 这一轮排不出来 —— 调用方退到逐格搜索，电台不停（ADR-0024）。
+   * 抛错 = 这一轮排不出来 —— 调用方退到逐格搜索，电台不停。
    */
   async plan(input: BrainInput, blocks: readonly PlanBlockSpec[]): Promise<TrackRef[][]> {
     const context = await this.gather(input);
@@ -259,7 +259,7 @@ export class ToolLoopBrain implements Brain {
     const short = first.map((refs, index) => (refs.length < PLAN_PER_BLOCK ? index : -1)).filter((index) => index >= 0);
     if (short.length === 0) return first;
 
-    // 第二段：只带没填满的那几格（重新编号），放开搜索。整段失败就退回第一段（ADR-0030 的「缺哪格补哪格」）。
+    // 第二段：只带没填满的那几格（重新编号），放开搜索。整段失败就退回第一段（「缺哪格补哪格」）。
     const refill = planPrompt(context, short.map((index) => blocks[index]), true);
     const registry2 = new Map<string, Track>();
     const second: TrackRef[][] | null = await this.loop(
@@ -286,7 +286,7 @@ export class ToolLoopBrain implements Brain {
 
   /**
    * 工具环本体。两种任务共用：每一轮都把工具结果原样交回，并且**在模型自己说"完了"之前
-   * 不接受任何结论**（ADR-0015）。差别只在终局工具、工具集、以及怎么读它的参数。
+   * 不接受任何结论**。差别只在终局工具、工具集、以及怎么读它的参数。
    */
   private async loop<T>(
     messages: LlmMessage[],
@@ -372,11 +372,11 @@ export class ToolLoopBrain implements Brain {
         }
         case 'daily_recommend': {
           // 空场景词就是日推那一条路（netease 源：无场景词 → /recommend/songs → 退公开新歌）。
-          // 交给模型的那份只留 id/title/artist：池子里的和搜来的看起来一样有料，它才肯先挑池子（ADR-0031）。
+          // 交给模型的那份只留 id/title/artist：池子里的和搜来的看起来一样有料，它才肯先挑池子。
           return { tracks: remember(registry, await this.deps.music.recommend({}, count(args.limit, 30, 50))).map(asRef) };
         }
         case 'today_plan': {
-          // 日表里存的是 TrackRef（契约如此，ADR-0006）：补上 source 才是一首完整的 Track，
+          // 日表里存的是 TrackRef：补上 source 才是一首完整的 Track，
           // 也才能进本轮 registry 去给 emit_show 用。source 只是记号 —— 播放时按 songId 解析，与它无关。
           const refs = planRefs(await this.deps.store.activePlan(localDateKey(now)).catch(() => null));
           const tracks = remember(registry, refs.slice(0, count(args.limit, 9, 12)));
@@ -519,7 +519,7 @@ function remember(registry: Map<string, Track>, tracks: Track[]): Track[] {
   return tracks;
 }
 
-/** 交给 UI 的只有 ref：队列契约就是 TrackRef，多一个字段都是契约变更（ADR-0006）。 */
+/** 交给 UI 的只有 ref：队列契约就是 TrackRef，多一个字段都是契约变更。 */
 function asRef(track: Track): TrackRef {
   return { id: track.id, title: track.title, artist: track.artist };
 }

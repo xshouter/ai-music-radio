@@ -18,7 +18,7 @@ const ROLE: Record<string, string> = { dj: 'DJ', me: 'ME', system: 'SYS' };
 
 /**
  * ④ Profile（3.11）。DjCard 的下一级：那边回答「你是谁」，这里回答「你听了什么、taste 长什么样」。
- * 四块数据全部来自接口，没有一个数字是写死的 —— 统计走 ADR-0013 的 GET /api/stats。
+ * 四块数据全部来自接口，没有一个数字是写死的 —— 统计走GET /api/stats。
  */
 export function Profile({ onClose, onPlay }: { onClose: () => void; onPlay: (songId: string) => void }) {
   const [data, setData] = useState<Data>({ taste: null, plan: null, stats: null, history: null });
