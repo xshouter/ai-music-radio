@@ -54,6 +54,16 @@ export class RadioFailure extends Error {
 const llmFailureCode = (status: number): ErrorCode =>
   status === 401 || status === 403 ? 'NO_LLM_KEY' : status === 429 ? 'RATE_LIMITED' : 'INTERNAL';
 
+/**
+ * 上游自己那句话是唯一能指路的证据：同样是 401，「key 不对」和「baseUrl 指错了服务」
+ * 在上游眼里是两种不同的报错，用户要改的东西也不同。但它可能是一整页 HTML，
+ * 所以先压成一行再截断 —— 报错不该把整份响应灌进聊天窗口。
+ */
+const describeHttp = (error: HttpError): string =>
+  error.detail.trim() === ''
+    ? error.message
+    : error.message + ' — ' + error.detail.replace(/\s+/g, ' ').trim().slice(0, 200);
+
 export interface RadioOptions {
   store: Store;
   clock: Clock;
@@ -227,7 +237,7 @@ export function createRadio(options: RadioOptions): Radio {
     if (cause instanceof RadioFailure) return cause;
     if (cause instanceof HttpError) {
       const code = llmFailureCode(cause.status);
-      return new RadioFailure(code, cause.message, code !== 'NO_LLM_KEY');
+      return new RadioFailure(code, describeHttp(cause), code !== 'NO_LLM_KEY');
     }
     if (sourceDown) return new RadioFailure('MUSIC_SOURCE_UNREACHABLE', 'The music source did not answer.', true);
     return new RadioFailure('INTERNAL', cause instanceof Error ? cause.message : String(cause), true);

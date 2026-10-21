@@ -19,6 +19,13 @@ extraResources:
   # 目标只有一个：双击 exe 就能用，用户不必自己去起第二个进程（ADR-0028）。
   - from: vendor/netease
     to: netease
+  # 内置服务的 node_modules 必须**单独再搬一次**：electron-builder 对 extraResources 会
+  # 无条件丢掉源目录**顶层**的 node_modules（app-builder-lib/out/util/filter.js 里
+  # relative === 'node_modules' 就直接 return false，早于用户写的 filter 生效）。
+  # 少了这条，resources/netease 里只剩 package.json / package-lock.json 两个文件，
+  # 「双击 exe 就能用」在音乐源这一环会静默断掉。落到 netease/node_modules 正是 core 期望的形状。
+  - from: vendor/netease/node_modules
+    to: netease/node_modules
   # 首次体验的两件东西（约 3MB）：随包的一首歌 + 它那段冻结的口播（ADR-0033）。
   - from: assets/demo
     to: demo

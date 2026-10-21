@@ -51,6 +51,15 @@ jobs:
       - name: 出 Windows 便携版 exe
         run: npx electron-builder --win --publish never
 
+      # 落点自检：内置服务的 node_modules 必须真的进了包。extraResources 会**静默**丢掉源目录
+      # 顶层的 node_modules（ADR-0034）—— 少了它 exe 照样打得出来，只是双击后一台电台没有音乐。
+      # 「能出包但是坏的」得在 CI 里叫停，不能等有人双击才发现。
+      - name: 落点自检：内置服务在不在
+        shell: bash
+        run: |
+          test -f release/win-unpacked/resources/netease/node_modules/NeteaseCloudMusicApi/app.js \
+            || { echo "::error::resources/netease 里没有内置服务（见 ADR-0034）"; exit 1; }
+
       # 一个 tag 一个 draft，资产只有那个 portable exe。
       # 不传 latest.yml / blockmap：那是自动更新通道的元数据，而这个应用还没有更新器 ——
       # 传上去等于对外宣称有一条并不存在的更新通道。
