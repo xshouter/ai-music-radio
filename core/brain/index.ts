@@ -109,7 +109,7 @@ export const TOOLS: readonly LlmToolSpec[] = [
         say: {
           type: 'array',
           items: { type: 'string' },
-          description: 'one spoken line per track in `play`, in the same order: say[0] opens the first track. One or two sentences, under 30 words, written for that track and pitched to its genre.',
+          description: 'one spoken line per track in `play`, in the same order: say[0] opens the first track. Two or three sentences, 40-55 words (15-20 seconds spoken), written for that track and pitched to its genre.',
         },
         play: {
           type: 'array',

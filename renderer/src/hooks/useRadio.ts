@@ -1,6 +1,7 @@
 // 电台的全部状态：取数、订阅 WS、播音频、上报播放事实。
 // 组件只读这个 hook —— 数据从哪来、怎么降级，都在这一处（铁律 5）。
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Howl } from 'howler';
 import type { DjMessage, SpokenLine, TrackRef } from '../../../shared/domain.ts';
 import type { BootProgress, NowPlaying, PlanTodayResponse, StreamEvent, TasteDoc } from '../../../shared/api-types.ts';
 import { ApiFailure, audioUrl, chat, getFavorites, getNext, getNow, getPlanToday, getTaste, openStream, reportFeedback, reportPlayback } from '../api/client.ts';
@@ -35,6 +36,7 @@ export interface Radio {
   toggle: () => void;
   stop: () => void;
   setVolume: (value: number) => void;
+  seek: (ms: number) => void;
   skip: () => void;
   back: () => void;
   play: (songId: string) => void;
@@ -111,9 +113,14 @@ export function useRadio(): Radio {
   const [oralLines, setOralLines] = useState<SpokenLine[]>([]);
   const [oralPlaying, setOralPlaying] = useState(false);
   const [oralMs, setOralMs] = useState(0);
+  // 点一次口播入口就 +1：点 REPLAY 是同一个 src，得让那段 effect 知道「再来一遍」。
+  const [oralTick, setOralTick] = useState(0);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const oralAudioRef = useRef<HTMLAudioElement | null>(null);
+  // 两条音频管道都是 howler 的 Sound（开源引擎，ADR-0037）：音乐一条、口播一条。
+  const musicRef = useRef<Howl | null>(null);
+  const oralRef = useRef<Howl | null>(null);
+  // 音量要递给「新建的那一条」用 —— 它不在那段 effect 的依赖里（换音量不该重建整首歌）。
+  const volumeRef = useRef(volume);
   // 口播在不在开着：WS 的 say 回调只挂一次，闭包会一直看到旧值，所以走 ref。
   const oralOpenRef = useRef(false);
   const pending = useRef<{ after: string; tracks: TrackRef[] } | null>(null);
@@ -135,61 +142,26 @@ export function useRadio(): Radio {
   const currentId = current?.id ?? null;
   const liked = currentId !== null && favorites.some((track) => track.id === currentId);
 
-  // 音频元素只建一次，事件监听只挂一次。
-  useEffect(() => {
-    const audio = new Audio();
-    audio.preload = 'metadata';
-    audioRef.current = audio;
-    const onTime = () => setPositionMs(audio.currentTime * 1000);
-    const onMeta = () => setMediaMs(Number.isFinite(audio.duration) ? audio.duration * 1000 : 0);
-    const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
-    // 一首歌**自然放完**：客户端报事实，由后端推进队列（ADR-0010）。这一下才是"自动切下一首"。
-    const onEnded = () => {
-      const id = currentIdRef.current;
-      if (id !== null) void reportPlayback({ songId: id, event: 'ended', at: new Date().toISOString() }).catch(() => undefined);
-    };
-    // 加载失败：试听片段被拒 / 解析不出来。停在一首放不出来的歌上，比跳过它更糟。
-    const onError = () => {
-      if (currentIdRef.current !== null) skipRef.current();
-    };
-    audio.addEventListener('timeupdate', onTime);
-    audio.addEventListener('loadedmetadata', onMeta);
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('error', onError);
-    return () => {
-      audio.pause();
-      audio.removeEventListener('timeupdate', onTime);
-      audio.removeEventListener('loadedmetadata', onMeta);
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('error', onError);
-      audioRef.current = null;
-    };
+  // 两条管子都是**按需新建、用完就 unload** —— howler 没有「换 src」这一步，换歌就是换一个 Sound。
+  // 组件走的时候也要收掉：不然换条口播时旧的那一条会留在内存里接着跑。
+  useEffect(() => () => {
+    musicRef.current?.unload();
+    oralRef.current?.unload();
+    musicRef.current = null;
+    oralRef.current = null;
   }, []);
 
-  // 口播的 <audio>：和音乐那个并列，自成一条管道。它不认识界面 —— 界面关不关由 ✕ 说了算。
+  // 进度：howler 不发 timeupdate，自己每 100ms 读一次位置 —— 3px 的条够用，又不至于每帧重渲染。
   useEffect(() => {
-    const audio = new Audio();
-    audio.preload = 'auto';
-    oralAudioRef.current = audio;
-    const onTime = () => setOralMs(audio.currentTime * 1000);
-    const onPlay = () => setOralPlaying(true);
-    const onPause = () => setOralPlaying(false);
-    audio.addEventListener('timeupdate', onTime);
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-    return () => {
-      audio.pause();
-      audio.removeEventListener('timeupdate', onTime);
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
-      oralAudioRef.current = null;
-    };
-  }, []);
+    if (!playing && !oralPlaying) return;
+    const timer = setInterval(() => {
+      const music = musicRef.current;
+      if (music !== null && music.playing()) setPositionMs(Math.round(music.seek() * 1000));
+      const oral = oralRef.current;
+      if (oral !== null && oral.playing()) setOralMs(Math.round(oral.seek() * 1000));
+    }, 100);
+    return () => clearInterval(timer);
+  }, [playing, oralPlaying]);
 
   // 首屏：四个 GET + 一条 WS。WS 连上会自带快照，所以这里的 GET 只为「连不上时也有东西看」。
   useEffect(() => {
@@ -252,31 +224,52 @@ export function useRadio(): Radio {
   // 换歌换音源。自动播放可能被浏览器拦，那就让播放按钮说真话。
   useEffect(() => {
     currentIdRef.current = currentId;
-    const audio = audioRef.current;
-    if (!audio) return;
+    const previous = musicRef.current;
+    musicRef.current = null;
+    if (previous !== null) previous.unload();
     setPositionMs(0);
     setMediaMs(0);
-    if (!currentId) {
-      audio.removeAttribute('src');
-      return;
-    }
-    audio.src = audioUrl(currentId);
-    void audio.play().catch(() => undefined);
+    if (!currentId) return;
+    // html5: true —— /api/audio 是 302 到远端 CDN，那一家不给 CORS 头，Web Audio 那条路取不到音频。
+    const sound = new Howl({ src: [audioUrl(currentId)], html5: true, volume: volumeRef.current });
+    sound.on('play', () => setPlaying(true));
+    sound.on('pause', () => setPlaying(false));
+    sound.on('load', () => setMediaMs(Math.round(sound.duration() * 1000)));
+    // 一首歌**自然放完**：客户端报事实，由后端推进队列（ADR-0010）。这一下才是"自动切下一首"。
+    sound.on('end', () => {
+      const id = currentIdRef.current;
+      if (id !== null) void reportPlayback({ songId: id, event: 'ended', at: new Date().toISOString() }).catch(() => undefined);
+    });
+    // 加载失败：试听片段被拒 / 解析不出来。停在一首放不出来的歌上，比跳过它更糟。
+    sound.on('loaderror', () => {
+      if (currentIdRef.current !== null) skipRef.current();
+    });
+    musicRef.current = sound;
+    void sound.play();
   }, [currentId]);
 
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
+    volumeRef.current = volume;
+    musicRef.current?.volume(volume);
   }, [volume]);
 
   // 口播那条一到就从这一条说起：切歌 = 换一条 = 直接顶上当前句（用户定）。
+  // oralTick 也在依赖里 —— 点 REPLAY 是同一个 src，也要真的从头再来一遍。
   const oralLine = oralLines.length > 0 ? (oralLines[oralLines.length - 1] ?? null) : null;
   useEffect(() => {
-    const audio = oralAudioRef.current;
-    if (!audio || oralLine === null) return;
-    audio.src = oralLine.audioUrl;
+    const previous = oralRef.current;
+    oralRef.current = null;
+    if (previous !== null) previous.unload();
+    if (oralLine === null) return;
+    const sound = new Howl({ src: [oralLine.audioUrl], html5: true });
+    sound.on('play', () => setOralPlaying(true));
+    sound.on('pause', () => setOralPlaying(false));
+    sound.on('end', () => setOralPlaying(false));
+    sound.on('loaderror', () => setOralPlaying(false));
+    oralRef.current = sound;
     setOralMs(0);
-    void audio.play().catch(() => undefined);
-  }, [oralLine]);
+    void sound.play();
+  }, [oralLine, oralTick]);
 
   // 队列里的 TrackRef 不带时长（领域类型就是这么定的）；时长只可能来自 <audio> 或 now.track。
   const nowMatches = now?.track?.id === currentId ? (now.track.durationMs ?? 0) : 0;
@@ -284,24 +277,34 @@ export function useRadio(): Radio {
 
   // 一个「暂停」把这一台都停住：音乐停，口播跟着停；音乐再走，口播也跟着走（用户定）。
   const toggle = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const oral = oralAudioRef.current;
-    if (audio.paused) {
-      void audio.play().catch(() => undefined);
-      if (oral && oral.src !== '') void oral.play().catch(() => undefined);
+    const music = musicRef.current;
+    if (music === null) return;
+    const oral = oralRef.current;
+    if (music.playing()) {
+      music.pause();
+      oral?.pause();
     } else {
-      audio.pause();
-      if (oral) oral.pause();
+      music.play();
+      oral?.play();
     }
   }, []);
 
   const stop = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.pause();
-    audio.currentTime = 0;
-    oralAudioRef.current?.pause();
+    const music = musicRef.current;
+    if (music === null) return;
+    music.pause();
+    music.seek(0);
+    setPositionMs(0);
+    oralRef.current?.pause();
+  }, []);
+
+  // 拖进度条 = 跳到那一刻（运输条上点一下就是这个）。歌曲进度与口播进度各拖各的。
+  const seek = useCallback((ms: number) => {
+    const music = musicRef.current;
+    if (music === null) return;
+    const seconds = Math.max(0, ms) / 1000;
+    music.seek(seconds);
+    setPositionMs(Math.round(seconds * 1000));
   }, []);
 
   // 播放权威在客户端（ADR-0010）：切歌就是「我切到这首了」，server 只记账。
@@ -348,17 +351,12 @@ export function useRadio(): Radio {
   }, [move]);
 
   // 开一场口播：从这一条说起（点 PLAY / REPLAY / 开机自动进）。这一段就是这一场的稿子。
+  // 真正出声的是上面那段 effect；这里只说「说哪一条」，并踢它一脚 —— REPLAY 同一个 src 要真重来。
   const playOral = useCallback((line: SpokenLine) => {
     oralOpenRef.current = true;
     setOralOpen(true);
     setOralLines([line]);
-    const audio = oralAudioRef.current;
-    if (audio) {
-      // 显式从头说：点 REPLAY 要真的重来（用户定：play 和 replay 都从头开始播）。
-      audio.src = line.audioUrl;
-      setOralMs(0);
-      void audio.play().catch(() => undefined);
-    }
+    setOralTick((tick) => tick + 1);
   }, []);
 
   // ✕ = 主动停止口播并回主界面（用户定）—— 这是**唯一**的停止方式。
@@ -367,24 +365,25 @@ export function useRadio(): Radio {
     setOralOpen(false);
     setOralLines([]);
     setOralMs(0);
-    const audio = oralAudioRef.current;
-    if (audio) {
-      audio.pause();
-      audio.removeAttribute('src');
-    }
+    setOralPlaying(false);
+    const sound = oralRef.current;
+    oralRef.current = null;
+    if (sound !== null) sound.unload();
   }, []);
 
   const toggleOral = useCallback(() => {
-    const audio = oralAudioRef.current;
-    if (!audio) return;
-    if (audio.paused) void audio.play().catch(() => undefined);
-    else audio.pause();
+    const sound = oralRef.current;
+    if (sound === null) return;
+    if (sound.playing()) sound.pause();
+    else sound.play();
   }, []);
 
   const seekOral = useCallback((ms: number) => {
-    const audio = oralAudioRef.current;
-    if (!audio) return;
-    audio.currentTime = Math.max(0, ms) / 1000;
+    const sound = oralRef.current;
+    if (sound === null) return;
+    const seconds = Math.max(0, ms) / 1000;
+    sound.seek(seconds);
+    setOralMs(Math.round(seconds * 1000));
   }, []);
 
   const say = useCallback((text: string) => {
@@ -426,6 +425,7 @@ export function useRadio(): Radio {
     toggle,
     stop,
     setVolume,
+    seek,
     volume,
     skip: () => move(1),
     back: () => move(-1),

@@ -116,11 +116,14 @@ const ERRORS = {
 // apiKey 永远只进不出：这里存的是「配没配」，不是 key 本身。
 const settings = {
   llm: { baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', protocol: 'openai', apiKeySet: false },
-  // tts.provider 的出厂值是 fish（ADR-0008）；voice 留空 = 用音色库默认音色。
-  tts: { provider: 'fish', voice: '', apiKeySet: false },
+  // tts.provider 的出厂值是 piper（ADR-0022）；voice 留空 = 用音色库默认音色。
+  tts: { provider: 'piper', voice: '', apiKeySet: false },
   // 第三块（ADR-0011）：cookie 的值一次都不存进内存，只存「配没配」。
   music: { provider: 'netease', cookieSet: false },
 };
+
+// POST /api/models 的假目录：mock 不联网，能给的就是形状。
+const MOCK_MODELS = ['qwen-plus', 'qwen3.7-max', 'deepseek-v4.1-flash', 'glm-5.2'];
 
 const refs = (tracks) => tracks.map(ref);
 
@@ -435,6 +438,14 @@ async function handle(req, res) {
     const rest = favorites.filter((f) => f.id !== track.id);
     favorites = body.action === 'like' ? [...rest, ref(track)] : rest;
     return sendJson(res, 200, { ok: true });
+  }
+  // 模型列表：替身不联网，给一份固定的目录（形状对了，下拉框就走得通）。
+  if (method === 'POST' && path === '/api/models') {
+    const body = await readJson(req);
+    if (typeof body.baseUrl !== 'string' || body.baseUrl === '') {
+      return sendError(res, 'INTERNAL', 'models needs a baseUrl', 400);
+    }
+    return sendJson(res, 200, { models: MOCK_MODELS });
   }
   if (method === 'GET' && path === '/api/settings') return sendJson(res, 200, settings);
   if (method === 'PUT' && path === '/api/settings') {
